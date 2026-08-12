@@ -21,7 +21,7 @@ Item {
     // smile: -1 frown .. 1 grin | brow: -1 angry .. 1 raised
     // eye: lid opening | wink: right eye closed | open: resting mouth aperture
     readonly property var table: ({
-        "neutral":     { smile: 0.05, brow: 0.00, eye: 1.00, tint: "#4A90E2" },
+        "neutral":     { smile: 0.22, brow: 0.00, eye: 0.92, tint: "#4A90E2" },
         "happy":       { smile: 0.85, brow: 0.15, eye: 0.90, tint: "#F5A623" },
         "laughing":    { smile: 1.00, brow: 0.25, eye: 0.25, tint: "#F5A623", open: 0.50 },
         "funny":       { smile: 0.80, brow: 0.35, eye: 0.80, tint: "#F7B733" },
@@ -261,6 +261,9 @@ Item {
             readonly property real halfW: 30 * root.unit
             readonly property real curve: root.smile * 26 * root.unit
             readonly property real open: root.mouthOpen * 26 * root.unit
+            // approx. depth of the lower lip at the cubic midpoint;
+            // the tongue is clamped to this so it cannot poke through
+            readonly property real lipDepth: 0.75 * (curve + open)
 
             ShapePath {
                 strokeColor: root.tint
@@ -294,9 +297,11 @@ Item {
                 height: 10 * root.unit
                 radius: height / 2
                 color: "#FF7C93"
-                opacity: root.mouthOpen > 0.45 ? 0.85 : 0.0
+                opacity: (root.mouthOpen > 0.45
+                         && mouth.lipDepth > height + 4 * root.unit) ? 0.85 : 0.0
                 x: mouth.cx - width / 2
-                y: mouth.cy + mouth.open * 0.55
+                y: mouth.cy + Math.max(0, Math.min(mouth.open * 0.55,
+                                   mouth.lipDepth - height - 2 * root.unit))
                 Behavior on opacity { NumberAnimation { duration: 120 } }
             }
         }

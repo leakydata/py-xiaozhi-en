@@ -35,7 +35,7 @@ Item {
     // smile: -1 frown .. 1 grin | brow: -1 angry .. 1 raised
     // eye: lid opening | wink: right eye closed | open: resting mouth aperture
     readonly property var table: ({
-        "neutral":     { smile: 0.05, brow: 0.00, eye: 1.00, tint: "#4A90E2" },
+        "neutral":     { smile: 0.22, brow: 0.00, eye: 0.92, tint: "#4A90E2" },
         "happy":       { smile: 0.85, brow: 0.15, eye: 0.90, tint: "#F5A623" },
         "laughing":    { smile: 1.00, brow: 0.25, eye: 0.25, tint: "#F5A623", open: 0.50 },
         "funny":       { smile: 0.80, brow: 0.35, eye: 0.80, tint: "#F7B733" },
@@ -285,10 +285,11 @@ Item {
                     Behavior on height { NumberAnimation { duration: 70 } }
                 }
 
-                // iris + pupil track the gaze
+                // iris + pupil track the gaze. A large iris relative to the sclera
+                // is what stops the face reading as a wide-eyed stare.
                 Rectangle {
                     id: iris
-                    width: 14 * root.unit
+                    width: 17.5 * root.unit
                     height: width
                     radius: width / 2
                     color: root.irisColor
@@ -298,31 +299,42 @@ Item {
 
                     Rectangle {
                         anchors.centerIn: parent
-                        width: 6.5 * root.unit
+                        width: 7.5 * root.unit
                         height: width
                         radius: width / 2
                         color: "#2B2320"
                     }
                     Rectangle {
-                        width: 4.5 * root.unit
+                        width: 5 * root.unit
                         height: width
                         radius: width / 2
                         color: "#FFFFFF"
                         opacity: 0.95
-                        x: parent.width * 0.58
-                        y: parent.height * 0.16
+                        x: parent.width * 0.56
+                        y: parent.height * 0.14
                     }
                 }
 
-                // upper lash line
+                // relaxed upper lid: covers the top of the iris so the eye looks
+                // lidded rather than held wide open. Grows as the eye closes.
+                Rectangle {
+                    id: lid
+                    x: -root.unit
+                    y: -root.unit
+                    width: parent.width + 2 * root.unit
+                    height: sclera.y + sclera.height * 0.26 + root.unit
+                    color: root.skinTop
+                }
+
+                // lash line sits on the lid edge
                 Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    y: sclera.y - 0.5 * root.unit
+                    y: lid.y + lid.height - 1.2 * root.unit
                     width: parent.width * 0.94
-                    height: 2 * root.unit
+                    height: 2.2 * root.unit
                     radius: height / 2
                     color: root.hairShade
-                    opacity: eye.openAmt > 0.1 ? 0.75 : 0.0
+                    opacity: eye.openAmt > 0.1 ? 0.8 : 0.0
                 }
             }
         }
@@ -419,6 +431,9 @@ Item {
             readonly property real halfW: 26 * root.unit
             readonly property real curve: root.smile * 22 * root.unit
             readonly property real open: root.mouthOpen * 24 * root.unit
+            // approx. depth of the lower lip at the cubic midpoint;
+            // the tongue is clamped to this so it cannot poke through
+            readonly property real lipDepth: 0.75 * (curve + open)
 
             ShapePath {
                 strokeColor: root.lipColor
@@ -451,9 +466,11 @@ Item {
                 height: 9 * root.unit
                 radius: height / 2
                 color: "#D9727F"
-                opacity: root.mouthOpen > 0.5 ? 0.9 : 0.0
+                opacity: (root.mouthOpen > 0.5
+                         && mouth.lipDepth > height + 4 * root.unit) ? 0.9 : 0.0
                 x: mouth.cx - width / 2
-                y: mouth.cy + mouth.open * 0.5
+                y: mouth.cy + Math.max(0, Math.min(mouth.open * 0.5,
+                                   mouth.lipDepth - height - 2 * root.unit))
                 Behavior on opacity { NumberAnimation { duration: 120 } }
             }
         }

@@ -118,18 +118,25 @@ class ConversationSession:
             await self.state.set_device_state(DeviceState.IDLE)
             return
 
+        # 通道已关闭时无法继续听（realtime 也一样）：此时若仍置 LISTENING，
+        # 界面会在死连接上显示「聆听中」，麦克风指示灯也亮着但音频没有去处。
+        if not self.protocol.is_audio_channel_opened():
+            logger.warning("TTS 结束但协议通道已关闭，跳过重新 listen")
+            await self.state.set_device_state(DeviceState.IDLE)
+            return
+
         # realtime 一般还在 listen 里，不用再发一遍
         if self.state.listening_mode != ListeningMode.REALTIME:
-            if self.protocol.is_audio_channel_opened():
-                try:
-                    await self.protocol.send_start_listening(self.state.listening_mode)
-                except Exception as e:
-                    logger.warning(
-                        f"TTS 结束后重新 listen 失败: {e}",
-                        exc_info=True,
-                    )
-            else:
-                logger.warning("TTS 结束但协议通道已关闭，跳过重新 listen")
+            try:
+                await self.protocol.send_start_listening(self.state.listening_mode)
+            except Exception as e:
+                logger.warning(
+                    f"TTS 结束后重新 listen 失败: {e}",
+                    exc_info=True,
+                )
+                # 没能真正开始听，就不要谎称在听
+                await self.state.set_device_state(DeviceState.IDLE)
+                return
 
         try:
             audio_plugin = self.plugins.get_plugin("audio")
