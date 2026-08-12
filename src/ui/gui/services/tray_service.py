@@ -63,9 +63,9 @@ class TrayService(QObject):
 
             # 创建菜单
             self._menu = QMenu()
-            self._menu.addAction("显示窗口", on_show)
+            self._menu.addAction("Show Window", on_show)
             self._menu.addSeparator()
-            self._menu.addAction("退出", on_quit)
+            self._menu.addAction("Quit", on_quit)
 
             self._tray.setContextMenu(self._menu)
 

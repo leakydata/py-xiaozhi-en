@@ -15,16 +15,16 @@ class UiPresenter:
     """写界面：对话、音乐、状态、表情、按钮等."""
 
     STATE_TEXT_MAP = {
-        DeviceState.IDLE: "待命",
-        DeviceState.LISTENING: "聆听中...",
-        DeviceState.SPEAKING: "说话中...",
+        DeviceState.IDLE: "Idle",
+        DeviceState.LISTENING: "Listening...",
+        DeviceState.SPEAKING: "Speaking...",
     }
 
     MUSIC_STATE_TEXT = {
-        "playing": "正在播放: {song}",
-        "paused": "已暂停: {song}",
-        "stopped": "已停止: {song}",
-        "completed": "播放完成: {song}",
+        "playing": "Playing: {song}",
+        "paused": "Paused: {song}",
+        "stopped": "Stopped: {song}",
+        "completed": "Finished: {song}",
     }
 
     def __init__(self, viewport: Optional["ViewPort"] = None) -> None:
@@ -70,7 +70,7 @@ class UiPresenter:
             self.set_status(status_text, connected=True)
 
     def show_network_error(self) -> None:
-        self.set_status("未连接", connected=False)
+        self.set_status("Disconnected", connected=False)
 
     def show_music_state(self, data) -> None:
         try:

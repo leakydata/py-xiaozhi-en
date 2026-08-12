@@ -97,7 +97,7 @@ ScrollView {
         spacing: Theme.spacingLg
 
         Text {
-            text: "MCP 工具"
+            text: "MCP Tools"
             font.pixelSize: Theme.fontSizeXl
             font.weight: Font.DemiBold
             color: Theme.textPrimary
@@ -105,7 +105,7 @@ ScrollView {
 
         Text {
             Layout.fillWidth: true
-            text: "控制哪些工具暴露给服务端。关闭后不出现在 tools/list，也无法调用。保存后若已连接将自动重连以更新列表。"
+            text: "Controls which tools are exposed to the server. Disabled tools do not appear in tools/list and cannot be called. If connected, saving reconnects automatically to refresh the list."
             font.pixelSize: Theme.fontSizeXs
             color: Theme.textSecondary
             wrapMode: Text.WordWrap
@@ -141,14 +141,14 @@ ScrollView {
                     Item { Layout.fillWidth: true }
 
                     GroupActionButton {
-                        text: "全开"
+                        text: "Enable All"
                         onClicked: {
                             if (settingsModel)
                                 settingsModel.setMcpToolGroupEnabled(groupBlock.modelData.group, true)
                         }
                     }
                     GroupActionButton {
-                        text: "全关"
+                        text: "Disable All"
                         onClicked: {
                             if (settingsModel)
                                 settingsModel.setMcpToolGroupEnabled(groupBlock.modelData.group, false)

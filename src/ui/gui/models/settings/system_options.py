@@ -246,11 +246,11 @@ class SettingsSystemOptionsMixin:
 
             data = get_user_data_dir()
             return (
-                f"数据根(配置固定在此): {data}\n"
-                f"留空=默认；点「选择」用系统对话框；保存后下次启动迁移"
+                f"Data root (config stays here): {data}\n"
+                f"Empty = default; click Browse for the system dialog; migrates on next start after saving"
             )
         except Exception:
-            return "留空使用默认路径；保存后下次启动迁移"
+            return "Leave empty to use the default path; migrates on next start after saving"
 
     def _browse_directory(self, title: str, current: str, which: str = "") -> str:
         """打开系统文件夹选择对话框；取消返回空串（调用方勿覆盖）."""

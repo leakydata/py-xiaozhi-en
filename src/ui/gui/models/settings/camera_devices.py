@@ -53,9 +53,9 @@ class SettingsCameraDevicesMixin:
             self._cameras_loaded_once = True
             self.devicesChanged.emit()
             self.statusMessage.emit(
-                f"摄像头列表已刷新（{len(cameras)} 个）"
+                f"Camera list refreshed ({len(cameras)} found)"
                 if cameras
-                else "未检测到摄像头（Pi CSI 需安装 picamera2）"
+                else "No camera detected (Pi CSI requires picamera2)"
             )
 
     @Slot(result=list)
@@ -114,16 +114,16 @@ class SettingsCameraDevicesMixin:
     def testCamera(self):
         """测试摄像头，捕获一帧并显示."""
         if not self._cameras:
-            self.statusMessage.emit("没有可用的摄像头")
+            self.statusMessage.emit("No cameras available")
             return
 
         idx = self._get_selectedCameraIndex()
         if idx < 0 or idx >= len(self._cameras):
-            self.statusMessage.emit("请先选择摄像头")
+            self.statusMessage.emit("Select a camera first")
             return
 
         camera = self._cameras[idx]
-        self.statusMessage.emit(f"正在测试摄像头 {camera['name']}...")
+        self.statusMessage.emit(f"Testing camera {camera['name']}...")
 
         self._run_worker(
             self._do_camera_test,
@@ -167,12 +167,12 @@ class SettingsCameraDevicesMixin:
         jpeg = capture_jpeg(cfg)
         if not jpeg:
             self.statusMessage.emit(
-                "[失败] 无法捕获图像（Pi CSI 请装 python3-picamera2 或改选 USB）"
+                "[FAIL] Could not capture image (Pi CSI: install python3-picamera2, or switch to USB)"
             )
             self.testComplete.emit("camera", False)
             return
 
         self.statusMessage.emit(
-            f"[成功] 摄像头正常 (JPEG {len(jpeg)} bytes, {camera['name']})"
+            f"[OK] Camera OK (JPEG {len(jpeg)} bytes, {camera['name']})"
         )
         self.testComplete.emit("camera", True)

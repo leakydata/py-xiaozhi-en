@@ -67,7 +67,7 @@ class SettingsWakeWordMixin:
             self._wake_word_lang = lang
         except Exception as e:
             logger.error(f"转换唤醒词失败: {e}", exc_info=True)
-            self._wake_word_preview = f"转换失败: {e}"
+            self._wake_word_preview = f"Conversion failed: {e}"
 
     def _get_wakeWord(self) -> str:
         return self._wake_word
@@ -92,7 +92,7 @@ class SettingsWakeWordMixin:
             是否保存成功
         """
         if not self._wake_word:
-            self.statusMessage.emit("请输入唤醒词")
+            self.statusMessage.emit("Enter a wake word")
             return False
 
         try:
@@ -115,7 +115,7 @@ class SettingsWakeWordMixin:
                 f.write(keyword_line + "\n")
 
             logger.info(f"唤醒词已保存: {self._wake_word} -> {keywords_path}")
-            self.statusMessage.emit(f"唤醒词已保存 ({lang.upper()})")
+            self.statusMessage.emit(f"Wake word saved ({lang.upper()})")
 
             # 保存到文件
             self.save()
@@ -123,6 +123,6 @@ class SettingsWakeWordMixin:
 
         except Exception as e:
             logger.error(f"保存唤醒词失败: {e}", exc_info=True)
-            self.statusMessage.emit(f"保存失败: {e}")
+            self.statusMessage.emit(f"Save failed: {e}")
             return False
 

@@ -26,8 +26,8 @@ class MainModel(BaseModel):
         self._status_text = ""
         self._connected = False
         self._auto_mode = False
-        self._mode_text = "手动对话"
-        self._button_text = "按住后说话"
+        self._mode_text = "Manual Mode"
+        self._button_text = "Hold to Talk"
 
     # ========== Properties ==========
 
@@ -97,8 +97,8 @@ class MainModel(BaseModel):
         # 默认按钮文案；对话进行中会再被 Session 改成「停止对话」
         if self._auto_mode != auto:
             self._auto_mode = auto
-            self._mode_text = "自动对话" if auto else "手动对话"
-            self._button_text = "开始对话" if auto else "按住后说话"
+            self._mode_text = "Auto Mode" if auto else "Manual Mode"
+            self._button_text = "Start Chat" if auto else "Hold to Talk"
             self.autoModeChanged.emit()
             self.modeTextChanged.emit()
             self.buttonTextChanged.emit()

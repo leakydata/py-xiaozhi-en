@@ -66,7 +66,7 @@ class SettingsAudioDevicesMixin:
         无 EventBus 时降级为本地普通枚举。
         """
         if getattr(self, "_audio_devices_refreshing", False):
-            self.statusMessage.emit("设备刷新进行中…")
+            self.statusMessage.emit("Device refresh in progress...")
             return
 
         event_bus = getattr(self, "_event_bus", None)
@@ -76,12 +76,12 @@ class SettingsAudioDevicesMixin:
             logger.warning("SettingsModel: 无 EventBus/TaskManager，降级为本地设备枚举")
             self._load_audio_devices(force=True)
             self.statusMessage.emit(
-                "设备列表已刷新（未协调音频流；后连蓝牙可能仍不可见）"
+                "Device list refreshed (audio streams not coordinated; a Bluetooth device connected later may still be invisible)"
             )
             return
 
         self._audio_devices_refreshing = True
-        self.statusMessage.emit("正在刷新音频设备（会短暂中断麦克风/播放）…")
+        self.statusMessage.emit("Refreshing audio devices (microphone/playback will briefly stop)...")
 
         async def _refresh():
             from src.core.event_bus import Events
@@ -123,7 +123,7 @@ class SettingsAudioDevicesMixin:
                     n_in = len(self._input_devices)
                     n_out = len(self._output_devices)
                     self.statusMessage.emit(
-                        f"设备列表已刷新（输入 {n_in} / 输出 {n_out}）"
+                        f"Device list refreshed (input {n_in} / output {n_out})"
                     )
                 finally:
                     self._audio_devices_refreshing = False
@@ -135,14 +135,14 @@ class SettingsAudioDevicesMixin:
             if task is None:
                 self._audio_devices_refreshing = False
                 self._load_audio_devices(force=True)
-                self.statusMessage.emit("应用正在关闭，已本地枚举")
+                self.statusMessage.emit("App is shutting down; enumerated locally")
                 return
             task.add_done_callback(_on_task_done)
         except Exception as e:
             self._audio_devices_refreshing = False
             logger.error(f"无法调度设备刷新: {e}", exc_info=True)
             self._load_audio_devices(force=True)
-            self.statusMessage.emit(f"设备刷新失败，已本地枚举: {e}")
+            self.statusMessage.emit(f"Device refresh failed; enumerated locally: {e}")
 
     def _schedule_ui(self, fn) -> None:
         """把回调丢回 Qt 主线程（spawn 的 done 可能在 loop 线程）."""
@@ -215,15 +215,15 @@ class SettingsAudioDevicesMixin:
         idx = self._get_selectedInputIndex()
         if 0 <= idx < len(self._input_devices):
             d = self._input_devices[idx]
-            return f"采样率: {d['sample_rate']}Hz, 通道: {d['channels']}"
-        return "未选择设备"
+            return f"Sample rate: {d['sample_rate']}Hz, channels: {d['channels']}"
+        return "No device selected"
 
     def _get_outputDeviceInfo(self) -> str:
         idx = self._get_selectedOutputIndex()
         if 0 <= idx < len(self._output_devices):
             d = self._output_devices[idx]
-            return f"采样率: {d['sample_rate']}Hz, 通道: {d['channels']}"
-        return "未选择设备"
+            return f"Sample rate: {d['sample_rate']}Hz, channels: {d['channels']}"
+        return "No device selected"
 
     # Opus 输出采样率
     def _get_opusOutputSampleRate(self) -> int:
@@ -249,12 +249,12 @@ class SettingsAudioDevicesMixin:
 
         idx = self._get_selectedInputIndex()
         if idx < 0 or idx >= len(self._input_devices):
-            self.statusMessage.emit("请先选择输入设备")
+            self.statusMessage.emit("Select an input device first")
             return
 
         device = self._input_devices[idx]
         self._testing_input = True
-        self.statusMessage.emit("开始录音测试...")
+        self.statusMessage.emit("Starting recording test...")
 
         self._run_worker(
             self._do_input_test,
@@ -270,7 +270,7 @@ class SettingsAudioDevicesMixin:
         sample_rate = device["sample_rate"]
         duration = 3
 
-        self.statusMessage.emit(f"请对着麦克风说话 ({duration}秒)...")
+        self.statusMessage.emit(f"Speak into the microphone ({duration}s)...")
         time.sleep(1)
 
         recording = sd.rec(
@@ -285,13 +285,13 @@ class SettingsAudioDevicesMixin:
         max_amplitude = np.max(np.abs(recording))
 
         if max_amplitude < 0.001:
-            self.statusMessage.emit("[失败] 未检测到音频信号")
+            self.statusMessage.emit("[FAIL] No audio signal detected")
             self.testComplete.emit("input", False)
         elif max_amplitude > 0.8:
-            self.statusMessage.emit("[警告] 音频信号过载")
+            self.statusMessage.emit("[WARN] Audio signal clipping")
             self.testComplete.emit("input", True)
         else:
-            self.statusMessage.emit(f"[成功] 录音测试通过 (音量: {max_amplitude:.1%})")
+            self.statusMessage.emit(f"[OK] Recording test passed (level: {max_amplitude:.1%})")
             self.testComplete.emit("input", True)
 
     @Slot()
@@ -302,12 +302,12 @@ class SettingsAudioDevicesMixin:
 
         idx = self._get_selectedOutputIndex()
         if idx < 0 or idx >= len(self._output_devices):
-            self.statusMessage.emit("请先选择输出设备")
+            self.statusMessage.emit("Select an output device first")
             return
 
         device = self._output_devices[idx]
         self._testing_output = True
-        self.statusMessage.emit("开始播放测试...")
+        self.statusMessage.emit("Starting playback test...")
 
         self._run_worker(
             self._do_output_test,
@@ -324,7 +324,7 @@ class SettingsAudioDevicesMixin:
         duration = 2.0
         frequency = 440
 
-        self.statusMessage.emit("播放 440Hz 测试音...")
+        self.statusMessage.emit("Playing 440Hz test tone...")
         time.sleep(0.5)
 
         t = np.linspace(0, duration, int(sample_rate * duration))
@@ -337,5 +337,5 @@ class SettingsAudioDevicesMixin:
         sd.play(audio, samplerate=sample_rate, device=device_id)
         sd.wait()
 
-        self.statusMessage.emit("[成功] 播放测试完成")
+        self.statusMessage.emit("[OK] Playback test complete")
         self.testComplete.emit("output", True)

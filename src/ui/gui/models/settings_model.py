@@ -97,7 +97,7 @@ class SettingsModel(
                     f"设置页后台任务失败 ({name or target}): {e}", exc_info=True
                 )
                 try:
-                    self.statusMessage.emit(f"[错误] {e}")
+                    self.statusMessage.emit(f"[ERROR] {e}")
                 except Exception:
                     pass
                 if test_kind is not None:
@@ -187,14 +187,14 @@ class SettingsModel(
             logger.info("设置已保存")
             self._snapshot_mcp_disabled()
             if mcp_changed:
-                self.statusMessage.emit("配置已保存（MCP 工具变更，将重连以更新）")
+                self.statusMessage.emit("Settings saved (MCP tools changed; reconnecting to update)")
                 self.mcpToolsNeedReconnect.emit()
             else:
-                self.statusMessage.emit("配置已保存")
+                self.statusMessage.emit("Settings saved")
             self.configSaved.emit()
         except Exception as e:
             logger.error(f"保存配置失败: {e}", exc_info=True)
-            self.set_error(f"保存配置失败: {e}")
+            self.set_error(f"Failed to save settings: {e}")
 
     @Slot()
     def reload(self):
@@ -351,11 +351,11 @@ class SettingsModel(
             "mcp": self._set_pathMcpPluginsDir,
         }
         titles = {
-            "cache": "选择缓存目录",
-            "log": "选择日志目录",
-            "music": "选择音乐缓存目录",
-            "keywords": "选择唤醒词目录",
-            "mcp": "选择 MCP 插件目录",
+            "cache": "Select cache directory",
+            "log": "Select log directory",
+            "music": "Select music cache directory",
+            "keywords": "Select wake word directory",
+            "mcp": "Select MCP plugin directory",
         }
         if which not in getters:
             return ""
