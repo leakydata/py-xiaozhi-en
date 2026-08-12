@@ -226,6 +226,9 @@ class SettingsModel(
     windowSizeMode = Property(
         str, SettingsSystemOptionsMixin._get_windowSizeMode, SettingsSystemOptionsMixin._set_windowSizeMode, notify=settingsChanged
     )
+    avatarStyle = Property(
+        str, SettingsSystemOptionsMixin._get_avatarStyle, SettingsSystemOptionsMixin._set_avatarStyle, notify=settingsChanged
+    )
     musicSearchUrl = Property(
         str, SettingsSystemOptionsMixin._get_musicSearchUrl, SettingsSystemOptionsMixin._set_musicSearchUrl, notify=settingsChanged
     )

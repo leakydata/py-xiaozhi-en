@@ -74,7 +74,10 @@ AppWindow {
                         Layout.fillHeight: true
                         Layout.minimumHeight: 80
 
-                        property bool useProceduralAvatar: true
+                        // 设置页选择: person | simple | gif
+                        property string avatarStyle: (settingsModel && settingsModel.avatarStyle)
+                            ? settingsModel.avatarStyle : "person"
+                        property bool useProceduralAvatar: avatarStyle !== "gif"
                         property string currentEmotionUrl: (mainModel && mainModel.emotionUrl) ? mainModel.emotionUrl : ""
 
                         Avatar {
@@ -82,6 +85,7 @@ AppWindow {
                             width: Math.max(Math.min(parent.width, parent.height) * 0.95, 60)
                             height: width
                             visible: parent.useProceduralAvatar
+                            style: parent.avatarStyle
                             emotion: (mainModel && mainModel.emotionName) ? mainModel.emotionName : "neutral"
                             mode: (mainModel && mainModel.deviceState) ? mainModel.deviceState : "idle"
                             level: (mainModel && mainModel.audioLevel) ? mainModel.audioLevel : 0.0

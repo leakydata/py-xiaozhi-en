@@ -67,6 +67,8 @@ class ConfigManager:
             "CLIENT_ID": None,
             "DEVICE_ID": None,
             "WINDOW_SIZE_MODE": "default",
+            # 头像样式: person(卡通人物) | simple(抽象圆盘) | gif(表情动图)
+            "AVATAR_STYLE": "person",
             "NETWORK": {
                 "OTA_VERSION_URL": "https://api.tenclass.net/xiaozhi/ota/",
                 "WEBSOCKET_URL": None,

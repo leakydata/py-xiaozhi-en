@@ -34,6 +34,44 @@ ScrollView {
                 color: Theme.textSecondary
             }
 
+            // 头像样式选择
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingLg
+
+                Text {
+                    text: "Avatar"
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.textSecondary
+                    Layout.preferredWidth: 100
+                }
+                XComboBox {
+                    id: avatarCombo
+                    Layout.preferredWidth: 200
+                    // index order must match avatarValues below
+                    property var avatarValues: ["person", "simple", "gif"]
+                    model: ["Cartoon person", "Abstract face", "Animated emoji (GIF)"]
+                    currentIndex: {
+                        if (!settingsModel) return 0
+                        var i = avatarValues.indexOf(settingsModel.avatarStyle)
+                        return i < 0 ? 0 : i
+                    }
+                    onActivated: function(index) {
+                        if (settingsModel) settingsModel.avatarStyle = avatarValues[index]
+                    }
+                    font.pixelSize: Theme.fontSizeSm
+                }
+            }
+
+            Text {
+                text: "Cartoon person and Abstract face are drawn live and lip-sync to audio. "
+                    + "Animated emoji uses the bundled GIF set. Takes effect immediately."
+                font.pixelSize: Theme.fontSizeXs
+                color: Theme.textPlaceholder
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
             // 表单项
             GridLayout {
                 Layout.fillWidth: true
