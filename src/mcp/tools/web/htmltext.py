@@ -12,10 +12,16 @@ from html import unescape
 from html.parser import HTMLParser
 
 # Containers whose text is chrome, not content.
-_DROP = {"script", "style", "noscript", "svg", "canvas", "template", "head"}
+_DROP = {
+    "script", "style", "noscript", "svg", "canvas", "template", "head",
+    # site chrome: keeps nav menus and cookie bars out of the extracted text,
+    # which otherwise eat the model's context before the article starts
+    "nav", "footer", "aside", "form", "menu", "button", "select", "option",
+    "iframe", "dialog",
+}
 # Tags that imply a line break in the extracted text.
 _BLOCK = {
-    "p", "div", "section", "article", "header", "footer", "br", "li", "tr",
+    "p", "div", "section", "article", "header", "br", "li", "tr",
     "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "table", "ul", "ol",
 }
 
@@ -48,10 +54,12 @@ class _Extractor(HTMLParser):
             self._out.append("\n")
 
     def handle_data(self, data):
-        if self._skip:
-            return
+        # title first: <title> lives inside <head>, which is in _DROP, so the
+        # skip counter is active here and would swallow it.
         if self._in_title:
             self.title += data
+            return
+        if self._skip:
             return
         if data.strip():
             self._out.append(data)
