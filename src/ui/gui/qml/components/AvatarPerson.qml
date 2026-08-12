@@ -271,7 +271,9 @@ Item {
                 y: head.cy - 16 * root.unit
                 clip: true          // the lid: clipping is what makes a blink read
 
-                // sclera
+                // sclera. clip: true is load-bearing - the iris is a CHILD so the
+                // eye opening cuts it. As a sibling it kept its full height while
+                // the sclera shrank, and slid out below the lower lid onto the cheek.
                 Rectangle {
                     id: sclera
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -282,36 +284,37 @@ Item {
                     color: "#FDFDFB"
                     border.width: 1.2 * root.unit
                     border.color: root.skinLine
+                    clip: true
                     Behavior on height { NumberAnimation { duration: 70 } }
-                }
 
-                // iris + pupil track the gaze. A large iris relative to the sclera
-                // is what stops the face reading as a wide-eyed stare.
-                Rectangle {
-                    id: iris
-                    width: 17.5 * root.unit
-                    height: width
-                    radius: width / 2
-                    color: root.irisColor
-                    visible: eye.openAmt > 0.25
-                    x: (parent.width - width) / 2 + root.gazeX * 0.8
-                    y: (parent.height - height) / 2 + root.gazeY * 0.6
-
+                    // iris + pupil track the gaze. A large iris relative to the
+                    // sclera is what stops the face reading as a wide-eyed stare.
                     Rectangle {
-                        anchors.centerIn: parent
-                        width: 7.5 * root.unit
+                        id: iris
+                        width: 17.5 * root.unit
                         height: width
                         radius: width / 2
-                        color: "#2B2320"
-                    }
-                    Rectangle {
-                        width: 5 * root.unit
-                        height: width
-                        radius: width / 2
-                        color: "#FFFFFF"
-                        opacity: 0.95
-                        x: parent.width * 0.56
-                        y: parent.height * 0.14
+                        color: root.irisColor
+                        visible: eye.openAmt > 0.06
+                        x: (sclera.width - width) / 2 + root.gazeX * 0.8
+                        y: (sclera.height - height) / 2 + root.gazeY * 0.6
+
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: 7.5 * root.unit
+                            height: width
+                            radius: width / 2
+                            color: "#2B2320"
+                        }
+                        Rectangle {
+                            width: 5 * root.unit
+                            height: width
+                            radius: width / 2
+                            color: "#FFFFFF"
+                            opacity: 0.95
+                            x: parent.width * 0.56
+                            y: parent.height * 0.14
+                        }
                     }
                 }
 

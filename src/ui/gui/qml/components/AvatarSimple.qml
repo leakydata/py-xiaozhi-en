@@ -191,19 +191,22 @@ Item {
                     height: Math.max(2.5 * root.unit, 22 * root.unit * parent.openAmt)
                     radius: width / 2
                     color: Qt.darker(root.tint, 1.25)
+                    clip: true
                     Behavior on height { NumberAnimation { duration: 70 } }
-                }
 
-                // catchlight — the single biggest "alive" cue on a flat eye
-                Rectangle {
-                    width: 7 * root.unit
-                    height: width
-                    radius: width / 2
-                    color: "#FFFFFF"
-                    opacity: parent.openAmt > 0.35 ? 0.92 : 0.0
-                    x: ball.x + 11 * root.unit
-                    y: ball.y + 3 * root.unit
-                    Behavior on opacity { NumberAnimation { duration: 80 } }
+                    // catchlight — the single biggest "alive" cue on a flat eye.
+                    // Child of the ball so the closing lid clips it instead of
+                    // letting it slide out onto the face.
+                    Rectangle {
+                        width: 7 * root.unit
+                        height: width
+                        radius: width / 2
+                        color: "#FFFFFF"
+                        opacity: ball.height > 6 * root.unit ? 0.92 : 0.0
+                        x: 11 * root.unit
+                        y: 3 * root.unit
+                        Behavior on opacity { NumberAnimation { duration: 80 } }
+                    }
                 }
             }
         }
