@@ -36,6 +36,12 @@ class MainWindowController:
     def set_emotion(self, emotion: str) -> None:
         url = self._emotion_service.get_emotion_url(emotion)
         self._main_model.set_emotion_url(url)
+        # Keep the raw name too: the procedural avatar draws from the name,
+        # while the GIF path needs the resolved file URL.
+        self._main_model.set_emotion_name(emotion)
+
+    def set_device_state(self, state: str) -> None:
+        self._main_model.set_device_state(state)
 
     def set_status(self, status: str, connected: bool = True) -> None:
         self._main_model.set_status(status, connected)

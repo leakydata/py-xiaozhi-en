@@ -6,6 +6,7 @@ from typing import Protocol
 
 import numpy as np
 
+from src.audio_codecs import audio_levels
 from src.audio_codecs.audio_buffer import PcmFifo
 from src.audio_codecs.audio_converter import AudioConverter
 from src.audio_codecs.opus_codec import OpusCodec, parse_opus_toc
@@ -178,6 +179,9 @@ class AudioCodec:
                 except Exception as e:
                     logger.warning(f"编码失败: {e}", exc_info=True)
 
+            # 2.5 UI 电平（口型/音量环），非阻塞
+            audio_levels.feed_input(audio_converted)
+
             # 3. 通知监听器（线程安全）
             with self._listeners_lock:
                 for listener in self._audio_listeners:
@@ -233,6 +237,9 @@ class AudioCodec:
             # AEC far：设备实际写出的最终 PCM（TTS+音乐混合，含静音保持连续）
             if self._aec is not None and self._aec.active:
                 self._aec.feed_far(outdata)
+
+            # UI 电平：取设备实际写出的 PCM，口型与听到的声音同步
+            audio_levels.feed_output(outdata)
 
         except Exception as e:
             logger.error(f"输出回调错误: {e}", exc_info=True)

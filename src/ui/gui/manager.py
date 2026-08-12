@@ -39,7 +39,17 @@ class GuiViewManager(QObject):
         self._tray_service: TrayService | None = None
 
         self._event_bus.on(Events.UI_TOGGLE_WINDOW, self._on_toggle_window)
+        self._event_bus.on(Events.DEVICE_STATE_CHANGED, self._on_device_state_changed)
         logger.debug("GuiViewManager: 已订阅窗口切换事件")
+
+    def _on_device_state_changed(self, payload) -> None:
+        """Feed idle/listening/speaking to the avatar."""
+        try:
+            state = payload.get("new_state") if isinstance(payload, dict) else payload
+            value = getattr(state, "value", state)
+            self._main.set_device_state(str(value))
+        except Exception as e:
+            logger.warning(f"GuiViewManager: 设备状态更新失败: {e}")
 
     async def start(self, mode: str = "gui"):
         if mode == "cli":

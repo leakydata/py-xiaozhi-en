@@ -67,12 +67,25 @@ AppWindow {
                     }
 
                     // 表情显示区域
+                    // useProceduralAvatar: true = 矢量头像（口型跟随音频）
+                    //                      false = 原 GIF 表情
                     Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumHeight: 80
 
+                        property bool useProceduralAvatar: true
                         property string currentEmotionUrl: (mainModel && mainModel.emotionUrl) ? mainModel.emotionUrl : ""
+
+                        Avatar {
+                            anchors.centerIn: parent
+                            width: Math.max(Math.min(parent.width, parent.height) * 0.95, 60)
+                            height: width
+                            visible: parent.useProceduralAvatar
+                            emotion: (mainModel && mainModel.emotionName) ? mainModel.emotionName : "neutral"
+                            mode: (mainModel && mainModel.deviceState) ? mainModel.deviceState : "idle"
+                            level: (mainModel && mainModel.audioLevel) ? mainModel.audioLevel : 0.0
+                        }
 
                         AnimatedImage {
                             anchors.centerIn: parent
@@ -81,14 +94,14 @@ AppWindow {
                             source: parent.currentEmotionUrl
                             fillMode: Image.PreserveAspectFit
                             playing: true
-                            visible: parent.currentEmotionUrl.length > 0 && parent.currentEmotionUrl.indexOf("file://") === 0
+                            visible: !parent.useProceduralAvatar && parent.currentEmotionUrl.length > 0 && parent.currentEmotionUrl.indexOf("file://") === 0
                         }
 
                         Text {
                             anchors.centerIn: parent
                             text: parent.currentEmotionUrl.indexOf("file://") !== 0 ? (parent.currentEmotionUrl || "😊") : ""
                             font.pixelSize: 80
-                            visible: parent.currentEmotionUrl.indexOf("file://") !== 0
+                            visible: !parent.useProceduralAvatar && parent.currentEmotionUrl.indexOf("file://") !== 0
                         }
                     }
 
