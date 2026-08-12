@@ -39,9 +39,8 @@ platformdirs>=4.0.0
 # 音乐/媒体
 mutagen>=1.47.0
 
-# 中文处理
+# 中文处理（唤醒词拼音转换）
 pypinyin>=0.51.0
-lunar_python>=1.3.0
 
 # 剪贴板
 pyperclip>=1.8.0

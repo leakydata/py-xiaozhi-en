@@ -1,4 +1,4 @@
-"""天气 MCP 工具注册（当前 mock，待接真 API）."""
+"""Weather MCP tool registration (Open-Meteo, no API key required)."""
 
 from __future__ import annotations
 
@@ -13,35 +13,45 @@ logger = get_logger()
 
 
 def register_weather_tools(add_tool: Callable[[McpTool], None]) -> None:
-    """向 McpServer 注册天气工具."""
+    """Register weather tools on the McpServer."""
 
     tools: list[McpTool] = [
         McpTool(
             "get_weather",
             (
-                "获取指定城市的当前天气。"
-                "参数: city - 城市名称（如：北京、上海、广州）"
+                "Get the current weather for a city. "
+                "Args: city - city name (e.g. 'Boston', 'Austin, Texas', 'London'); "
+                "units - 'imperial' (default, F/mph) or 'metric' (C/km/h)."
             ),
             PropertyList(
-                [Property("city", PropertyType.STRING, default_value="北京")]
+                [
+                    Property("city", PropertyType.STRING, default_value=""),
+                    Property(
+                        "units", PropertyType.STRING, default_value="imperial"
+                    ),
+                ]
             ),
             get_weather_payload,
         ),
         McpTool(
             "get_forecast",
             (
-                "获取指定城市的天气预报。"
-                "参数: city - 城市名称, days - 预报天数(1-7天)"
+                "Get the daily weather forecast for a city. "
+                "Args: city - city name; days - number of days (1-7); "
+                "units - 'imperial' (default) or 'metric'."
             ),
             PropertyList(
                 [
-                    Property("city", PropertyType.STRING, default_value="北京"),
+                    Property("city", PropertyType.STRING, default_value=""),
                     Property(
                         "days",
                         PropertyType.INTEGER,
                         default_value=3,
                         min_value=1,
                         max_value=7,
+                    ),
+                    Property(
+                        "units", PropertyType.STRING, default_value="imperial"
                     ),
                 ]
             ),
@@ -51,4 +61,4 @@ def register_weather_tools(add_tool: Callable[[McpTool], None]) -> None:
 
     for tool in tools:
         add_tool(tool)
-    logger.info("已注册 %d 个天气 MCP 工具（register_weather_tools, mock）", len(tools))
+    logger.info("Registered %d weather MCP tools (Open-Meteo)", len(tools))
