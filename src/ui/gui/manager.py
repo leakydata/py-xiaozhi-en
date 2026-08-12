@@ -42,8 +42,11 @@ class GuiViewManager(QObject):
         self._event_bus.on(Events.DEVICE_STATE_CHANGED, self._on_device_state_changed)
         logger.debug("GuiViewManager: 已订阅窗口切换事件")
 
-    def _on_device_state_changed(self, payload) -> None:
-        """Feed idle/listening/speaking to the avatar."""
+    async def _on_device_state_changed(self, payload=None) -> None:
+        """Feed idle/listening/speaking to the avatar.
+
+        Must be a coroutine: EventBus._safe_call awaits every handler.
+        """
         try:
             state = payload.get("new_state") if isinstance(payload, dict) else payload
             value = getattr(state, "value", state)
