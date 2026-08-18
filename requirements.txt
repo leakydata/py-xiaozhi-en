@@ -23,7 +23,8 @@ openai>=1.0.0
 
 # 本地记忆：向量检索 + 本地嵌入模型（无需联网/API key）
 sqlite-vec>=0.1.9
-onnxruntime>=1.17.0
+# 1.24 起不再提供 cp310 wheel；本项目锁定 Python 3.10
+onnxruntime>=1.17.0,<1.24
 tokenizers>=0.15.0
 sherpa-onnx>=1.12.26
 sherpa-onnx-core>=1.12.26; sys_platform != "win32"
