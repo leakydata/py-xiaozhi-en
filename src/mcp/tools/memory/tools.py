@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from src.logging import get_logger
+from src.memory.speaker import get_current as get_current_speaker
 from src.memory.store import get_memory
 
 logger = get_logger()
@@ -100,7 +101,7 @@ async def remember_payload(args: dict[str, Any]) -> str:
     kind = str(args.get("kind", "note")).lower()
     if kind not in ("note", "fact", "event"):
         kind = "note"
-    speaker = str(args.get("speaker", "") or "") or None
+    speaker = str(args.get("speaker", "") or "") or get_current_speaker()
     tags = str(args.get("tags", "") or "") or None
     try:
         nid = get_memory().add(text, kind=kind, speaker=speaker, tags=tags)
@@ -146,7 +147,7 @@ async def set_reminder_payload(args: dict[str, Any]) -> str:
             "error": f"Could not understand the time {when!r}. Ask for a clearer "
                      "time, or pass an ISO timestamp."
         })
-    speaker = str(args.get("speaker", "") or "") or None
+    speaker = str(args.get("speaker", "") or "") or get_current_speaker()
     try:
         nid = get_memory().add(
             text, kind="reminder",

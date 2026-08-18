@@ -103,6 +103,13 @@ class UiPresenter:
     def show_protocol_message(self, message) -> None:
         if not isinstance(message, dict):
             return
+        # record who is speaking if the server says so (server-side voiceprint)
+        try:
+            from src.memory import speaker as speaker_mod
+
+            speaker_mod.note_message(message)
+        except Exception:
+            pass
         msg_type = message.get("type")
         if msg_type in ("tts", "stt"):
             if text := message.get("text"):
