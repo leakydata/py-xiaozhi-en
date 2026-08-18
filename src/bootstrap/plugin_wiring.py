@@ -58,6 +58,7 @@ async def setup_plugins(
     """绑定共享服务、注册并初始化插件、挂资源清理与音频直连."""
     from src.plugins.audio import AudioPlugin
     from src.plugins.mcp import McpPlugin
+    from src.plugins.reminders import RemindersPlugin
     from src.plugins.shortcuts import ShortcutsPlugin
     from src.plugins.ui import UIPlugin
     from src.plugins.wake_word import WakeWordPlugin
@@ -69,6 +70,7 @@ async def setup_plugins(
     wake_word_plugin = WakeWordPlugin()
     ui_plugin = UIPlugin(mode=mode, task_manager=container.tasks)
     shortcuts_plugin = ShortcutsPlugin()
+    reminders_plugin = RemindersPlugin()
     mcp_plugin = McpPlugin(
         server=container.mcp_server,
         music_player=container.music_player,
@@ -80,6 +82,7 @@ async def setup_plugins(
         wake_word_plugin,
         ui_plugin,
         shortcuts_plugin,
+        reminders_plugin,
     )
 
     await container.plugins.setup_all(ctx, cmd)

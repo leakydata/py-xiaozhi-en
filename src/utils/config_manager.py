@@ -78,6 +78,11 @@ class ConfigManager:
                 "AUTHORIZATION_URL": "https://xiaozhi.me/",
             },
         },
+        # 提醒到点主动播报
+        "REMINDERS": {
+            "ENABLED": True,
+            "POLL_SECONDS": 20,
+        },
         "WAKE_WORD_OPTIONS": {
             "USE_WAKE_WORD": True,
             "MODEL_PATH": "models/zh",
