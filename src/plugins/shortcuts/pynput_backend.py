@@ -1,6 +1,6 @@
-"""pynput 快捷键后端.
+"""The pynput shortcut backend.
 
-用于 Linux 和 Windows 系统。
+Used on Linux and Windows.
 """
 
 import asyncio
@@ -23,9 +23,9 @@ except ImportError as e:
 
 
 class PynputShortcutBackend(ShortcutBackend):
-    """pynput 快捷键后端.
+    """The pynput shortcut backend.
 
-    适用于 Linux 和 Windows 系统。
+    For Linux and Windows.
     """
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop] = None):
@@ -34,20 +34,35 @@ class PynputShortcutBackend(ShortcutBackend):
         self._pressed_keys: Set[str] = set()
         self._last_activity_time = 0.0
         self._health_check_task = None
-        self._check_interval = 10.0  # 健康检查间隔（秒）
+        self._check_interval = 10.0  # how often to run the health check, in seconds
 
-        # 控制字符映射
+        # control character mapping
         self._key_mapping = {
-            "\x17": "w", "\x01": "a", "\x13": "s", "\x04": "d",
-            "\x05": "e", "\x12": "r", "\x14": "t", "\x06": "f",
-            "\x07": "g", "\x08": "h", "\x0a": "j", "\x0b": "k",
-            "\x0c": "l", "\x1a": "z", "\x18": "x", "\x03": "c",
-            "\x16": "v", "\x02": "b", "\x0e": "n", "\x0d": "m",
+            "\x17": "w",
+            "\x01": "a",
+            "\x13": "s",
+            "\x04": "d",
+            "\x05": "e",
+            "\x12": "r",
+            "\x14": "t",
+            "\x06": "f",
+            "\x07": "g",
+            "\x08": "h",
+            "\x0a": "j",
+            "\x0b": "k",
+            "\x0c": "l",
+            "\x1a": "z",
+            "\x18": "x",
+            "\x03": "c",
+            "\x16": "v",
+            "\x02": "b",
+            "\x0e": "n",
+            "\x0d": "m",
             "\x11": "q",
         }
 
     async def start(self) -> bool:
-        """启动快捷键监听."""
+        """Start listening for shortcuts."""
         if self._running:
             return True
 
@@ -60,50 +75,52 @@ class PynputShortcutBackend(ShortcutBackend):
             self._running = True
             self._last_activity_time = time.time()
 
-            # 启动健康检查
+            # start the health check
             self._start_health_check()
 
-            logger.info("pynput 全局快捷键监听已启动")
+            logger.info("pynput global shortcut listener started")
             return True
         except Exception as e:
-            logger.error(f"启动 pynput 快捷键监听失败: {e}", exc_info=True)
+            logger.error(
+                f"failed to start the pynput shortcut listener: {e}", exc_info=True
+            )
             return False
 
     async def stop(self) -> None:
-        """停止快捷键监听."""
+        """Stop listening for shortcuts."""
         self._running = False
 
-        # 停止健康检查
+        # stop the health check
         if self._health_check_task:
             self._health_check_task.cancel()
-            # concurrent.futures.Future 不能直接 await，需要特殊处理
+            # a concurrent.futures.Future cannot be awaited directly, so it needs handling of its own
             try:
-                # 等待 Future 完成（忽略取消异常）
+                # wait for the Future, ignoring a cancellation
                 self._health_check_task.result(timeout=1.0)
             except Exception as e:
-                logger.debug(f"Pynput 健康检查超时: {e}")
+                logger.debug(f"pynput health check timed out: {e}")
             self._health_check_task = None
 
-        # 停止监听器
+        # stop the listener
         if self._listener:
             try:
                 self._listener.stop()
             except Exception as e:
-                logger.warning(f"停止监听器时出错: {e}", exc_info=True)
+                logger.warning(f"error while stopping the listener: {e}", exc_info=True)
             self._listener = None
 
         self._pressed_keys.clear()
-        logger.info("pynput 全局快捷键监听已停止")
+        logger.info("pynput global shortcut listener stopped")
 
     def register(self, name: str, config: ShortcutConfig, callback: Callable) -> bool:
-        """注册快捷键."""
+        """Register a shortcut."""
         self._shortcuts[name] = config
         self._callbacks[name] = callback
-        logger.info(f"已注册快捷键: {name} -> {config.modifier}+{config.key}")
+        logger.info(f"shortcut registered: {name} -> {config.modifier}+{config.key}")
         return True
 
     def unregister(self, name: str) -> bool:
-        """注销快捷键."""
+        """Unregister a shortcut."""
         if name not in self._shortcuts:
             return False
 
@@ -111,11 +128,11 @@ class PynputShortcutBackend(ShortcutBackend):
         if name in self._callbacks:
             del self._callbacks[name]
 
-        logger.info(f"已注销快捷键: {name}")
+        logger.info(f"shortcut unregistered: {name}")
         return True
 
     def _on_key_press(self, key) -> None:
-        """按键按下回调."""
+        """Key-press callback."""
         if not self._running:
             return
 
@@ -128,7 +145,7 @@ class PynputShortcutBackend(ShortcutBackend):
         self._check_shortcuts()
 
     def _on_key_release(self, key) -> None:
-        """按键释放回调."""
+        """Key-release callback."""
         if not self._running:
             return
 
@@ -140,11 +157,11 @@ class PynputShortcutBackend(ShortcutBackend):
         self._pressed_keys.discard(key_name)
 
     def _get_key_name(self, key) -> Optional[str]:
-        """获取按键名称."""
+        """Get the key name."""
         try:
             if hasattr(key, "name"):
                 name = key.name
-                # 规范化修饰键名称
+                # normalise the modifier names
                 if name in ("ctrl_l", "ctrl_r"):
                     return "ctrl"
                 if name in ("alt_l", "alt_r"):
@@ -166,15 +183,15 @@ class PynputShortcutBackend(ShortcutBackend):
                     return self._key_mapping[char]
                 return char.lower()
         except Exception as e:
-            logger.debug(f"按键映射失败: {e}")
+            logger.debug(f"key mapping failed: {e}")
         return None
 
     def _check_shortcuts(self) -> None:
-        """检查是否触发了快捷键."""
+        """Check whether a shortcut fired."""
         if not self._shortcuts:
             return
 
-        # 检查修饰键状态
+        # check the modifier state
         ctrl = any(k in self._pressed_keys for k in ("ctrl", "control"))
         alt = any(k in self._pressed_keys for k in ("alt", "option"))
         shift = "shift" in self._pressed_keys
@@ -182,16 +199,16 @@ class PynputShortcutBackend(ShortcutBackend):
 
         for name, config in self._shortcuts.items():
             if self._match_shortcut(config, ctrl, alt, shift, cmd):
-                logger.debug(f"触发快捷键: {name}")
+                logger.debug(f"shortcut fired: {name}")
                 self._run_callback(name)
 
     def _match_shortcut(
         self, config: ShortcutConfig, ctrl: bool, alt: bool, shift: bool, cmd: bool
     ) -> bool:
-        """检查是否匹配快捷键配置."""
+        """Check whether this matches a shortcut configuration."""
         modifier = config.modifier.lower()
 
-        # 检查修饰键
+        # check the modifiers
         if modifier == "ctrl" and not ctrl:
             return False
         if modifier == "alt" and not alt:
@@ -201,50 +218,50 @@ class PynputShortcutBackend(ShortcutBackend):
         if modifier == "cmd" and not cmd:
             return False
 
-        # 检查主键
+        # check the main key
         return config.key.lower() in {k.lower() for k in self._pressed_keys}
 
     def _start_health_check(self) -> None:
-        """启动健康检查任务."""
+        """Start the health check task."""
         if self._loop:
             self._health_check_task = asyncio.run_coroutine_threadsafe(
                 self._health_check_loop(), self._loop
             )
 
     async def _health_check_loop(self) -> None:
-        """健康检查循环."""
+        """The health check loop."""
         while self._running:
             await asyncio.sleep(self._check_interval)
 
             if not self._running:
                 break
 
-            # 检查监听器是否仍在运行
+            # check the listener is still running
             if self._listener and not self._listener.is_alive():
-                logger.warning("pynput 监听器已停止，尝试重启...")
+                logger.warning("the pynput listener has stopped, restarting it...")
                 await self._restart_listener()
 
     async def _restart_listener(self) -> None:
-        """重启监听器."""
+        """Restart the listener."""
         try:
-            # 停止旧的监听器
+            # stop the old listener
             if self._listener:
                 try:
                     self._listener.stop()
                 except Exception as e:
-                    logger.debug(f"停止 Pynput 监听器失败: {e}")
+                    logger.debug(f"failed to stop the pynput listener: {e}")
                 self._listener = None
 
-            # 短暂等待
+            # wait a moment
             await asyncio.sleep(0.5)
 
-            # 创建新的监听器
+            # create a new listener
             self._listener = keyboard.Listener(
                 on_press=self._on_key_press,
                 on_release=self._on_key_release,
             )
             self._listener.start()
             self._pressed_keys.clear()
-            logger.info("pynput 监听器重启成功")
+            logger.info("pynput listener restarted")
         except Exception as e:
-            logger.error(f"重启 pynput 监听器失败: {e}", exc_info=True)
+            logger.error(f"failed to restart the pynput listener: {e}", exc_info=True)
