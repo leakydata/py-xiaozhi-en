@@ -1,8 +1,7 @@
 """System telemetry and serial-port access.
 
-Two of the wishlist items that are genuinely useful in a garage: "what is this
-machine doing right now", and talking to a microcontroller over USB serial,
-which is what the ESP32 work needs.
+"What is this machine doing right now", and talking to a microcontroller over
+USB serial for embedded work.
 
 Serial is read/write on purpose - flashing aside, talking to a board means
 sending it commands. It is limited to real serial devices (/dev/tty*, COM*) so

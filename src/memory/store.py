@@ -304,7 +304,7 @@ class MemoryStore:
         """Group stored notes into themes using the embeddings already on disk.
 
         Greedy single-pass clustering on cosine similarity rather than k-means:
-        the number of themes is not known ahead of time, and a garage assistant
+        the number of themes is not known ahead of time, and a personal assistant
         accumulates a few dozen notes, not thousands.
 
         The cut-off is derived from the data, not fixed. BGE-small puts related

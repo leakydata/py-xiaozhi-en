@@ -70,7 +70,7 @@ def _parse_when(when: str) -> Optional[datetime]:
             if (c.group(3) or "").lower() == "pm":
                 hour += 12
             elif not c.group(3) and hour < 8:
-                hour += 12  # "tomorrow at 3" in a garage means 3pm
+                hour += 12  # a bare "at 3" almost always means the afternoon
             base = base.replace(hour=hour, minute=int(c.group(2) or 0))
         return base
     return None
