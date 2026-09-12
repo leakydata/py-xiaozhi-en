@@ -1,4 +1,4 @@
-// 表情显示组件
+// Displays the current emotion
 import QtQuick
 import "../theme"
 
@@ -10,7 +10,7 @@ Item {
     implicitWidth: 200
     implicitHeight: 200
 
-    // 图片或动画
+    // a still or an animation
     AnimatedImage {
         id: image
         anchors.centerIn: parent
@@ -22,7 +22,7 @@ Item {
         playing: visible
     }
 
-    // Emoji 回退
+    // the emoji fallback
     Text {
         anchors.centerIn: parent
         text: root.source
@@ -30,7 +30,7 @@ Item {
         visible: root.source.length > 0 && root.source.startsWith("😊")
     }
 
-    // 占位
+    // placeholder
     Text {
         anchors.centerIn: parent
         text: "😊"

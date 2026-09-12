@@ -1,4 +1,4 @@
-// 自定义开关组件
+// A custom switch
 import QtQuick
 import QtQuick.Controls
 import "../theme"
@@ -6,7 +6,7 @@ import "../theme"
 Switch {
     id: root
 
-    // 尺寸
+    // size
     property int trackWidth: 44
     property int trackHeight: 24
     property int thumbSize: trackHeight - 4
@@ -27,7 +27,7 @@ Switch {
             ColorAnimation { duration: 200 }
         }
 
-        // 滑块
+        // the sliding knob
         Rectangle {
             id: thumb
             width: root.thumbSize
@@ -38,7 +38,7 @@ Switch {
             x: root.checked ? parent.width - width - 2 : 2
             anchors.verticalCenter: parent.verticalCenter
 
-            // hover/pressed 缩放效果
+            // the scale effect on hover and press
             scale: root.pressed ? 0.9 : (root.hovered ? 1.05 : 1)
 
             Behavior on x {
@@ -56,7 +56,7 @@ Switch {
                 }
             }
 
-            // 轻微阴影
+            // a faint shadow
             Rectangle {
                 z: -1
                 anchors.centerIn: parent

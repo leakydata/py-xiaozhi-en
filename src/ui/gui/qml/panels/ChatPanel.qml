@@ -1,4 +1,4 @@
-// 对话面板
+// The chat panel
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -14,7 +14,7 @@ Rectangle {
         anchors.margins: Theme.spacingLg
         spacing: Theme.spacingMd
 
-        // 对话
+        // the conversation
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -37,7 +37,7 @@ Rectangle {
             }
         }
 
-        // 音乐 / 歌词
+        // music and lyrics
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: mainModel.musicLine ? 48 : 0

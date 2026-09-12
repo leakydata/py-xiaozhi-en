@@ -1,4 +1,4 @@
-"""Windows 音量后端（pycaw / comtypes）."""
+"""The Windows volume backend, built on pycaw and comtypes."""
 
 from __future__ import annotations
 
@@ -38,13 +38,13 @@ class WindowsVolumeBackend:
             )
 
             devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(
-                IAudioEndpointVolume._iid_, CLSCTX_ALL, None
-            )
+            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
             self.volume_control = cast(interface, POINTER(IAudioEndpointVolume))
-            logger.debug("Windows音量控制初始化成功")
+            logger.debug("Windows volume control ready")
         except Exception as e:
-            logger.error(f"Windows音量控制初始化失败: {e}", exc_info=True)
+            logger.error(
+                f"Windows volume control failed to initialise: {e}", exc_info=True
+            )
             raise
 
     def get_volume(self) -> int:
@@ -52,11 +52,11 @@ class WindowsVolumeBackend:
             volume_scalar = self.volume_control.GetMasterVolumeLevelScalar()
             return int(volume_scalar * 100)
         except Exception as e:
-            logger.warning(f"获取Windows音量失败: {e}", exc_info=True)
+            logger.warning(f"failed to read the Windows volume: {e}", exc_info=True)
             return 70
 
     def set_volume(self, volume: int) -> None:
         try:
             self.volume_control.SetMasterVolumeLevelScalar(volume / 100.0, None)
         except Exception as e:
-            logger.warning(f"设置Windows音量失败: {e}", exc_info=True)
+            logger.warning(f"failed to set the Windows volume: {e}", exc_info=True)

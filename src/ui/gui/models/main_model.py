@@ -1,4 +1,4 @@
-"""主窗口 ViewModel."""
+"""The main window ViewModel."""
 
 from PySide6.QtCore import Property, QTimer, Signal
 
@@ -11,9 +11,9 @@ _LEVEL_POLL_MS = 33
 
 
 class MainModel(BaseModel):
-    """主窗口数据模型."""
+    """The main window model."""
 
-    # 信号
+    # signals
     ttsTextChanged = Signal()
     musicLineChanged = Signal()
     emotionUrlChanged = Signal()
@@ -64,7 +64,7 @@ class MainModel(BaseModel):
 
     @Property(str, notify=ttsTextChanged)
     def ttsText(self) -> str:
-        # 历史属性名还是 ttsText，实际是对话内容
+        # the property is still called ttsText for history's sake; it actually holds the conversation text
         return self._tts_text
 
     @Property(str, notify=musicLineChanged)
@@ -150,7 +150,7 @@ class MainModel(BaseModel):
             self.connectedChanged.emit()
 
     def set_auto_mode(self, auto: bool):
-        # 默认按钮文案；对话进行中会再被 Session 改成「停止对话」
+        # the default button label; mid-conversation the Session changes it to "Stop Chat"
         if self._auto_mode != auto:
             self._auto_mode = auto
             self._mode_text = "Auto Mode" if auto else "Manual Mode"

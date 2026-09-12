@@ -1,4 +1,4 @@
-// 控制面板
+// The control panel
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
@@ -14,7 +14,7 @@ Rectangle {
         anchors.margins: Theme.spacingMd
         spacing: Theme.spacingMd
 
-        // 输入区域
+        // the input area
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingSm
@@ -33,12 +33,12 @@ Rectangle {
             }
         }
 
-        // 控制按钮区域
+        // the control buttons
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
-            // 手动/自动模式切换
+            // switch between manual and auto mode
             XButton {
                 Layout.fillWidth: true
                 text: mainModel.autoMode ? "Switch to Manual" : "Switch to Auto"
@@ -46,7 +46,7 @@ Rectangle {
                 onClicked: eventBridge.onAutoToggle()
             }
 
-            // 说话按钮（手动模式）
+            // the talk button (manual mode)
             XButton {
                 Layout.fillWidth: true
                 text: mainModel.buttonText
@@ -55,7 +55,7 @@ Rectangle {
                 onReleased: eventBridge.onButtonRelease()
             }
 
-            // 中断按钮
+            // the interrupt button
             XButton {
                 Layout.preferredWidth: 80
                 text: "Abort"
