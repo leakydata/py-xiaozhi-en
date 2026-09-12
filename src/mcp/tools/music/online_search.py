@@ -1,4 +1,4 @@
-"""在线搜歌（酷我搜索 → 直链 API 模板地址）."""
+"""Searching for a track online (Kuwo search, then the direct-link API template)."""
 
 from __future__ import annotations
 
@@ -20,18 +20,20 @@ class SearchHit:
     song_id: str
     display_name: str
     duration: float
-    # 交给 downloader.resolve 的模板 URL，不是最终 CDN
+    # the template URL handed to downloader.resolve, not the final CDN address
     api_url: str
 
 
 async def search_song(song_name: str, config: dict) -> SearchHit | None:
-    """搜一首歌；失败返回 None."""
+    """Search for one track; None when it is not found."""
     try:
         keyword_encoded = quote(song_name)
         limit = int(config.get("SEARCH_LIMIT") or 20)
         base = (config.get("SEARCH_URL") or "").strip() or DEFAULT_SEARCH_URL
         if "://" not in base:
-            logger.warning(f"搜索 API 无效 ({base!r})，改用默认酷我地址")
+            logger.warning(
+                f"the search API is not usable ({base!r}), falling back to the default Kuwo address"
+            )
             base = DEFAULT_SEARCH_URL
 
         search_url = (
@@ -43,7 +45,7 @@ async def search_song(song_name: str, config: dict) -> SearchHit | None:
             f"&mobi=1&issubtitle=1"
         )
 
-        logger.info(f"搜索歌曲: {song_name} | {base}")
+        logger.info(f"searching for: {song_name} | {base}")
 
         response = None
         for attempt in range(3):
@@ -58,9 +60,9 @@ async def search_song(song_name: str, config: dict) -> SearchHit | None:
                 break
             except requests.exceptions.Timeout:
                 if attempt < 2:
-                    logger.warning(f"搜索超时，重试 ({attempt + 1}/2)")
+                    logger.warning(f"search timed out, retrying ({attempt + 1}/2)")
                     continue
-                logger.error(f"搜索歌曲超时，已重试 2 次: {song_name}")
+                logger.error(f"search timed out after 2 retries: {song_name}")
                 return None
 
         if response is None:
@@ -69,7 +71,7 @@ async def search_song(song_name: str, config: dict) -> SearchHit | None:
         data = response.json()
         results = data.get("abslist", [])
         if not results:
-            logger.warning(f"未找到歌曲: {song_name}")
+            logger.warning(f"no track found for: {song_name}")
             return None
 
         first = results[0]
@@ -80,7 +82,7 @@ async def search_song(song_name: str, config: dict) -> SearchHit | None:
         album = first.get("ALBUM", "")
 
         if not song_id:
-            logger.error("搜索结果中没有歌曲ID")
+            logger.error("the search results contain no track ID")
             return None
 
         display_name = title
@@ -101,7 +103,7 @@ async def search_song(song_name: str, config: dict) -> SearchHit | None:
         url_api = (config.get("URL_API") or "").rstrip("/")
         api_url = f"{url_api}/url/kw/{song_id}/{quality}"
 
-        logger.info(f"找到歌曲: {display_name}, ID: {song_id}")
+        logger.info(f"found: {display_name}, ID: {song_id}")
         return SearchHit(
             song_id=song_id,
             display_name=display_name,
@@ -110,5 +112,5 @@ async def search_song(song_name: str, config: dict) -> SearchHit | None:
         )
 
     except Exception as e:
-        logger.error(f"搜索歌曲失败: {e}", exc_info=True)
+        logger.error(f"the track search failed: {e}", exc_info=True)
         return None
