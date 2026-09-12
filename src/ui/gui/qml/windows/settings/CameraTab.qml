@@ -1,4 +1,4 @@
-// 摄像头设置页
+// Camera settings page
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,12 +8,17 @@ import "../../controls"
 ScrollView {
     id: root
     clip: true
+    contentWidth: availableWidth
+    ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+    // the always-on bar is an overlay and reserves no space; without this
+    // the right-hand controls sit underneath it
+    rightPadding: 14
 
-    // 测试状态
+    // Test state
     property bool cameraTesting: false
     property string testResult: ""
 
-    // 进入摄像头页时再扫描（启动阶段不扫 OpenCV，避免冷启动卡顿）
+    // scan only when the camera page opens (no OpenCV scan at startup, avoids a cold-start stall)
     Component.onCompleted: {
         if (settingsModel) {
             var list = settingsModel.getCameras()
@@ -31,7 +36,7 @@ ScrollView {
         function onDevicesChanged() {
             if (settingsModel) {
                 cameraCombo.model = settingsModel.getCameras()
-                // model 设置后重新同步 currentIndex
+                // resync currentIndex after the model is set
                 cameraCombo.currentIndex = settingsModel.selectedCameraIndex
             }
         }
@@ -47,7 +52,7 @@ ScrollView {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         Text {
             text: "Camera Settings"
             font.pixelSize: Theme.fontSizeXl
@@ -55,7 +60,7 @@ ScrollView {
             color: Theme.textPrimary
         }
 
-        // 设备选择
+        // Device selection
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -137,14 +142,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 视频参数
+        // Video parameters
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -228,14 +233,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // VL API 配置
+        // VL API settings
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -309,14 +314,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 测试结果
+        // Test result
         Rectangle {
             Layout.fillWidth: true
             height: 48
@@ -353,7 +358,7 @@ ScrollView {
             }
         }
 
-        // 提示信息
+        // Hint text
         Text {
             Layout.fillWidth: true
             text: "The camera is used for vision recognition. To use a local VL model, configure the API URL and key."

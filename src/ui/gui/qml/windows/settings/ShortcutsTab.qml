@@ -1,4 +1,4 @@
-// 快捷键设置页
+// Shortcuts settings page
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,12 +8,17 @@ import "../../controls"
 ScrollView {
     id: root
     clip: true
+    contentWidth: availableWidth
+    ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+    // the always-on bar is an overlay and reserves no space; without this
+    // the right-hand controls sit underneath it
+    rightPadding: 14
 
     ColumnLayout {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         Text {
             text: "Shortcut Settings"
             font.pixelSize: Theme.fontSizeXl
@@ -21,7 +26,7 @@ ScrollView {
             color: Theme.textPrimary
         }
 
-        // 基本设置
+        // Basic settings
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -52,14 +57,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 快捷键配置
+        // Shortcut configuration
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -73,7 +78,7 @@ ScrollView {
                 color: Theme.textSecondary
             }
 
-            // 按住说话
+            // Push to talk
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
@@ -129,7 +134,7 @@ ScrollView {
 
             Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
 
-            // 自动对话
+            // Auto conversation
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
@@ -185,7 +190,7 @@ ScrollView {
 
             Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
 
-            // 中断对话
+            // Abort conversation
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
@@ -241,7 +246,7 @@ ScrollView {
 
             Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
 
-            // 切换模式
+            // Toggle mode
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
@@ -297,7 +302,7 @@ ScrollView {
 
             Rectangle { Layout.fillWidth: true; height: 1; color: Theme.divider }
 
-            // 显示/隐藏窗口
+            // Show/hide window
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
@@ -352,14 +357,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 提示信息
+        // Hint text
         Text {
             Layout.fillWidth: true
             text: "Shortcuts work globally. Make sure they do not conflict with system or other application shortcuts."

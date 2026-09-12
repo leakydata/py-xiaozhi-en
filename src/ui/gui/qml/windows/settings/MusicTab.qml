@@ -1,4 +1,4 @@
-// 音乐设置页
+// Music settings page
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,6 +8,11 @@ import "../../controls"
 ScrollView {
     id: root
     clip: true
+    contentWidth: availableWidth
+    ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+    // the always-on bar is an overlay and reserves no space; without this
+    // the right-hand controls sit underneath it
+    rightPadding: 14
 
     ColumnLayout {
         width: root.availableWidth
@@ -20,7 +25,7 @@ ScrollView {
             color: Theme.textPrimary
         }
 
-        // API 配置
+        // API settings
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -48,7 +53,7 @@ ScrollView {
                     id: musicSearchUrlField
                     Layout.fillWidth: true
                     text: settingsModel ? settingsModel.musicSearchUrl : ""
-                    // 边改边写回；只靠 editingFinished 时点保存常写不上空串
+                    // write back as you type; relying on editingFinished alone often fails to save an empty string
                     onTextEdited: if (settingsModel) settingsModel.musicSearchUrl = text
                     onEditingFinished: if (settingsModel) settingsModel.musicSearchUrl = text
                     placeholderText: "Leave empty to use the default Kuwo search API"
@@ -118,7 +123,7 @@ ScrollView {
             color: Theme.divider
         }
 
-        // 播放偏好
+        // Playback preferences
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd

@@ -1,4 +1,4 @@
-// 设置窗口 - 参照旧 PyQt5 实现
+// Settings window - mirrors the old PyQt5 layout
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -16,7 +16,7 @@ AppWindow {
     title: "Settings"
     visible: false
 
-    // Tab 配置
+    // Tab configuration
     readonly property var tabConfig: [
         { name: "System Options", component: "SystemOptionsTab.qml" },
         { name: "MCP Tools", component: "McpToolsTab.qml" },
@@ -27,12 +27,12 @@ AppWindow {
         { name: "Music", component: "MusicTab.qml" }
     ]
 
-    // 直接使用 ColumnLayout，不需要额外的 Rectangle 层
+    // use ColumnLayout directly; no extra Rectangle layer needed
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
-            // 自定义标题栏 - 平台自适应
+            // Custom title bar - adapts per platform
             TitleBar {
                 Layout.fillWidth: true
                 title: "Settings"
@@ -48,7 +48,7 @@ AppWindow {
                 onCloseClicked: root.close()
             }
 
-            // 内容区域
+            // Content area
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -59,7 +59,7 @@ AppWindow {
                     anchors.margins: 0
                     spacing: 0
 
-                    // 左侧导航栏
+                    // Left navigation bar
                     Rectangle {
                         Layout.preferredWidth: 150
                         Layout.fillHeight: true
@@ -85,7 +85,7 @@ AppWindow {
                                         anchors.rightMargin: Theme.spacingMd
                                         spacing: Theme.spacingSm
 
-                                        // 图标区域（可选）
+                                        // Icon area (optional)
                                         Rectangle {
                                             width: 4
                                             height: 20
@@ -116,14 +116,14 @@ AppWindow {
                         }
                     }
 
-                    // 分隔线
+                    // Divider
                     Rectangle {
                         Layout.preferredWidth: 1
                         Layout.fillHeight: true
                         color: Theme.border
                     }
 
-                    // 右侧内容区
+                    // Right-hand content area
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -135,38 +135,38 @@ AppWindow {
                             anchors.margins: Theme.spacingXl
                             currentIndex: 0
 
-                            // 系统选项
+                            // System options
                             SystemOptionsTab {}
 
-                            // MCP 工具
+                            // MCP tools
                             McpToolsTab {}
 
-                            // 唤醒词
+                            // Wake word
                             WakeWordTab {}
 
-                            // 摄像头
+                            // Camera
                             CameraTab {}
 
-                            // 音频设备
+                            // Audio devices
                             AudioDeviceTab {}
 
-                            // 快捷键
+                            // Shortcuts
                             ShortcutsTab {}
 
-                            // 音乐
+                            // Music
                             MusicTab {}
                         }
                     }
                 }
             }
 
-            // 底部按钮栏
+            // Bottom button bar
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 60
                 color: Theme.backgroundSecondary
 
-                // 顶部分隔线
+                // Top divider
                 Rectangle {
                     anchors.top: parent.top
                     anchors.left: parent.left
@@ -181,7 +181,7 @@ AppWindow {
                     anchors.rightMargin: Theme.spacingXl
                     spacing: Theme.spacingMd
 
-                    // 状态消息
+                    // Status message
                     Text {
                         id: statusText
                         Layout.fillWidth: true
@@ -204,7 +204,7 @@ AppWindow {
                         }
                     }
 
-                    // 重置按钮
+                    // Reset button
                     Button {
                         id: resetBtn
                         Layout.preferredWidth: 80
@@ -231,7 +231,7 @@ AppWindow {
                         }
                     }
 
-                    // 取消按钮
+                    // Cancel button
                     Button {
                         id: cancelBtn
                         Layout.preferredWidth: 80
@@ -256,7 +256,7 @@ AppWindow {
                         onClicked: root.close()
                     }
 
-                    // 保存按钮
+                    // Save button
                     Button {
                         id: saveBtn
                         Layout.preferredWidth: 80
@@ -277,7 +277,7 @@ AppWindow {
                         }
 
                         onClicked: {
-                            // 先抢焦点，让当前 TextField 触发 editingFinished 写回模型
+                            // take focus first so the active TextField fires editingFinished and writes back
                             saveBtn.forceActiveFocus()
                             settingsModel.save()
                             root.close()

@@ -1,4 +1,4 @@
-// 音频设备设置页
+// Audio device settings page
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,12 +8,17 @@ import "../../controls"
 ScrollView {
     id: root
     clip: true
+    contentWidth: availableWidth
+    ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+    // the always-on bar is an overlay and reserves no space; without this
+    // the right-hand controls sit underneath it
+    rightPadding: 14
 
-    // 测试状态
+    // Test state
     property bool inputTesting: false
     property bool outputTesting: false
 
-    // 状态日志
+    // Status log
     property var statusLogs: []
 
     function addLog(message) {
@@ -24,12 +29,12 @@ ScrollView {
         }
     }
 
-    // 初始化时加载设备列表
+    // Load the device list on init
     Component.onCompleted: {
         if (settingsModel) {
             inputCombo.model = settingsModel.getInputDevices()
             outputCombo.model = settingsModel.getOutputDevices()
-            // model 设置后重新同步 currentIndex
+            // resync currentIndex after the model is set
             inputCombo.currentIndex = settingsModel.selectedInputIndex
             outputCombo.currentIndex = settingsModel.selectedOutputIndex
             addLog("Device list loaded")
@@ -42,7 +47,7 @@ ScrollView {
             if (settingsModel) {
                 inputCombo.model = settingsModel.getInputDevices()
                 outputCombo.model = settingsModel.getOutputDevices()
-                // model 设置后重新同步 currentIndex
+                // resync currentIndex after the model is set
                 inputCombo.currentIndex = settingsModel.selectedInputIndex
                 outputCombo.currentIndex = settingsModel.selectedOutputIndex
                 addLog("Device list refreshed")
@@ -64,7 +69,7 @@ ScrollView {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -99,7 +104,7 @@ ScrollView {
             }
         }
 
-        // 输入设备
+        // Input device
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -151,7 +156,7 @@ ScrollView {
                 }
             }
 
-            // 设备信息
+            // Device info
             Rectangle {
                 Layout.fillWidth: true
                 height: 36
@@ -169,14 +174,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 输出设备
+        // Output device
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -228,7 +233,7 @@ ScrollView {
                 }
             }
 
-            // 设备信息
+            // Device info
             Rectangle {
                 Layout.fillWidth: true
                 height: 36
@@ -246,14 +251,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // Opus 输出采样率
+        // Opus output sample rate
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -284,7 +289,7 @@ ScrollView {
                 }
             }
 
-            // 提示
+            // Hint
             Rectangle {
                 Layout.fillWidth: true
                 height: 36
@@ -302,14 +307,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 音频帧长度
+        // Audio frame length
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -348,7 +353,7 @@ ScrollView {
                 }
             }
 
-            // 提示
+            // Hint
             Rectangle {
                 Layout.fillWidth: true
                 height: 36
@@ -366,7 +371,7 @@ ScrollView {
             }
         }
 
-        // 提示信息
+        // Hint text
         Text {
             Layout.fillWidth: true
             text: "Click Test to verify the device works. The input test records 3 seconds of audio; the output test plays a 440Hz tone."
@@ -375,14 +380,14 @@ ScrollView {
             wrapMode: Text.WordWrap
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 状态日志区域
+        // Status log section
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -423,7 +428,7 @@ ScrollView {
                 }
             }
 
-            // 日志显示区域
+            // Log display area
             Rectangle {
                 Layout.fillWidth: true
                 height: 120

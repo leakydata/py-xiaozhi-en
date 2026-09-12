@@ -1,4 +1,4 @@
-// MCP 工具启用：分组 + 单工具开关（黑名单 MCP_TOOLS.DISABLED）
+// MCP tool enablement: groups + per-tool switches (blacklist MCP_TOOLS.DISABLED)
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,7 +8,9 @@ import "../../controls"
 ScrollView {
     id: root
     clip: true
-    // 给纵向滚动条留空，避免右侧开关被裁切
+    contentWidth: availableWidth
+    ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+    // leave room for the vertical scrollbar so the right-hand switches are not clipped
     rightPadding: 8
     contentWidth: availableWidth
 
@@ -59,7 +61,7 @@ ScrollView {
     function groupStatusText(tools) {
         var on = groupEnabledCount(tools)
         var total = tools.length
-        // 用数量，避免与按钮「全开/全关」文案重复
+        // use the count, so it does not duplicate the Enable All / Disable All button text
         return on + "/" + total
     }
 
@@ -120,7 +122,7 @@ ScrollView {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
 
-                // 组头
+                // Group header
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacingSm
@@ -156,7 +158,7 @@ ScrollView {
                     }
                 }
 
-                // 工具列表卡片
+                // Tool list card
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: toolsCol.implicitHeight + Theme.spacingSm * 2
@@ -210,7 +212,7 @@ ScrollView {
                                         }
                                     }
 
-                                    // 固定开关区域，避免被挤出/裁切
+                                    // fixed switch area so it cannot be squeezed out or clipped
                                     Item {
                                         Layout.preferredWidth: 52
                                         Layout.preferredHeight: 28
@@ -218,7 +220,7 @@ ScrollView {
 
                                         XSwitch {
                                             anchors.centerIn: parent
-                                            // 无文字时避免 contentItem 额外占位
+                                            // avoid contentItem taking space when there is no text
                                             text: ""
                                             checked: toolRow.modelData.enabled
                                             onToggled: {

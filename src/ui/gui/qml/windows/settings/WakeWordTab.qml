@@ -1,4 +1,4 @@
-// 唤醒词设置页
+// Wake word settings page
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,12 +8,17 @@ import "../../controls"
 ScrollView {
     id: root
     clip: true
+    contentWidth: availableWidth
+    ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+    // the always-on bar is an overlay and reserves no space; without this
+    // the right-hand controls sit underneath it
+    rightPadding: 14
 
     ColumnLayout {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         Text {
             text: "Wake Word Settings"
             font.pixelSize: Theme.fontSizeXl
@@ -21,7 +26,7 @@ ScrollView {
             color: Theme.textPrimary
         }
 
-        // 唤醒词设置
+        // Wake word settings
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -33,7 +38,7 @@ ScrollView {
                 color: Theme.textSecondary
             }
 
-            // 启用唤醒词
+            // Enable wake word
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
@@ -58,7 +63,7 @@ ScrollView {
                 color: Theme.divider
             }
 
-            // 唤醒词输入
+            // Wake word input
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
@@ -84,7 +89,7 @@ ScrollView {
                     }
                 }
 
-                // 语言标签
+                // Language label
                 Rectangle {
                     visible: settingsModel && settingsModel.wakeWord && settingsModel.wakeWord.length > 0
                     width: langLabel.width + 16
@@ -102,7 +107,7 @@ ScrollView {
                 }
             }
 
-            // 预览区域
+            // Preview area
             Rectangle {
                 Layout.fillWidth: true
                 height: previewLayout.height + 20
@@ -134,7 +139,7 @@ ScrollView {
                 }
             }
 
-            // 保存按钮
+            // Save button
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
@@ -165,14 +170,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 检测参数
+        // Detection parameters
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -190,7 +195,7 @@ ScrollView {
                 rowSpacing: Theme.spacingMd
                 columnSpacing: Theme.spacingMd
 
-                // 线程数
+                // Threads
                 Text {
                     text: "Threads"
                     font.pixelSize: Theme.fontSizeSm
@@ -213,7 +218,7 @@ ScrollView {
                     color: Theme.textPlaceholder
                 }
 
-                // 关键词得分
+                // Keyword score
                 Text {
                     text: "Keyword Score"
                     font.pixelSize: Theme.fontSizeSm
@@ -238,7 +243,7 @@ ScrollView {
                     Layout.preferredWidth: 40
                 }
 
-                // 关键词阈值
+                // Keyword threshold
                 Text {
                     text: "Keyword Threshold"
                     font.pixelSize: Theme.fontSizeSm
@@ -265,14 +270,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 提示信息
+        // Hint text
         Text {
             Layout.fillWidth: true
             text: "Supports Chinese and English wake words. Chinese is converted to pinyin automatically; English uses BPE tokenization. A higher score is stricter; a lower threshold is more sensitive."

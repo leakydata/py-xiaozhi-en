@@ -1,9 +1,9 @@
-"""音频设备管理器.
+"""Audio device manager.
 
-职责：
-- 设备发现和选择
-- 配置持久化（按设备名称，而非 ID）
-- 设备信息查询
+Responsibilities:
+- device discovery and selection
+- config persistence (by device name, not ID)
+- device information queries
 """
 
 from dataclasses import dataclass
@@ -18,7 +18,7 @@ logger = get_logger()
 
 @dataclass
 class DeviceConfig:
-    """设备配置数据类"""
+    """Device configuration dataclass"""
 
     input_device_id: int
     output_device_id: int
@@ -31,59 +31,60 @@ class DeviceConfig:
 
 
 class AudioDeviceManager:
-    """音频设备管理器（无状态，纯逻辑）"""
+    """Audio device manager (stateless, pure logic)"""
 
     def __init__(self, config_manager: ConfigManager):
         self.config = config_manager
 
     def load_or_detect_devices(self) -> DeviceConfig:
-        """加载配置或自动检测设备（按名称匹配）
+        """Load config or auto-detect devices (matched by name)
 
         Returns:
-            DeviceConfig: 设备配置
+            DeviceConfig: the resolved device configuration
 
         Raises:
-            RuntimeError: 无法找到可用设备
+            RuntimeError: no usable device could be found
         """
         audio_config = self.config.get_config("AUDIO_DEVICES", {}) or {}
 
         input_device_name = audio_config.get("input_device_name")
         output_device_name = audio_config.get("output_device_name")
 
-        # 1. 尝试按名称查找设备
+        # 1. try to find the device by name
         input_info = None
         output_info = None
 
         if input_device_name:
-            logger.info(f"尝试查找输入设备: {input_device_name}")
+            logger.info(f"Looking for input device: {input_device_name}")
             input_info = find_device_by_name("input", input_device_name)
             if input_info:
-                logger.info(f"✓ 找到输入设备: {input_info['name']} (ID: {input_info['index']})")
+                logger.info(f"✓ input device found: {input_info['name']} (ID: {input_info['index']})")
             else:
-                logger.warning(f"✗ 未找到设备 '{input_device_name}'，将重新选择")
+                logger.warning(f"✗ device not found '{input_device_name}', reselecting")
 
         if output_device_name:
-            logger.info(f"尝试查找输出设备: {output_device_name}")
+            logger.info(f"Looking for output device: {output_device_name}")
             output_info = find_device_by_name("output", output_device_name)
             if output_info:
-                logger.info(f"✓ 找到输出设备: {output_info['name']} (ID: {output_info['index']})")
+                logger.info(f"✓ output device found: {output_info['name']} (ID: {output_info['index']})")
             else:
-                logger.warning(f"✗ 未找到设备 '{output_device_name}'，将重新选择")
+                logger.warning(f"✗ device not found '{output_device_name}', reselecting")
 
-        # 2. 如果按名称查找失败，自动选择新设备
+        # 2. if the name lookup failed, auto-select a new device
         if not input_info:
-            logger.info("自动选择输入设备...")
+            logger.info("Auto-selecting input device...")
             input_info = select_audio_device("input")
             if not input_info:
-                raise RuntimeError("无法找到可用的输入设备")
+                raise RuntimeError("No usable input device found")
 
         if not output_info:
-            logger.info("自动选择输出设备...")
+            logger.info("Auto-selecting output device...")
             output_info = select_audio_device("output")
             if not output_info:
-                raise RuntimeError("无法找到可用的输出设备")
+                raise RuntimeError("No usable output device found")
 
-        # 3. 输入固定单声道（协议要求 + 避免阵列驱动延迟），输出保持设备声道数
+        # 3. input is forced mono (protocol requirement, and avoids mic-array driver latency);
+        #    output keeps the device's own channel count
         input_channels = 1
         output_channels = output_info["channels"]
 
@@ -91,15 +92,15 @@ class AudioDeviceManager:
         device_output_sample_rate = output_info["sample_rate"]
 
         logger.info(
-            f"使用输入设备: {input_info['name']} | "
+            f"Using input device: {input_info['name']} | "
             f"{device_input_sample_rate}Hz {input_channels}ch"
         )
         logger.info(
-            f"使用输出设备: {output_info['name']} | "
+            f"Using output device: {output_info['name']} | "
             f"{device_output_sample_rate}Hz {output_channels}ch"
         )
 
-        # 4. 保存设备名称（而非 ID）到配置
+        # 4. persist the device NAME (not the ID) - indices shift between runs
         if (
             input_device_name != input_info["name"]
             or output_device_name != output_info["name"]
@@ -110,7 +111,7 @@ class AudioDeviceManager:
             self.config.update_config("AUDIO_DEVICES.output_device_name", output_info["name"])
             self.config.update_config("AUDIO_DEVICES.output_sample_rate", device_output_sample_rate)
             self.config.update_config("AUDIO_DEVICES.output_channels", output_channels)
-            logger.info("设备配置已保存")
+            logger.info("Device configuration saved")
 
         return DeviceConfig(
             input_device_id=input_info["index"],

@@ -1,4 +1,4 @@
-// 系统选项设置页
+// System options settings page
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,12 +8,17 @@ import "../../controls"
 ScrollView {
     id: root
     clip: true
+    contentWidth: availableWidth
+    ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+    // the always-on bar is an overlay and reserves no space; without this
+    // the right-hand controls sit underneath it
+    rightPadding: 14
 
     ColumnLayout {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         Text {
             text: "System Options"
             font.pixelSize: Theme.fontSizeXl
@@ -21,12 +26,12 @@ ScrollView {
             color: Theme.textPrimary
         }
 
-        // 基本信息区域
+        // Basic information section
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
-            // 区域标题
+            // Section title
             Text {
                 text: "Basic Information"
                 font.pixelSize: Theme.fontSizeMd
@@ -34,7 +39,7 @@ ScrollView {
                 color: Theme.textSecondary
             }
 
-            // 头像样式选择
+            // Avatar style selection
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingLg
@@ -72,7 +77,7 @@ ScrollView {
                 Layout.fillWidth: true
             }
 
-            // 表单项
+            // Form fields
             GridLayout {
                 Layout.fillWidth: true
                 columns: 2
@@ -122,14 +127,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 回声消除区域
+        // Echo cancellation section
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -215,14 +220,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 网络配置区域
+        // Network settings section
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -331,14 +336,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // MQTT 配置区域
+        // MQTT settings section
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -468,14 +473,14 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Divider
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 可写目录（缓存 / 日志 / 音乐等）
+        // Writable directories (cache / logs / music etc.)
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -495,7 +500,7 @@ ScrollView {
                 wrapMode: Text.WordWrap
             }
 
-            // 缓存
+            // Cache
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
@@ -569,7 +574,7 @@ ScrollView {
                 }
             }
 
-            // 日志
+            // Log
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
@@ -643,7 +648,7 @@ ScrollView {
                 }
             }
 
-            // 音乐
+            // Music
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
@@ -717,7 +722,7 @@ ScrollView {
                 }
             }
 
-            // 唤醒词
+            // Wake word
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
@@ -791,7 +796,7 @@ ScrollView {
                 }
             }
 
-            // MCP 插件
+            // MCP plugins
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
