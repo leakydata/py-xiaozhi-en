@@ -1,4 +1,4 @@
-"""音频设备枚举、选择与测试."""
+"""Enumerating, choosing and testing the audio devices."""
 
 from __future__ import annotations
 
@@ -15,24 +15,24 @@ logger = get_logger()
 
 
 class SettingsAudioDevicesMixin:
-    # ========== 音频设备设置 ==========
+    # ========== audio device settings ==========
 
     def _apply_device_lists(self, devices: dict) -> None:
-        """用枚举结果填充输入/输出列表并通知 QML."""
+        """Fill the input and output lists from the enumeration and tell QML."""
         self._input_devices = list(devices.get("input") or [])
         self._output_devices = list(devices.get("output") or [])
         self._audio_devices_loaded = True
         logger.debug(
-            f"加载了 {len(self._input_devices)} 个输入设备, "
-            f"{len(self._output_devices)} 个输出设备"
+            f"loaded {len(self._input_devices)} input devices, "
+            f"{len(self._output_devices)} output devices"
         )
         self.devicesChanged.emit()
 
     def _load_audio_devices(self, force: bool = False):
-        """加载可用的音频设备列表（普通枚举，不重初始化 PortAudio）.
+        """Load the available audio devices (a plain enumeration; PortAudio is not reinitialised).
 
         Args:
-            force: True 时强制重新枚举（打开设置时）
+            force: True re-enumerates regardless (used when the settings open)
         """
         if self._audio_devices_loaded and not force:
             return
@@ -42,28 +42,28 @@ class SettingsAudioDevicesMixin:
             devices = list_audio_devices(include_virtual=True)
             self._apply_device_lists(devices)
         except Exception as e:
-            logger.error(f"加载音频设备失败: {e}", exc_info=True)
+            logger.error(f"failed to load the audio devices: {e}", exc_info=True)
             self._input_devices = []
             self._output_devices = []
 
     @Slot(result=list)
     def getInputDevices(self) -> list:
-        """获取输入设备列表（首次调用时再枚举）."""
+        """The input devices (enumerated on the first call)."""
         self._load_audio_devices()
         return [d["name"] for d in self._input_devices]
 
     @Slot(result=list)
     def getOutputDevices(self) -> list:
-        """获取输出设备列表（首次调用时再枚举）."""
+        """The output devices (enumerated on the first call)."""
         self._load_audio_devices()
         return [d["name"] for d in self._output_devices]
 
     @Slot()
     def refreshDevices(self):
-        """热刷新设备列表（停流 → PortAudio 重枚举 → 再开流）.
+        """Refresh the device list live: stop the streams, re-enumerate PortAudio, reopen them.
 
-        运行中后连蓝牙时，需经 AudioPlugin 先停流再 ``refresh_portaudio_devices``。
-        无 EventBus 时降级为本地普通枚举。
+        For a Bluetooth device connected while running, AudioPlugin must stop the streams before ``refresh_portaudio_devices``.
+        Without an EventBus this falls back to a plain local enumeration.
         """
         if getattr(self, "_audio_devices_refreshing", False):
             self.statusMessage.emit("Device refresh in progress...")
@@ -73,7 +73,9 @@ class SettingsAudioDevicesMixin:
         task_manager = getattr(self, "_task_manager", None)
 
         if event_bus is None or task_manager is None:
-            logger.warning("SettingsModel: 无 EventBus/TaskManager，降级为本地设备枚举")
+            logger.warning(
+                "SettingsModel: no EventBus or TaskManager, falling back to a local device enumeration"
+            )
             self._load_audio_devices(force=True)
             self.statusMessage.emit(
                 "Device list refreshed (audio streams not coordinated; a Bluetooth device connected later may still be invisible)"
@@ -89,15 +91,17 @@ class SettingsAudioDevicesMixin:
             from src.core.event_bus import Events
             from src.utils.audio_utils import list_audio_devices
 
-            # Future 作 payload：AudioPlugin 在 handler 里 set_result(设备列表)
-            # emit 会 await 所有 handler，返回时 future 通常已完成
+            # the Future is the payload: AudioPlugin's handler calls set_result with the device list
+            # emit awaits every handler, so the future is usually done by the time it returns
             loop = asyncio.get_running_loop()
             fut: asyncio.Future = loop.create_future()
             await event_bus.emit(Events.AUDIO_DEVICES_REFRESH_REQUEST, fut)
             if fut.done():
                 result = fut.result()
             else:
-                logger.warning("AudioPlugin 未完成设备刷新 Future，本地枚举兜底")
+                logger.warning(
+                    "AudioPlugin did not complete the device-refresh Future, falling back to a local enumeration"
+                )
                 result = list_audio_devices(include_virtual=True)
                 if not fut.done():
                     fut.set_result(result)
@@ -111,12 +115,16 @@ class SettingsAudioDevicesMixin:
                     else:
                         exc = task.exception()
                         if exc is not None:
-                            logger.error(f"设备刷新任务异常: {exc}", exc_info=exc)
+                            logger.error(
+                                f"the device refresh task raised: {exc}", exc_info=exc
+                            )
                             devices = {"input": [], "output": []}
                         else:
                             devices = task.result()
                 except Exception as e:
-                    logger.error(f"读取刷新结果失败: {e}", exc_info=True)
+                    logger.error(
+                        f"failed to read the refresh result: {e}", exc_info=True
+                    )
                     devices = {"input": [], "output": []}
                 try:
                     if not isinstance(devices, dict):
@@ -142,12 +150,12 @@ class SettingsAudioDevicesMixin:
             task.add_done_callback(_on_task_done)
         except Exception as e:
             self._audio_devices_refreshing = False
-            logger.error(f"无法调度设备刷新: {e}", exc_info=True)
+            logger.error(f"could not schedule the device refresh: {e}", exc_info=True)
             self._load_audio_devices(force=True)
             self.statusMessage.emit(f"Device refresh failed; enumerated locally: {e}")
 
     def _schedule_ui(self, fn) -> None:
-        """把回调丢回 Qt 主线程（spawn 的 done 可能在 loop 线程）."""
+        """Hand the callback back to the Qt main thread (a spawn's done callback may run on the loop thread)."""
         try:
             from PySide6.QtCore import QTimer
 
@@ -156,63 +164,63 @@ class SettingsAudioDevicesMixin:
             try:
                 fn()
             except Exception as e:
-                logger.error(f"UI 回调失败: {e}", exc_info=True)
+                logger.error(f"the UI callback failed: {e}", exc_info=True)
 
     def _get_selectedInputIndex(self) -> int:
-        """获取当前选中的输入设备索引."""
+        """The index of the currently selected input device."""
         current_id = self._get_value("AUDIO_DEVICES.input_device_id", -1)
         current_name = self._get_value("AUDIO_DEVICES.input_device_name", "")
 
-        # 优先按设备名称匹配
+        # match on the device name first
         if current_name:
             for i, d in enumerate(self._input_devices):
                 if d["raw_name"] == current_name:
                     return i
 
-        # 其次按设备ID匹配
+        # then on the device ID
         for i, d in enumerate(self._input_devices):
             if d["index"] == current_id:
                 return i
         return 0
 
     def _set_selectedInputIndex(self, index: int):
-        """设置选中的输入设备."""
+        """Select an input device."""
         if 0 <= index < len(self._input_devices):
             device = self._input_devices[index]
             self._set_value("AUDIO_DEVICES.input_device_id", device["index"])
             self._set_value("AUDIO_DEVICES.input_device_name", device["raw_name"])
             self._set_value("AUDIO_DEVICES.input_sample_rate", device["sample_rate"])
             self._set_value("AUDIO_DEVICES.input_channels", min(device["channels"], 1))
-            logger.info(f"选择输入设备: {device['name']}")
+            logger.info(f"input device selected: {device['name']}")
 
     def _get_selectedOutputIndex(self) -> int:
-        """获取当前选中的输出设备索引."""
+        """The index of the currently selected output device."""
         current_id = self._get_value("AUDIO_DEVICES.output_device_id", -1)
         current_name = self._get_value("AUDIO_DEVICES.output_device_name", "")
 
-        # 优先按设备名称匹配
+        # match on the device name first
         if current_name:
             for i, d in enumerate(self._output_devices):
                 if d["raw_name"] == current_name:
                     return i
 
-        # 其次按设备ID匹配
+        # then on the device ID
         for i, d in enumerate(self._output_devices):
             if d["index"] == current_id:
                 return i
         return 0
 
     def _set_selectedOutputIndex(self, index: int):
-        """设置选中的输出设备."""
+        """Select an output device."""
         if 0 <= index < len(self._output_devices):
             device = self._output_devices[index]
             self._set_value("AUDIO_DEVICES.output_device_id", device["index"])
             self._set_value("AUDIO_DEVICES.output_device_name", device["raw_name"])
             self._set_value("AUDIO_DEVICES.output_sample_rate", device["sample_rate"])
             self._set_value("AUDIO_DEVICES.output_channels", min(device["channels"], 2))
-            logger.info(f"选择输出设备: {device['name']}")
+            logger.info(f"output device selected: {device['name']}")
 
-    # 设备信息显示
+    # device information display
     def _get_inputDeviceInfo(self) -> str:
         idx = self._get_selectedInputIndex()
         if 0 <= idx < len(self._input_devices):
@@ -227,14 +235,14 @@ class SettingsAudioDevicesMixin:
             return f"Sample rate: {d['sample_rate']}Hz, channels: {d['channels']}"
         return "No device selected"
 
-    # Opus 输出采样率
+    # the Opus output sample rate
     def _get_opusOutputSampleRate(self) -> int:
         return self._get_value("AUDIO_DEVICES.opus_output_sample_rate", 24000)
 
     def _set_opusOutputSampleRate(self, value: int):
         self._set_value("AUDIO_DEVICES.opus_output_sample_rate", value)
 
-    # 音频帧长度
+    # the audio frame length
     def _get_frameDuration(self) -> int:
         return self._get_value("AUDIO_DEVICES.frame_duration", 20)
 
@@ -242,10 +250,10 @@ class SettingsAudioDevicesMixin:
         if value in [20, 40, 60]:
             self._set_value("AUDIO_DEVICES.frame_duration", value)
 
-    # 音频测试
+    # audio tests
     @Slot()
     def testInputDevice(self):
-        """测试输入设备（录音）."""
+        """Test the input device by recording."""
         if self._testing_input:
             return
 
@@ -267,7 +275,7 @@ class SettingsAudioDevicesMixin:
         )
 
     def _do_input_test(self, device: dict):
-        """执行录音测试（异常由 _run_worker 兜底）."""
+        """Run the recording test (_run_worker catches any exception)."""
         device_id = device["index"]
         sample_rate = device["sample_rate"]
         duration = 3
@@ -300,7 +308,7 @@ class SettingsAudioDevicesMixin:
 
     @Slot()
     def testOutputDevice(self):
-        """测试输出设备（播放）."""
+        """Test the output device by playing something."""
         if self._testing_output:
             return
 
@@ -322,7 +330,7 @@ class SettingsAudioDevicesMixin:
         )
 
     def _do_output_test(self, device: dict):
-        """执行播放测试（异常由 _run_worker 兜底）."""
+        """Run the playback test (_run_worker catches any exception)."""
         device_id = device["index"]
         sample_rate = device["sample_rate"]
         duration = 2.0
