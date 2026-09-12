@@ -60,6 +60,7 @@ dependencies = [
     # Linux 依赖 (GPIO 模式)
     "gpiozero>=2.0.1; sys_platform == 'linux'",
     "lgpio>=0.2.2.0; sys_platform == 'linux'",
+    "pyserial>=3.5",
 ]
 
 [project.optional-dependencies]

@@ -49,6 +49,7 @@ ALLOWED: dict[str, str] = {
     "uptime": "uptime", "who": "logged-in users", "id": "user and groups",
     "printenv": "environment variables", "which": "locate a program",
     "nmcli": "network manager status",
+    "git": "repository status/log/diff (read-only subcommands only)",
 }
 
 # Even inside an allowed command, these subcommands change state.
@@ -59,6 +60,10 @@ FORBIDDEN_ARGS = {
     "set-default-sink", "set-default-source", "set-card-profile", "suspend",
     "load-module", "unload-module", "vacuum", "rotate", "flush",
     "move-sink", "set-sink", "set-source", "add", "modify", "write",
+    # git subcommands that change history, the working tree or a remote
+    "push", "commit", "merge", "rebase", "reset", "checkout", "clean",
+    "clone", "fetch", "pull", "tag", "stash", "cherry-pick", "revert",
+    "config", "gc", "prune", "am", "apply", "mv", "rm",
 }
 
 # Shell metacharacters: their presence means the caller expects a shell, and

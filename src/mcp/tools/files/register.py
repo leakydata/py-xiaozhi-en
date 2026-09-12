@@ -9,7 +9,7 @@ from typing import Any
 from src.logging import get_logger
 from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
 
-from . import shell, store
+from . import python_exec, shell, store
 
 logger = get_logger()
 
@@ -84,6 +84,19 @@ async def search_in_files_payload(args: dict[str, Any]) -> str:
     try:
         q = str(args.get("text", ""))
         return json.dumps({"text": q, "matches": store.grep(q)}, ensure_ascii=False)
+    except Exception as e:
+        return _err(e)
+
+
+async def run_python_payload(args: dict[str, Any]) -> str:
+    try:
+        net = bool(args.get("network", False))
+        res = await python_exec.run(
+            str(args.get("code", "")), store.root(),
+            timeout=float(args.get("timeout", python_exec.DEFAULT_TIMEOUT) or 30),
+            network=net,
+        )
+        return json.dumps(res, ensure_ascii=False)
     except Exception as e:
         return _err(e)
 
@@ -195,6 +208,36 @@ def register_file_tools(add_tool: Callable[[McpTool], None]) -> None:
             run_command_payload,
         ),
     ]
+
+    if python_exec.available():
+        tools.append(McpTool(
+            "run_python",
+            (
+                "Write and run Python 3 code to do something you have no dedicated "
+                "tool for: calculations, parsing, converting, generating or "
+                "analysing files. The code runs in a locked sandbox where ONLY the "
+                "workspace folder is writable - the rest of the computer is "
+                "invisible to it - so use it freely. The workspace is the current "
+                "directory, so open('notes.txt') just works. Print what you want to "
+                "see; nothing is returned otherwise. The standard library is "
+                "available (json, csv, math, statistics, datetime, re, sqlite3, "
+                "zipfile...) but third-party packages are not. "
+                "Args: code - the full program; timeout - seconds (1-120); "
+                "network - true only if it must reach the internet (off by default)."
+            ),
+            PropertyList([
+                Property("code", PropertyType.STRING, default_value=""),
+                Property("timeout", PropertyType.INTEGER, default_value=30,
+                         min_value=1, max_value=int(python_exec.MAX_TIMEOUT)),
+                Property("network", PropertyType.BOOLEAN, default_value=False),
+            ]),
+            run_python_payload,
+        ))
+    else:
+        logger.warning(
+            "bubblewrap (bwrap) missing - run_python not registered. "
+            "Install with: sudo apt install bubblewrap"
+        )
 
     for t in tools:
         add_tool(t)
