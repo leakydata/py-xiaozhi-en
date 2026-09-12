@@ -47,10 +47,12 @@ _GROUPS: list[tuple[str, tuple[str, ...]]] = [
     ("Files - your own workspace folder",
      ("list_files", "read_file", "write_file", "make_folder", "move_path",
       "delete_path", "find_files", "search_in_files")),
-    ("Running code - for anything with no dedicated tool",
-     ("run_python",)),
+    ("Running code - for anything with no dedicated tool. The interpreter "
+     "stays alive between calls, so build work up over several of them",
+     ("run_python", "install_python_package", "reset_python")),
     ("This computer",
-     ("system_status", "top_processes", "run_command", "recent_actions")),
+     ("system_status", "top_processes", "run_command", "recent_actions",
+      "what_can_you_do")),
     ("Hardware and media",
      ("list_serial_ports", "serial_monitor", "image_info", "edit_image",
       "media_info", "convert_media")),
@@ -63,6 +65,11 @@ _HABITS = """How to work:
 - Call get_current_time before working out any relative date.
 - Prefer a tool over guessing: web_search for current facts, run_command for the
   state of this machine, run_python for anything you can compute.
+- run_python keeps its state between calls like a notebook, so load data once
+  and reuse it. Pass fresh=true to start clean.
+- If an import fails, call install_python_package and carry on. Do not tell the
+  user a library is unavailable without trying.
+- The workspace is yours: create, edit and delete files there freely.
 - ask_claude for hard reasoning; ask_claude_background when it may take a while,
   then tell the user you will report back.
 - Keep spoken replies short. This is voice: a sentence or two, not an essay.

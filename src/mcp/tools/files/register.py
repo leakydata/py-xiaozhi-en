@@ -9,7 +9,7 @@ from typing import Any
 from src.logging import get_logger
 from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
 
-from . import python_exec, shell, store
+from . import py_session, python_exec, shell, store
 
 logger = get_logger()
 
@@ -90,13 +90,23 @@ async def search_in_files_payload(args: dict[str, Any]) -> str:
 
 async def run_python_payload(args: dict[str, Any]) -> str:
     try:
-        net = bool(args.get("network", False))
-        res = await python_exec.run(
+        res = await py_session.execute(
             str(args.get("code", "")), store.root(),
+            session=str(args.get("session", "default") or "default"),
+            fresh=bool(args.get("fresh", False)),
             timeout=float(args.get("timeout", python_exec.DEFAULT_TIMEOUT) or 30),
-            network=net,
+            network=bool(args.get("network", False)),
         )
         return json.dumps(res, ensure_ascii=False)
+    except Exception as e:
+        return _err(e)
+
+
+async def reset_python_payload(args: dict[str, Any]) -> str:
+    try:
+        out = await py_session.reset(str(args.get("session", "") or ""))
+        out["sessions"] = py_session.status()
+        return json.dumps(out, ensure_ascii=False)
     except Exception as e:
         return _err(e)
 
@@ -299,19 +309,39 @@ def register_file_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "workspace folder is writable - the rest of the computer is "
                 "invisible to it - so use it freely. The workspace is the current "
                 "directory, so open('notes.txt') just works. Print what you want to "
-                "see; nothing is returned otherwise. The standard library is "
-                "available (json, csv, math, statistics, datetime, re, sqlite3, "
-                "zipfile...) but third-party packages are not. "
-                "Args: code - the full program; timeout - seconds (1-120); "
-                "network - true only if it must reach the internet (off by default)."
+                "see; nothing is returned otherwise. "
+                "The interpreter STAYS ALIVE between calls, like a notebook: "
+                "variables, imports and loaded data persist, so build a task up "
+                "over several calls instead of repeating work. Pass fresh=true "
+                "when you want to start clean, or a different session name to keep "
+                "two pieces of work apart. If an import is missing, call "
+                "install_python_package rather than giving up. "
+                "Args: code - the code to run; session - which interpreter "
+                "(default 'default'); fresh - restart it first; timeout - seconds "
+                "(1-120); network - true only if it must reach the internet."
             ),
             PropertyList([
                 Property("code", PropertyType.STRING, default_value=""),
+                Property("session", PropertyType.STRING, default_value="default"),
+                Property("fresh", PropertyType.BOOLEAN, default_value=False),
                 Property("timeout", PropertyType.INTEGER, default_value=30,
                          min_value=1, max_value=int(python_exec.MAX_TIMEOUT)),
                 Property("network", PropertyType.BOOLEAN, default_value=False),
             ]),
             run_python_payload,
+        ))
+        tools.append(McpTool(
+            "reset_python",
+            (
+                "Throw away a Python session and its variables, so the next "
+                "run_python starts clean. Use it when state has got into a mess, "
+                "or to free memory after a big job. "
+                "Args: session - which one to drop; leave blank for all."
+            ),
+            PropertyList([
+                Property("session", PropertyType.STRING, default_value=""),
+            ]),
+            reset_python_payload,
         ))
     else:
         logger.warning(
