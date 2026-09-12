@@ -10,16 +10,22 @@ machine's global CLAUDE.md grants passwordless sudo. Headless Claude Code with
 default settings executes tools with no denials at all (verified: it ran `id`
 and returned real output).
 
-Two layers hold it back, both verified:
-  1. --disallowedTools. Note --allowedTools does NOT restrict - it is an
-     auto-approve list, and Bash still ran when it was omitted from it. The deny
-     list must also include Task/Agent, or the model can spawn a subagent that
-     still has Bash.
-  2. cwd is a dedicated workspace directory. Reads outside it are denied, so a
-     prompt asking for /etc/shadow fails even though Read is permitted.
+The two flags do different jobs, and both are needed:
+  - --disallowedTools is the real deny mechanism. --allowedTools does NOT
+    restrict anything; Bash still ran when it was merely omitted from it. The
+    deny list must include Task/Agent too, or the model can spawn a subagent
+    that still has Bash.
+  - --allowedTools PRE-APPROVES. Headless has nobody to answer a permission
+    prompt, so anything not pre-approved is denied outright - which is why web
+    search came back "permission wasn't granted" until it was listed.
 
-Widening DENY or pointing WORKDIR at the home directory hands voice-level access
-to a root-capable agent. Do not do it casually.
+ALLOW is deliberately web-only. Pre-approving Read defeats the working-directory
+scoping: with Read approved the model read /etc/passwd from the workspace cwd.
+Web research plus reasoning is what this tool is for, and it needs no local file
+access at all, so the filesystem stays shut.
+
+Widening either list hands voice-level access to a more capable agent on a
+machine with passwordless sudo. Do not do it casually.
 """
 
 from __future__ import annotations
@@ -42,6 +48,10 @@ DENY = [
     "Write", "Edit", "NotebookEdit",
     "Task", "Agent",
 ]
+
+# Pre-approved so they run without a prompter. Web only - see the note above on
+# why Read is not in here.
+ALLOW = ["WebSearch", "WebFetch"]
 
 DEFAULT_TIMEOUT = 120.0
 
@@ -67,7 +77,8 @@ async def ask(
     if not exe:
         return {"ok": False, "error": "The claude CLI is not installed or not on PATH."}
 
-    cmd = [exe, "-p", prompt, "--output-format", "json", "--disallowedTools", *DENY]
+    cmd = [exe, "-p", prompt, "--output-format", "json",
+           "--allowedTools", *ALLOW, "--disallowedTools", *DENY]
     if model:
         cmd += ["--model", model]
 
