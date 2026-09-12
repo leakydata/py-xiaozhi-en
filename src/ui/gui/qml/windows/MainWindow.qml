@@ -1,4 +1,4 @@
-// 主窗口 - 匹配原布局
+// The main window
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -13,16 +13,16 @@ AppWindow {
     minimumWidth: 360
     minimumHeight: 420
     title: ""
-    // 由 QmlAppHost.show_root 控制显示；避免 QML 加载瞬间抢焦点
+    // QmlAppHost.show_root decides when this appears, so loading the QML does not steal focus
     visible: false
 
-    // 直接使用 ColumnLayout，不需要额外的 Rectangle 层
-    // AppWindow 已经提供了带圆角的容器
+    // a ColumnLayout directly; no extra Rectangle layer is needed
+    // AppWindow already provides the rounded container
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
-            // 自定义标题栏 - 平台自适应
+            // the custom title bar, which adapts to the platform
             TitleBar {
                 Layout.fillWidth: true
                 showMaximize: true
@@ -39,7 +39,7 @@ AppWindow {
                 }
             }
 
-            // 状态卡片区域
+            // the status card
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -50,7 +50,7 @@ AppWindow {
                     anchors.margins: Theme.spacingMd
                     spacing: Theme.spacingMd
 
-                    // 状态标签
+                    // status label
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 40
@@ -66,15 +66,15 @@ AppWindow {
                         }
                     }
 
-                    // 表情显示区域
-                    // useProceduralAvatar: true = 矢量头像（口型跟随音频）
-                    //                      false = 原 GIF 表情
+                    // the emotion display
+                    // useProceduralAvatar: true = the drawn avatar (its mouth follows the audio)
+                    //                      false = the original GIF emotions
                     Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumHeight: 80
 
-                        // 设置页选择: person | simple | gif
+                        // chosen in the settings: person | simple | gif
                         property string avatarStyle: (settingsModel && settingsModel.avatarStyle)
                             ? settingsModel.avatarStyle : "person"
                         property bool useProceduralAvatar: avatarStyle !== "gif"
@@ -109,7 +109,7 @@ AppWindow {
                         }
                     }
 
-                    // 对话 + 音乐行
+                    // the chat and music lines
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 72
@@ -147,7 +147,7 @@ AppWindow {
                 }
             }
 
-            // 按钮区域
+            // the buttons
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 72
@@ -160,7 +160,7 @@ AppWindow {
                     anchors.bottomMargin: 10
                     spacing: Theme.spacingSm
 
-                    // 手动模式按钮（点击切换录音）
+                    // manual mode button (click to start or stop recording)
                     Button {
                         id: manualBtn
                         Layout.preferredWidth: 100
@@ -186,7 +186,7 @@ AppWindow {
                         onClicked: if (eventBridge) eventBridge.onManualToggle()
                     }
 
-                    // 自动模式按钮
+                    // auto mode button
                     Button {
                         id: autoBtn
                         Layout.preferredWidth: 100
@@ -212,7 +212,7 @@ AppWindow {
                         onClicked: if (eventBridge) eventBridge.onAutoStart()
                     }
 
-                    // 打断对话
+                    // interrupt
                     Button {
                         id: abortBtn
                         Layout.preferredWidth: 80
@@ -239,7 +239,7 @@ AppWindow {
                         onClicked: if (eventBridge) eventBridge.onAbort()
                     }
 
-                    // 输入 + 发送
+                    // the text box and send button
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 120
@@ -302,7 +302,7 @@ AppWindow {
                         }
                     }
 
-                    // 模式切换
+                    // switch mode
                     Button {
                         id: modeBtn
                         Layout.preferredWidth: 80
@@ -329,7 +329,7 @@ AppWindow {
                         onClicked: if (eventBridge) eventBridge.onAutoToggle()
                     }
 
-                    // 参数设置
+                    // settings
                     Button {
                         id: settingsBtn
                         Layout.preferredWidth: 80
