@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""系统托盘服务."""
+"""The system tray service."""
 
 import os
 from typing import Callable, Optional
@@ -15,7 +15,7 @@ logger = get_logger()
 
 
 class TrayService(QObject):
-    """系统托盘服务."""
+    """The system tray service."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -24,44 +24,44 @@ class TrayService(QObject):
         self._enabled = os.getenv("XIAOZHI_DISABLE_TRAY") != "1"
 
         if not self._enabled:
-            logger.warning("系统托盘已通过环境变量禁用")
+            logger.warning("the system tray is disabled by an environment variable")
 
     def setup(
         self,
         on_show: Callable,
         on_quit: Callable,
     ) -> bool:
-        """设置系统托盘.
+        """Set up the system tray.
 
         Args:
-            on_show: 显示窗口回调
-            on_quit: 退出回调
+            on_show: called to show the window
+            on_quit: called to quit
 
         Returns:
-            是否成功
+            whether it was set up
         """
         if not self._enabled:
             return False
 
         if not QSystemTrayIcon.isSystemTrayAvailable():
-            logger.warning("系统托盘不可用")
+            logger.warning("the system tray is unavailable")
             return False
 
         try:
-            # 创建托盘图标
+            # create the tray icon
             self._tray = QSystemTrayIcon(self.parent())
 
-            # 加载图标
+            # load the icon
             icon_path = get_assets_dir() / "icon.png"
             if icon_path.exists():
                 self._tray.setIcon(QIcon(str(icon_path)))
             else:
-                # 使用应用图标
+                # use the application icon
                 app = QApplication.instance()
                 if app:
                     self._tray.setIcon(app.windowIcon())
 
-            # 创建菜单
+            # build the menu
             self._menu = QMenu()
             self._menu.addAction("Show Window", on_show)
             self._menu.addSeparator()
@@ -69,7 +69,7 @@ class TrayService(QObject):
 
             self._tray.setContextMenu(self._menu)
 
-            # 双击激活
+            # double-click activates it
             self._tray.activated.connect(
                 lambda reason: on_show()
                 if reason == QSystemTrayIcon.DoubleClick
@@ -77,28 +77,28 @@ class TrayService(QObject):
             )
 
             self._tray.show()
-            logger.info("系统托盘初始化成功")
+            logger.info("system tray ready")
             return True
 
         except Exception as e:
-            logger.error(f"系统托盘初始化失败: {e}", exc_info=True)
+            logger.error(f"the system tray failed to initialise: {e}", exc_info=True)
             return False
 
     def update_tooltip(self, text: str):
-        """更新托盘提示."""
+        """Update the tray tooltip."""
         if self._tray:
             self._tray.setToolTip(text)
 
     def show_message(self, title: str, message: str):
-        """显示托盘通知."""
+        """Show a tray notification."""
         if self._tray:
             self._tray.showMessage(title, message)
 
     def hide(self):
-        """隐藏托盘."""
+        """Hide the tray icon."""
         if self._tray:
             self._tray.hide()
 
     def is_available(self) -> bool:
-        """托盘是否可用."""
+        """Whether the tray is available."""
         return self._tray is not None and self._tray.isVisible()

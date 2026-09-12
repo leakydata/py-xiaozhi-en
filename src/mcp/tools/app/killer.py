@@ -1,6 +1,6 @@
-"""应用终止和运行进程管理.
+"""Closing applications, and listing the running ones.
 
-通过 process_manager（psutil）提供跨平台的进程终止和列表功能。
+process_manager (built on psutil) does the cross-platform work.
 """
 
 import asyncio
@@ -16,48 +16,52 @@ logger = get_logger()
 
 
 async def kill_application(args: dict[str, Any]) -> bool:
-    """关闭应用程序.
+    """Close an application.
 
     Args:
-        args: 包含应用程序名称的参数字典
-            - app_name: 应用程序名称
-            - force: 是否强制关闭（可选，默认 False）
+        args: the arguments
+            - app_name: the application name
+            - force: kill rather than ask it to quit (optional, False by default)
 
     Returns:
-        关闭是否成功
+        whether it closed
     """
     try:
         app_name = args["app_name"]
         force = args.get("force", False)
-        logger.info(f"[AppKiller] 尝试关闭应用程序: {app_name}, 强制关闭: {force}")
+        logger.info(f"[AppKiller] closing: {app_name}, force: {force}")
 
         success = await asyncio.to_thread(kill_application_by_name, app_name, force)
 
         if success:
-            logger.info(f"[AppKiller] 成功关闭应用程序: {app_name}")
+            logger.info(f"[AppKiller] closed: {app_name}")
         else:
-            logger.warning(f"[AppKiller] 未能关闭应用程序: {app_name}")
+            logger.warning(f"[AppKiller] could not close: {app_name}")
 
         return success
 
     except Exception as e:
-        logger.error(f"[AppKiller] 关闭应用程序时出错: {e}", exc_info=True)
+        logger.error(
+            f"[AppKiller] error while closing the application: {e}", exc_info=True
+        )
         return False
 
 
 async def list_running_applications(args: dict[str, Any]) -> str:
-    """列出所有正在运行的应用程序.
+    """List every running application.
 
     Args:
-        args: 包含列出参数的字典
-            - filter_name: 过滤应用程序名称（可选）
+        args: the arguments
+            - filter_name: only applications whose name matches (optional)
 
     Returns:
-        JSON 格式的运行中应用程序列表
+        the running applications, as JSON
     """
     try:
         filter_name = args.get("filter_name", "")
-        logger.info(f"[AppKiller] 开始列出正在运行的应用程序，过滤条件: {filter_name}")
+        logger.info(
+            f"[AppKiller] listing the running applications, filter: {filter_name}"
+        )
 
         apps = await asyncio.to_thread(_list_apps, filter_name)
 
@@ -65,14 +69,16 @@ async def list_running_applications(args: dict[str, Any]) -> str:
             "success": True,
             "total_count": len(apps),
             "applications": apps[:50],
-            "message": f"找到 {len(apps)} 个正在运行的应用程序",
+            "message": f"Found {len(apps)} running applications",
         }
 
-        logger.info(f"[AppKiller] 列出完成，找到 {len(apps)} 个正在运行的应用程序")
+        logger.info(
+            f"[AppKiller] listing complete, {len(apps)} running applications found"
+        )
         return json.dumps(result, ensure_ascii=False, indent=2)
 
     except Exception as e:
-        error_msg = f"列出运行中应用程序失败: {e}"
+        error_msg = f"Could not list the running applications: {e}"
         logger.error(f"[AppKiller] {error_msg}", exc_info=True)
         return json.dumps(
             {
