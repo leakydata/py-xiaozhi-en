@@ -20,7 +20,7 @@ is silently lost.
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from src.logging import get_logger
 from src.plugins.base import Plugin
@@ -41,12 +41,12 @@ class RemindersPlugin(Plugin):
 
     def __init__(self) -> None:
         super().__init__()
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._running = False
         self._poll = _DEFAULT_POLL
         self._enabled = True
 
-    async def setup(self, ctx: "PluginContext", cmd: "PluginCommands") -> None:
+    async def setup(self, ctx: PluginContext, cmd: PluginCommands) -> None:
         await super().setup(ctx, cmd)
         try:
             cfg = ctx.get_config()
