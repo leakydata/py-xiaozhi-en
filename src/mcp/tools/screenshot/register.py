@@ -1,4 +1,4 @@
-"""截图 MCP 工具注册与工厂."""
+"""Registering the screenshot MCP tool, and the factory behind it."""
 
 import asyncio
 import json
@@ -13,7 +13,7 @@ logger = get_logger()
 
 
 def create_screenshot_camera() -> ScreenshotCamera:
-    """创建桌面截图实现."""
+    """Build the desktop screenshot implementation."""
     return ScreenshotCamera()
 
 
@@ -21,13 +21,13 @@ def register_screenshot_tools(
     add_tool: Callable[[McpTool], None],
     photo_camera=None,
 ) -> None:
-    """注册 take_screenshot.
+    """Register take_screenshot.
 
-    photo_camera: 可选，用于分析时复用 explain URL/token（与 take_photo 同一 camera）。
+    photo_camera: optional; reuses the explain URL and token when analysing (the same camera take_photo uses).
     """
     camera = create_screenshot_camera()
     if photo_camera is not None and hasattr(photo_camera, "get_explain_url"):
-        # 与拍照共用 vision 配置（若已配置）
+        # share the vision configuration with the photo tool, when one is set
         try:
             url = getattr(photo_camera, "explain_url", None) or getattr(
                 photo_camera, "_explain_url", None
@@ -40,9 +40,12 @@ def register_screenshot_tools(
             if token and hasattr(camera, "set_explain_token"):
                 camera.set_explain_token(token)
         except Exception as e:
-            logger.debug(f"同步 vision 配置到截图摄像头失败: {e}", exc_info=True)
+            logger.debug(
+                f"failed to copy the vision configuration to the screenshot camera: {e}",
+                exc_info=True,
+            )
 
-    # analyze 若需要 fallback 到 photo camera 的 explain 设置，挂引用
+    # keep a reference so analyse can fall back to the photo camera's explain settings
     camera._photo_camera_ref = photo_camera  # type: ignore[attr-defined]
 
     async def take_screenshot(arguments: dict) -> str:
@@ -55,15 +58,22 @@ def register_screenshot_tools(
 
         if display_id:
             if isinstance(display_id, str):
-                if display_id.lower() in ["main", "主屏", "主显示器", "笔记本", "内屏"]:
+                # The aliases the model might reasonably pass for each screen.
+                if display_id.lower() in [
+                    "main",
+                    "primary",
+                    "built-in",
+                    "builtin",
+                    "internal",
+                    "laptop",
+                ]:
                     display_id = "main"
                 elif display_id.lower() in [
                     "secondary",
-                    "副屏",
-                    "副显示器",
-                    "外接",
-                    "外屏",
-                    "第二屏",
+                    "second",
+                    "external",
+                    "extended",
+                    "monitor",
                 ]:
                     display_id = "secondary"
                 else:
@@ -93,14 +103,16 @@ def register_screenshot_tools(
         McpTool(
             "take_screenshot",
             (
-                "【桌面截图/屏幕分析】当用户提到：截屏、截图、看看桌面、分析屏幕、桌面上有什么、"
-                "屏幕截图、查看当前界面、分析当前页面、读取屏幕内容、屏幕OCR 时调用本工具。"
-                "功能：①截取整个桌面画面；②屏幕内容识别与分析；③屏幕OCR文字提取；④界面元素分析；"
-                "⑤应用程序识别；⑥错误信息截图分析；⑦桌面状态检查；⑧多屏幕截图。"
-                "参数说明：{ question: '你想了解的关于桌面/屏幕的问题', display: '显示器选择(可选)' }；"
-                "display可选值：'main'/'主屏'/'笔记本'(主显示器), 'secondary'/'副屏'/'外屏'(副显示器), 或留空(所有显示器)；"
-                "适用场景：桌面截图、屏幕分析、界面问题诊断、应用状态查看、错误截图分析等。"
-                "注意：该工具会截取桌面，请确保用户同意截图操作。"
+                "[Screenshots and screen analysis] Use this when the user asks to take a screenshot, "
+                "look at the desktop, analyse the screen, read what is on screen, or run OCR over it. "
+                "It captures the whole desktop, describes and analyses what is on it, extracts text with "
+                "OCR, examines interface elements, identifies applications, reads error dialogs, checks "
+                "the state of the desktop, and handles multiple screens. "
+                "Arguments: { question: 'what you want to know about the screen', display: 'which screen (optional)' }. "
+                "display accepts 'main' (or primary/built-in/laptop), 'secondary' (or second/external/monitor), "
+                "a screen number, or nothing at all for every screen. "
+                "Good for diagnosing an interface problem, checking what an app is doing, or reading an error. "
+                "Note: this captures the desktop, so make sure the user is happy for you to do that."
             ),
             PropertyList(
                 [
@@ -111,4 +123,4 @@ def register_screenshot_tools(
             take_screenshot,
         )
     )
-    logger.info("已注册 take_screenshot（无全局单例）")
+    logger.info("registered take_screenshot (no global singleton)")

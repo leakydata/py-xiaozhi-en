@@ -1,4 +1,4 @@
-"""歌词拉取、解析，以及按播放进度取当前句."""
+"""Fetching and parsing lyrics, and picking the current line from the playback position."""
 
 from __future__ import annotations
 
@@ -11,10 +11,12 @@ from src.logging import get_logger
 
 logger = get_logger()
 
-# (时间秒, 文本)
+# (seconds, text)
 LyricLine = tuple[float, str]
 
-# 过滤掉作词/作曲这类信息行
+# Credit lines to drop (lyricist, composer, arranger and so on). These stay in
+# Chinese: they are matched with startswith() against the lyric text the Kuwo
+# API returns, which is Chinese whatever language this client runs in.
 _METADATA_PREFIXES = (
     "作词",
     "作曲",
@@ -29,9 +31,9 @@ _METADATA_PREFIXES = (
 def lyric_at(
     lyrics: list[LyricLine], current_time: float, *, lead: float = 0.5
 ) -> tuple[int, str] | None:
-    """按当前播放时间找该显示哪句歌词.
+    """Find which line of the lyrics belongs to the current playback time.
 
-    返回 (下标, 文本)；没有歌词返回 None。
+    Returns (index, text), or None when there are no lyrics.
     """
     if not lyrics:
         return None
@@ -52,10 +54,8 @@ def lyric_at(
     return idx, lyrics[idx][1]
 
 
-def format_lyric_display(
-    text: str, position: float, duration: float
-) -> str:
-    """拼 UI 上用的歌词行，例如 [00:12/03:45] 歌词内容."""
+def format_lyric_display(text: str, position: float, duration: float) -> str:
+    """Build the lyric line the UI shows, e.g. [00:12/03:45] the words."""
     return f"[{_fmt(position)}/{_fmt(duration)}] {text}"
 
 
@@ -66,9 +66,9 @@ def _fmt(seconds: float) -> str:
 
 
 def parse_kuwo_lrc_list(lrc_list: list[dict]) -> tuple[list[LyricLine], int]:
-    """解析酷我返回的 lrclist.
+    """Parse the lrclist the Kuwo API returns.
 
-    返回 (歌词列表, 被过滤的信息行数量).
+    Returns (the lyrics, how many credit lines were dropped).
     """
     lyrics: list[LyricLine] = []
     filtered = 0
@@ -94,9 +94,9 @@ async def fetch_kuwo_lyrics(
     lyrics_url: str,
     headers: dict[str, Any] | None = None,
 ) -> list[LyricLine]:
-    """从酷我接口拉歌词并解析."""
+    """Fetch the lyrics from the Kuwo API and parse them."""
     try:
-        logger.info(f"获取歌词: ID={song_id}")
+        logger.info(f"fetching lyrics: ID={song_id}")
         response = await asyncio.to_thread(
             requests.get,
             lyrics_url,
@@ -108,19 +108,19 @@ async def fetch_kuwo_lyrics(
         data = response.json()
 
         if data.get("status") != 200:
-            logger.info("该歌曲暂无歌词")
+            logger.info("this track has no lyrics")
             return []
 
         lrc_list = data.get("data", {}).get("lrclist", [])
         if not lrc_list:
-            logger.warning("未获取到歌词数据")
+            logger.warning("no lyrics data came back")
             return []
 
         lyrics, filtered = parse_kuwo_lrc_list(lrc_list)
         logger.info(
-            f"成功获取歌词，共 {len(lyrics)} 行（过滤 {filtered} 行元数据）"
+            f"got the lyrics: {len(lyrics)} lines ({filtered} credit lines dropped)"
         )
         return lyrics
     except Exception as e:
-        logger.error(f"获取歌词失败: {e}", exc_info=True)
+        logger.error(f"failed to fetch the lyrics: {e}", exc_info=True)
         return []

@@ -1,6 +1,6 @@
-"""统一的应用程序扫描器入口.
+"""The single entry point for scanning applications.
 
-根据当前系统自动选择对应的扫描器实现
+Picks the right scanner for whichever platform this is
 """
 
 import asyncio
@@ -15,23 +15,25 @@ logger = get_logger()
 
 
 async def scan_installed_applications(args: Dict[str, Any]) -> str:
-    """扫描系统中所有已安装的应用程序.
+    """Scan every application installed on this system.
 
     Args:
-        args: 包含扫描参数的字典
-            - force_refresh: 是否强制重新扫描（可选，默认False）
+        args: the scan arguments
+            - force_refresh: rescan even if there is a cache (optional, False by default)
 
     Returns:
-        str: JSON格式的应用程序列表
+        str: the applications, as JSON
     """
     try:
         force_refresh = args.get("force_refresh", False)
-        logger.info(f"[AppScanner] 开始扫描已安装应用程序，强制刷新: {force_refresh}")
+        logger.info(
+            f"[AppScanner] scanning the installed applications, force_refresh: {force_refresh}"
+        )
 
-        # 获取系统对应的扫描器
+        # get the scanner for this platform
         scanner = get_system_scanner()
         if not scanner:
-            error_msg = "不支持的操作系统"
+            error_msg = "This operating system is not supported"
             logger.error(f"[AppScanner] {error_msg}")
             return json.dumps(
                 {
@@ -43,21 +45,21 @@ async def scan_installed_applications(args: Dict[str, Any]) -> str:
                 ensure_ascii=False,
             )
 
-        # 使用线程池执行扫描，避免阻塞事件循环
+        # run the scan on a thread pool, so the event loop is not blocked
         apps = await asyncio.to_thread(scanner.scan_installed_applications)
 
         result = {
             "success": True,
             "total_count": len(apps),
             "applications": apps,
-            "message": f"成功扫描到 {len(apps)} 个已安装应用程序",
+            "message": f"Found {len(apps)} installed applications",
         }
 
-        logger.info(f"[AppScanner] 扫描完成，找到 {len(apps)} 个应用程序")
+        logger.info(f"[AppScanner] scan complete, {len(apps)} applications found")
         return json.dumps(result, ensure_ascii=False, indent=2)
 
     except Exception as e:
-        error_msg = f"扫描应用程序失败: {str(e)}"
+        error_msg = f"Could not scan the applications: {str(e)}"
         logger.error(f"[AppScanner] {error_msg}", exc_info=True)
         return json.dumps(
             {
@@ -71,23 +73,25 @@ async def scan_installed_applications(args: Dict[str, Any]) -> str:
 
 
 async def list_running_applications(args: Dict[str, Any]) -> str:
-    """列出系统中正在运行的应用程序.
+    """List the applications currently running.
 
     Args:
-        args: 包含过滤参数的字典
-            - filter_name: 应用名称过滤条件（可选）
+        args: the filter arguments
+            - filter_name: only applications whose name matches (optional)
 
     Returns:
-        str: JSON格式的运行应用程序列表
+        str: the running applications, as JSON
     """
     try:
         filter_name = args.get("filter_name", "")
-        logger.info(f"[AppScanner] 开始列出正在运行的应用程序，过滤条件: {filter_name}")
+        logger.info(
+            f"[AppScanner] listing the running applications, filter: {filter_name}"
+        )
 
-        # 获取系统对应的扫描器
+        # get the scanner for this platform
         scanner = get_system_scanner()
         if not scanner:
-            error_msg = "不支持的操作系统"
+            error_msg = "This operating system is not supported"
             logger.error(f"[AppScanner] {error_msg}")
             return json.dumps(
                 {
@@ -99,10 +103,10 @@ async def list_running_applications(args: Dict[str, Any]) -> str:
                 ensure_ascii=False,
             )
 
-        # 使用线程池执行扫描，避免阻塞事件循环
+        # run the scan on a thread pool, so the event loop is not blocked
         apps = await asyncio.to_thread(scanner.scan_running_applications)
 
-        # 应用过滤条件
+        # apply the filter
         if filter_name:
             filter_lower = filter_name.lower()
             filtered_apps = []
@@ -119,14 +123,16 @@ async def list_running_applications(args: Dict[str, Any]) -> str:
             "success": True,
             "total_count": len(apps),
             "applications": apps,
-            "message": f"找到 {len(apps)} 个正在运行的应用程序",
+            "message": f"Found {len(apps)} running applications",
         }
 
-        logger.info(f"[AppScanner] 列出完成，找到 {len(apps)} 个正在运行的应用程序")
+        logger.info(
+            f"[AppScanner] listing complete, {len(apps)} running applications found"
+        )
         return json.dumps(result, ensure_ascii=False, indent=2)
 
     except Exception as e:
-        error_msg = f"列出运行应用程序失败: {str(e)}"
+        error_msg = f"Could not list the running applications: {str(e)}"
         logger.error(f"[AppScanner] {error_msg}", exc_info=True)
         return json.dumps(
             {
