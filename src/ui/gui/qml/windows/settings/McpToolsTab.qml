@@ -8,7 +8,6 @@ import "../../controls"
 ScrollView {
     id: root
     clip: true
-    contentWidth: availableWidth
     ScrollBar.vertical.policy: ScrollBar.AlwaysOn
     // leave room for the vertical scrollbar so the right-hand switches are not clipped
     rightPadding: 8
