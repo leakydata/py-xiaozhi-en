@@ -1,4 +1,4 @@
-"""GUI 设备激活窗口：QObject 控制器 + 组合 BaseActivation 流程（无多继承）."""
+"""The GUI device activation window: a QObject controller composing the BaseActivation flow (no multiple inheritance)."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ logger = get_logger()
 
 
 class _ActivationFlow(BaseActivation):
-    """纯流程对象：把展示回调接到 GuiActivation 控制器."""
+    """The flow object on its own, with its display callbacks wired to the GuiActivation controller."""
 
     def __init__(self, controller: "GuiActivation", service, init_result: dict):
         super().__init__(service, init_result)
@@ -37,7 +37,7 @@ class _ActivationFlow(BaseActivation):
 
 
 class GuiActivation(QObject):
-    """GUI 激活窗口控制器（只继承 QObject；流程用组合）."""
+    """The activation window controller (it only subclasses QObject; the flow is composed in)."""
 
     activationCompleted = Signal(bool)
 
@@ -77,12 +77,12 @@ class GuiActivation(QObject):
         self._engine.load(QUrl.fromLocalFile(str(qml_file)))
 
         if not self._engine.rootObjects():
-            logger.error("GuiActivation: QML 加载失败")
+            logger.error("GuiActivation: the QML failed to load")
             raise RuntimeError("Failed to load ActivationWindow.qml")
 
         root = self._engine.rootObjects()[0]
         root.closing.connect(self._on_window_closing)
-        logger.debug("GuiActivation: UI 初始化完成")
+        logger.debug("GuiActivation: UI ready")
 
     def _show_window(self) -> None:
         if self._engine and self._engine.rootObjects():
@@ -115,31 +115,34 @@ class GuiActivation(QObject):
                 self._run_activation(), name="gui:activation"
             )
         except RuntimeError as e:
-            logger.error(f"GuiActivation: 无法调度激活协程: {e}", exc_info=True)
+            logger.error(
+                f"GuiActivation: could not schedule the activation coroutine: {e}",
+                exc_info=True,
+            )
             self._complete(False)
 
     async def _run_activation(self) -> None:
         try:
             await self._flow.run()
         except asyncio.CancelledError:
-            logger.info("GuiActivation: 激活被取消")
+            logger.info("GuiActivation: activation was cancelled")
             self._complete(False)
         except Exception as e:
-            logger.error(f"GuiActivation: 激活异常: {e}", exc_info=True)
+            logger.error(f"GuiActivation: activation raised: {e}", exc_info=True)
             self._complete(False)
 
     def _show_code(self, data: dict) -> None:
         code = data.get("code", "------")
         self._model.update_activation_code(code)
-        logger.info(f"GuiActivation: 激活验证码: {code}")
+        logger.info(f"GuiActivation: verification code: {code}")
 
     def _show_result(self, success: bool) -> None:
         if success:
-            logger.info("GuiActivation: 激活成功")
+            logger.info("GuiActivation: activated")
             self._model.set_status_activated()
             QTimer.singleShot(1500, lambda: self._complete(True))
         else:
-            logger.warning("GuiActivation: 激活失败")
+            logger.warning("GuiActivation: activation failed")
             self._model.set_status_not_activated()
 
     def _show_error(self, msg: str) -> None:
@@ -152,7 +155,7 @@ class GuiActivation(QObject):
         self.activationCompleted.emit(success)
 
     def _on_window_closing(self) -> None:
-        logger.info("GuiActivation: 窗口关闭")
+        logger.info("GuiActivation: window closed")
         if self._completion_future and not self._completion_future.done():
             self._completion_future.set_result(False)
 
@@ -167,7 +170,7 @@ class GuiActivation(QObject):
         if code and code != "------":
             clipboard = QGuiApplication.clipboard()
             clipboard.setText(code)
-            logger.info(f"GuiActivation: 已复制激活码: {code}")
+            logger.info(f"GuiActivation: copied the activation code: {code}")
 
     @Slot()
     def openActivationUrl(self):
@@ -181,11 +184,13 @@ class GuiActivation(QObject):
             url = config.get_config("SYSTEM_OPTIONS.NETWORK.AUTHORIZATION_URL", "")
             if url:
                 QDesktopServices.openUrl(QUrl(url))
-                logger.info(f"GuiActivation: 已打开激活页面: {url}")
+                logger.info(f"GuiActivation: opened the activation page: {url}")
             else:
-                logger.warning("GuiActivation: 未配置激活 URL")
+                logger.warning("GuiActivation: no activation URL is configured")
         except Exception as e:
-            logger.error(f"GuiActivation: 打开激活页面失败: {e}", exc_info=True)
+            logger.error(
+                f"GuiActivation: failed to open the activation page: {e}", exc_info=True
+            )
 
     @Slot()
     def cancelActivation(self):
