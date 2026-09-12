@@ -1,6 +1,6 @@
-"""采样级 PCM 缓冲.
+"""A sample-level PCM buffer.
 
-输出回调混音使用的线程安全 FIFO
+The thread-safe FIFO the output callback mixes from
 """
 
 import threading
@@ -10,19 +10,19 @@ import numpy as np
 
 
 class PcmFifo:
-    """采样级 PCM FIFO（float32 单声道，线程安全）.
+    """A sample-level PCM FIFO (float32 mono, thread-safe).
 
-    写入端在 asyncio 线程，读取端在音频输出回调线程；
-    用于 TTS / 音乐分流后在输出回调中混音。
+    Written from the asyncio thread and read from the audio output callback thread;
+    this is what lets TTS and music stay separate and be mixed in the output callback.
 
-    - push：超出容量丢最旧（记入 dropped）
-    - pull：返回定长块，数据不足补零；完全无数据返回 None
+    - push: past capacity the oldest samples go, and are counted in dropped
+    - pull: returns a fixed-size block, zero-padded if short; None when there is nothing at all
     """
 
     def __init__(self, max_samples: int):
         self._chunks: deque = deque()
-        self._offset = 0  # 首块已消费的样本数
-        self._size = 0  # 可读样本总数
+        self._offset = 0  # how many samples of the first block have been consumed
+        self._size = 0  # how many samples are readable in total
         self._max = int(max_samples)
         self._lock = threading.Lock()
         self.dropped = 0
@@ -32,7 +32,7 @@ class PcmFifo:
         return self._size
 
     def push(self, pcm: np.ndarray) -> None:
-        """追加 float32 单声道数据；容量超限时丢最旧."""
+        """Append float32 mono data, dropping the oldest once capacity is exceeded."""
         if pcm.ndim > 1:
             pcm = pcm.reshape(-1)
         if pcm.dtype != np.float32:
@@ -52,7 +52,7 @@ class PcmFifo:
                     self._offset = 0
 
     def pull(self, n: int) -> np.ndarray | None:
-        """取 n 个样本；无数据返回 None，不足补零."""
+        """Take n samples; None when empty, zero-padded when short."""
         with self._lock:
             if self._size == 0:
                 return None
@@ -62,9 +62,7 @@ class PcmFifo:
                 head = self._chunks[0]
                 avail = len(head) - self._offset
                 take = min(avail, n - filled)
-                out[filled : filled + take] = head[
-                    self._offset : self._offset + take
-                ]
+                out[filled : filled + take] = head[self._offset : self._offset + take]
                 filled += take
                 self._offset += take
                 self._size -= take
@@ -74,7 +72,7 @@ class PcmFifo:
             return out
 
     def clear(self) -> int:
-        """清空，返回丢弃的样本数."""
+        """Empty it, returning how many samples were discarded."""
         with self._lock:
             count = self._size
             self._chunks.clear()
