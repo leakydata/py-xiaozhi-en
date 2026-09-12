@@ -6,6 +6,7 @@ from src.core.event_bus import EventBus, Events
 from src.core.task_manager import TaskManager
 from src.logging import get_logger
 from src.ui.gui.main_controller import MainWindowController
+from src.ui.gui.models.activity_model import ActivityModel
 from src.ui.gui.qml_host import QmlAppHost
 from src.ui.gui.services import TrayService
 from src.ui.gui.settings_controller import SettingsController
@@ -35,6 +36,7 @@ class GuiViewManager(QObject):
         self._bridge = EventBridge(event_bus, task_manager=self._tasks)
         self._host = QmlAppHost()
         self._main = MainWindowController()
+        self._activity = ActivityModel()
         self._settings = SettingsController(event_bus, self._tasks, self._bridge)
         self._tray_service: TrayService | None = None
 
@@ -69,6 +71,7 @@ class GuiViewManager(QObject):
                 "mainModel": self._main.main_model,
                 "settingsModel": self._settings.ensure_model(),
                 "emotionService": self._main.emotion_service,
+                "activityModel": self._activity,
             }
         )
         self._host.load_main()

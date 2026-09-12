@@ -85,6 +85,16 @@ def _argv(workspace: Path, network: bool) -> list[str]:
         "--setenv", "MPLCONFIGDIR", "/tmp/mpl",
         "--setenv", "XDG_CACHE_HOME", "/tmp/cache",
     ]
+    # Re-bind protected files read-only ON TOP of the writable workspace. bwrap
+    # applies mounts in order, so this wins. Without it the file tools' guard is
+    # theatre: a one-line script overwrote ASSISTANT.md in testing.
+    from src.mcp.tools.files import store as _store
+
+    for name in sorted(_store.PROTECTED):
+        candidate = workspace / name
+        if candidate.exists():
+            args += ["--ro-bind", str(candidate), str(candidate)]
+
     if network:
         args += ["--ro-bind-try", "/etc/resolv.conf", "/etc/resolv.conf",
                  "--unshare-pid", "--unshare-ipc", "--unshare-uts"]

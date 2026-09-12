@@ -22,6 +22,28 @@ logger = get_logger()
 MAX_READ_BYTES = 200_000
 MAX_WRITE_BYTES = 2_000_000
 
+# Files the assistant may read but must not change. ASSISTANT.md carries the
+# user's standing instructions and is folded into the startup briefing; letting
+# the assistant rewrite or delete its own guardrails is a bad property - it
+# could quietly weaken them and nobody would notice.
+PROTECTED = {"ASSISTANT.md"}
+
+
+class ProtectedFile(Exception):
+    """Raised on an attempt to modify a read-only workspace file."""
+
+
+def _guard_writable(target: Path) -> None:
+    try:
+        name = target.relative_to(root()).as_posix()
+    except ValueError:
+        return
+    if name in PROTECTED:
+        raise ProtectedFile(
+            f"{name} is read-only: it holds the user's standing instructions. "
+            "Ask them to edit it themselves."
+        )
+
 
 class OutsideWorkspace(Exception):
     """Raised when a path escapes the workspace root."""
@@ -115,6 +137,7 @@ def read_file(rel: str, max_bytes: int = MAX_READ_BYTES) -> dict:
 
 def write_file(rel: str, content: str, append: bool = False) -> dict:
     target = resolve(rel)
+    _guard_writable(target)
     data = (content or "").encode("utf-8")
     if len(data) > MAX_WRITE_BYTES:
         raise ValueError(f"Content is too large ({len(data)} bytes)")
@@ -130,6 +153,7 @@ def write_file(rel: str, content: str, append: bool = False) -> dict:
 
 def delete(rel: str) -> dict:
     target = resolve(rel)
+    _guard_writable(target)
     if target == root():
         raise OutsideWorkspace("Refusing to delete the workspace itself")
     if not target.exists():
@@ -150,6 +174,8 @@ def make_dir(rel: str) -> dict:
 
 def move(src: str, dst: str) -> dict:
     a, b = resolve(src), resolve(dst)
+    _guard_writable(a)
+    _guard_writable(b)
     if not a.exists():
         raise FileNotFoundError(f"{rel_to_root(a)} does not exist")
     if a == root():

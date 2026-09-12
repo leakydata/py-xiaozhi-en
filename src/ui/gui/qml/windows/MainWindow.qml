@@ -355,6 +355,158 @@ AppWindow {
 
                         onClicked: if (eventBridge) eventBridge.onOpenSettings()
                     }
+
+                    // Activity panel toggle. The dot turns live while a tool is
+                    // running, so "is it thinking or wedged" is answerable at a
+                    // glance without opening the panel.
+                    Button {
+                        id: activityBtn
+                        Layout.preferredWidth: 74
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: 110
+                        Layout.preferredHeight: 38
+                        text: "Activity"
+
+                        background: Rectangle {
+                            color: activityPanel.visible ? Theme.primaryLight
+                                 : (activityBtn.pressed ? Theme.divider
+                                 : (activityBtn.hovered ? Theme.backgroundHover
+                                 : Theme.backgroundSecondary))
+                            radius: Theme.radiusMd
+                            border.width: 1
+                            border.color: activityPanel.visible ? Theme.primary : Theme.border
+                        }
+
+                        contentItem: RowLayout {
+                            spacing: 5
+                            Rectangle {
+                                Layout.alignment: Qt.AlignVCenter
+                                width: 7; height: 7; radius: 3.5
+                                visible: activityModel && activityModel.busy
+                                color: Theme.primary
+                                SequentialAnimation on opacity {
+                                    running: activityModel && activityModel.busy
+                                    loops: Animation.Infinite
+                                    NumberAnimation { to: 0.25; duration: 450 }
+                                    NumberAnimation { to: 1.0; duration: 450 }
+                                }
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: activityBtn.text
+                                font.pixelSize: Theme.fontSizeSm
+                                color: activityPanel.visible ? Theme.primaryText : Theme.textPrimary
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+
+                        onClicked: activityPanel.visible = !activityPanel.visible
+                    }
+            }
+        }
+    }
+
+    // Activity panel. An overlay rather than a layout row, so showing it never
+    // reflows the avatar or the buttons underneath.
+    Rectangle {
+        id: activityPanel
+        visible: false
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 72
+        height: Math.min(parent.height * 0.55, 260)
+        color: Theme.background
+        border.width: 1
+        border.color: Theme.divider
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Theme.spacingSm
+            spacing: Theme.spacingXs
+
+            RowLayout {
+                Layout.fillWidth: true
+                Text {
+                    Layout.fillWidth: true
+                    text: (activityModel && activityModel.busy)
+                        ? "Activity — " + activityModel.busyCount + " running"
+                        : "Activity"
+                    font.pixelSize: Theme.fontSizeSm
+                    font.weight: Font.Medium
+                    color: Theme.textSecondary
+                }
+                Text {
+                    text: "Hide"
+                    font.pixelSize: Theme.fontSizeXs
+                    color: Theme.primaryText
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: activityPanel.visible = false
+                    }
+                }
+            }
+
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: 2
+                model: activityModel ? activityModel.activity : []
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                delegate: Rectangle {
+                    width: ListView.view.width
+                    height: row.implicitHeight + 8
+                    color: modelData.running ? Theme.primaryLight
+                         : (modelData.failed ? Theme.errorLight : "transparent")
+                    radius: Theme.radiusSm
+
+                    RowLayout {
+                        id: row
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: 6
+                        anchors.rightMargin: 6
+                        spacing: 6
+
+                        Text {
+                            text: modelData.running ? "▶" : (modelData.failed ? "✕" : "✓")
+                            font.pixelSize: Theme.fontSizeXs
+                            color: modelData.running ? Theme.primary
+                                 : (modelData.failed ? Theme.error : Theme.success)
+                        }
+                        Text {
+                            text: modelData.tool
+                            font.pixelSize: Theme.fontSizeXs
+                            font.family: "monospace"
+                            color: Theme.textPrimary
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: modelData.detail
+                            font.pixelSize: Theme.fontSizeXs
+                            color: Theme.textPlaceholder
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            text: modelData.took
+                            font.pixelSize: Theme.fontSizeXs
+                            color: Theme.textPlaceholder
+                        }
+                    }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: parent.count === 0
+                    text: "Nothing yet — tool calls will appear here as they run."
+                    font.pixelSize: Theme.fontSizeXs
+                    color: Theme.textPlaceholder
+                }
             }
         }
     }

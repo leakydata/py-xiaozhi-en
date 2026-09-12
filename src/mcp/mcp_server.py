@@ -366,11 +366,13 @@ class McpServer:
         from src.mcp import audit
 
         started = _time.monotonic()
+        call_id = audit.begin(tool_name, arguments)
         try:
             result = await tool.call(arguments)
             elapsed = int((_time.monotonic() - started) * 1000)
             logger.info(f"[MCP] tool {tool_name} succeeded, result: {result}")
             audit.record(tool_name, arguments, ok=True, result=result, ms=elapsed)
+            audit.finish(call_id, ok=True, detail=result, ms=elapsed)
             await self._reply_result(request_id, json.loads(result))
         except Exception as e:
             elapsed = int((_time.monotonic() - started) * 1000)
@@ -378,6 +380,7 @@ class McpServer:
                 f"[MCP] tool {tool_name} failed: {e}", exc_info=True
             )
             audit.record(tool_name, arguments, ok=False, error=str(e), ms=elapsed)
+            audit.finish(call_id, ok=False, detail=str(e), ms=elapsed)
             await self._reply_error(request_id, str(e))
 
     async def _parse_capabilities(self, capabilities):
