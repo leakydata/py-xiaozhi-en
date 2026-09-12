@@ -12,13 +12,13 @@ from src.logging import get_logger
 
 logger = get_logger()
 
-# 返回值类型
+# the return type
 ReturnValue = Union[bool, int, str]
 
 
 class PropertyType(Enum):
     """
-    属性类型枚举.
+    The property types.
     """
 
     BOOLEAN = "boolean"
@@ -29,7 +29,7 @@ class PropertyType(Enum):
 @dataclass
 class Property:
     """
-    MCP工具属性定义.
+    One property of an MCP tool.
     """
 
     name: str
@@ -48,7 +48,7 @@ class Property:
 
     def value(self, value: Any) -> Any:
         """
-        验证并返回值.
+        Validate the value and return it.
         """
         if self.type == PropertyType.INTEGER and self.has_range:
             if value < self.min_value:
@@ -63,7 +63,7 @@ class Property:
 
     def to_json(self) -> Dict[str, Any]:
         """
-        转换为JSON格式.
+        Convert to JSON.
         """
         result = {"type": self.type.value}
 
@@ -82,14 +82,14 @@ class Property:
 @dataclass
 class PropertyList:
     """
-    属性列表.
+    A list of properties.
     """
 
     properties: List[Property] = field(default_factory=list)
 
     def __init__(self, properties: Optional[List[Property]] = None):
         """
-        初始化属性列表.
+        Initialise the property list.
         """
         self.properties = properties or []
 
@@ -104,26 +104,26 @@ class PropertyList:
 
     def get_required(self) -> List[str]:
         """
-        获取必需的属性名称列表.
+        The names of the required properties.
         """
         return [p.name for p in self.properties if not p.has_default_value]
 
     def to_json(self) -> Dict[str, Any]:
         """
-        转换为JSON格式.
+        Convert to JSON.
         """
         return {prop.name: prop.to_json() for prop in self.properties}
 
     def parse_arguments(self, arguments: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        解析并验证参数.
+        Parse and validate the arguments.
         """
         result = {}
 
         for prop in self.properties:
             if arguments and prop.name in arguments:
                 value = arguments[prop.name]
-                # 类型检查
+                # type check
                 if prop.type == PropertyType.BOOLEAN and isinstance(value, bool):
                     result[prop.name] = value
                 elif prop.type == PropertyType.INTEGER and isinstance(
@@ -145,7 +145,7 @@ class PropertyList:
 @dataclass
 class McpTool:
     """
-    MCP工具定义.
+    An MCP tool.
     """
 
     name: str
@@ -155,7 +155,7 @@ class McpTool:
 
     def to_json(self) -> Dict[str, Any]:
         """
-        转换为JSON格式.
+        Convert to JSON.
         """
         return {
             "name": self.name,
@@ -169,19 +169,19 @@ class McpTool:
 
     async def call(self, arguments: Dict[str, Any]) -> str:
         """
-        调用工具.
+        Call the tool.
         """
         try:
-            # 解析参数
+            # parse the arguments
             parsed_args = self.properties.parse_arguments(arguments)
 
-            # 调用回调函数
+            # call the callback
             if asyncio.iscoroutinefunction(self.callback):
                 result = await self.callback(parsed_args)
             else:
                 result = self.callback(parsed_args)
 
-            # 格式化返回值
+            # format the return value
             if isinstance(result, bool):
                 text = "true" if result else "false"
             elif isinstance(result, int):

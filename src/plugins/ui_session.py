@@ -1,4 +1,4 @@
-"""界面上的按键、发文本、模式切换等，转成协议调用."""
+"""Turns what the interface does - buttons, sending text, switching mode - into protocol calls."""
 
 from typing import TYPE_CHECKING
 
@@ -14,7 +14,7 @@ logger = get_logger()
 
 
 class SessionActions:
-    """会话相关操作."""
+    """The session actions."""
 
     def __init__(
         self,
@@ -27,7 +27,7 @@ class SessionActions:
         self._ui = presenter
         self._manual_recording = False
         self._auto_mode = False
-        # 自动模式下是否已经开始对话（按钮显示「停止对话」）
+        # in auto mode, whether a conversation has started (the button then reads "Stop Chat")
         self._auto_session_active = False
 
     @property
@@ -51,10 +51,10 @@ class SessionActions:
         bus.on(Events.UI_ABORT_REQUEST, self.abort)
         bus.on(Events.UI_SEND_TEXT, self.send_text_from_event)
         bus.on(Events.UI_QUIT_REQUEST, self.request_shutdown)
-        logger.info("SessionActions 已订阅 UI 用户操作事件")
+        logger.info("SessionActions subscribed to the UI action events")
 
     def on_device_state_changed(self, state) -> None:
-        # 手动录音中途被拉出 listening，复位按钮
+        # manual recording was pulled out of listening mid-way, so reset the button
         if state != DeviceState.LISTENING and self._manual_recording:
             self._manual_recording = False
             if not self._auto_mode:
@@ -78,18 +78,20 @@ class SessionActions:
         return ListeningMode.REALTIME if aec else ListeningMode.AUTO_STOP
 
     async def _ensure_listen_session(self) -> bool:
-        # 空闲时直接 detect，服务端常会丢；先听再发
+        # a detect straight from idle is often dropped by the server, so start listening first
         if self._ctx.is_listening() or self._ctx.is_speaking():
             return True
         if not await self._cmd.connect_protocol():
-            logger.warning("无法建立协议连接，取消会话操作")
+            logger.warning(
+                "could not open the protocol connection, abandoning the session action"
+            )
             return False
         mode = self._listen_mode()
         await self._cmd.start_listening(mode)
         if self._auto_mode:
             self._auto_session_active = True
             self._ui.set_button_text("Stop Chat")
-        logger.debug(f"已开启 listen 会话: mode={mode}")
+        logger.debug(f"listening session open: mode={mode}")
         return True
 
     async def send_text_from_event(self, data) -> None:
@@ -100,7 +102,7 @@ class SessionActions:
         elif isinstance(data, str):
             text = data
         else:
-            logger.warning(f"无效的发送文本数据: {type(data)}")
+            logger.warning(f"invalid send-text payload: {type(data)}")
             return
         await self.send_text(text)
 
@@ -109,7 +111,7 @@ class SessionActions:
         if not text:
             return
 
-        logger.info(f"发送文本: {text[:40]}{'...' if len(text) > 40 else ''}")
+        logger.info(f"sending text: {text[:40]}{'...' if len(text) > 40 else ''}")
 
         if self._ctx.is_speaking():
             await self._cmd.abort_speaking(AbortReason.USER_INTERRUPTION)
@@ -129,28 +131,28 @@ class SessionActions:
     async def manual_toggle(self, _data=None) -> None:
         if not self._manual_recording:
             self._manual_recording = True
-            logger.debug("手动模式：开始录音")
+            logger.debug("manual mode: recording started")
             self._ui.set_button_text("Send")
             await self._cmd.connect_protocol()
             await self._cmd.start_listening(ListeningMode.MANUAL)
         else:
             self._manual_recording = False
-            logger.debug("手动模式：停止录音并发送")
+            logger.debug("manual mode: recording stopped and sent")
             self._ui.set_button_text("Hold to Talk")
             await self._cmd.stop_listening()
 
     async def auto_toggle(self, _data=None) -> None:
-        # 只切自动/手动，不自动开始听
+        # only switches between auto and manual; it does not start listening
         self._auto_mode = not self._auto_mode
         if not self._auto_mode:
             self._auto_session_active = False
         if self._auto_mode and self._manual_recording:
             self._manual_recording = False
         self._ui.set_auto_mode(self._auto_mode)
-        logger.debug(f"模式切换: {'自动' if self._auto_mode else '手动'}")
+        logger.debug(f"mode switched to: {'auto' if self._auto_mode else 'manual'}")
 
     async def auto_session_toggle(self, _data=None) -> None:
-        # 主按钮：开始对话 / 停止对话
+        # the main button: start or stop the conversation
         if (
             self._auto_session_active
             or self._ctx.is_listening()
@@ -161,10 +163,10 @@ class SessionActions:
 
         if not await self._ensure_listen_session():
             return
-        logger.debug("自动模式：开始对话")
+        logger.debug("auto mode: conversation started")
 
     async def _stop_auto_session(self) -> None:
-        # 先 stop 清 keep_listening，再 abort，免得打断后又被续听拉回去
+        # stop first to clear keep_listening, then abort, so the interrupt is not undone by continued listening
         try:
             if self._ctx.is_speaking():
                 await self._cmd.stop_listening()
@@ -174,7 +176,7 @@ class SessionActions:
         finally:
             self._auto_session_active = False
             self._ui.set_button_text("Start Chat")
-            logger.debug("自动模式：停止对话")
+            logger.debug("auto mode: conversation stopped")
 
     async def abort(self, _data=None) -> None:
         await self._cmd.abort_speaking(AbortReason.USER_INTERRUPTION)
