@@ -1,6 +1,6 @@
-"""音乐播放器事件数据类型定义.
+"""The event payloads the music player uses.
 
-用于 EventBus 事件通信的数据结构。
+These are the structures carried over the EventBus.
 """
 
 from dataclasses import dataclass
@@ -9,14 +9,14 @@ from typing import Optional
 
 @dataclass
 class MusicStateData:
-    """音乐状态变化事件数据.
+    """Payload for a music state change.
 
     Attributes:
-        state: 播放状态 ("playing", "paused", "stopped", "completed")
-        song: 歌曲名称
-        position: 当前播放位置（秒）
-        duration: 总时长（秒）
-        pause_source: 暂停来源 ("tts", "manual", "external", None)
+        state: the playback state ("playing", "paused", "stopped", "completed")
+        song: the track name
+        position: how far in, in seconds
+        duration: the track length, in seconds
+        pause_source: what paused it ("tts", "manual", "external", None)
     """
 
     state: str
@@ -28,12 +28,12 @@ class MusicStateData:
 
 @dataclass
 class MusicLyricsData:
-    """歌词更新事件数据.
+    """Payload for a lyrics update.
 
     Attributes:
-        text: 歌词文本
-        time_sec: 时间戳（秒）
-        song_id: 歌曲 ID（可选）
+        text: the line of lyrics
+        time_sec: its timestamp, in seconds
+        song_id: the track id (optional)
     """
 
     text: str
@@ -43,10 +43,10 @@ class MusicLyricsData:
 
 @dataclass
 class MusicControlRequest:
-    """音乐控制请求数据.
+    """Payload for a music control request.
 
     Attributes:
-        source: 请求来源 ("tts", "manual", "external", etc.)
+        source: what asked for it ("tts", "manual", "external", and so on)
     """
 
     source: str = "external"

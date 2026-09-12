@@ -1,37 +1,37 @@
-"""激活 UI 基类.
+"""The base class for the activation UI.
 
-共享「取码 → 展示 → service.activate → 结果」流程；子类只做展示。
+It owns the flow - fetch the code, show it, call service.activate, report the result - and subclasses only handle the display.
 """
 
 
 class BaseActivation:
-    """激活 UI 基类（非 ABC，避免与 PySide6 QObject 元类冲突）.
+    """The base class for the activation UI (not an ABC, which would clash with PySide6's QObject metaclass).
 
     Args:
-        activation_service: ActivationService 实例（由 create() 得到，非单例）
-        init_result: handle_activation 传入的 initialize() 结果，避免重复 initialize
+        activation_service: an ActivationService from create() - not a singleton
+        init_result: the initialize() result handle_activation passes in, so it is not run twice
     """
 
     def __init__(self, activation_service=None, init_result=None):
-        # 参数可选：PySide6 多重继承时 QObject.__init__ 的 super 链可能无参调用
+        # the arguments are optional: with PySide6 multiple inheritance, QObject.__init__'s super chain may call this with none
         self._service = activation_service
         self._init_result = init_result
 
     def needs_activation(self) -> bool:
-        """是否需要激活 UI 流程."""
+        """Whether the activation UI needs to run at all."""
         if self._init_result is None:
             return False
         return bool(self._init_result.get("need_activation_ui", False))
 
     async def _core_activate(self) -> bool:
-        """核心激活：取码 → UI 展示 → service.activate（含剪贴板/播报副作用）."""
+        """The core flow: fetch the code, show it, then service.activate (which also copies it and reads it aloud)."""
         if self._service is None:
-            self._show_error("激活服务未初始化")
+            self._show_error("The activation service is not initialised")
             return False
 
         data = self._service.get_activation_data()
         if not data:
-            self._show_error("未获取到激活数据")
+            self._show_error("No activation data came back")
             return False
 
         self._show_code(data)
@@ -40,17 +40,17 @@ class BaseActivation:
         return success
 
     async def run(self) -> bool:
-        """运行激活流程."""
+        """Run the activation flow."""
         raise NotImplementedError
 
     def _show_code(self, data: dict) -> None:
-        """展示激活验证码（CLI 打印 / GUI 写 Model）."""
+        """Show the verification code (the CLI prints it; the GUI writes it to the model)."""
         raise NotImplementedError
 
     def _show_result(self, success: bool) -> None:
-        """展示激活结果."""
+        """Show the result of activation."""
         raise NotImplementedError
 
     def _show_error(self, msg: str) -> None:
-        """展示错误（可选覆盖）."""
+        """Show an error (subclasses may override)."""
         pass
