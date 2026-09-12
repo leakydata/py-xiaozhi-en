@@ -169,4 +169,7 @@ def register_music_tools(
 
     for tool in tools:
         add_tool(tool)
-    logger.info("registered %d music MCP tools (MusicPlayer injected by the container)", len(tools))
+    logger.info(
+        "registered %d music MCP tools (MusicPlayer injected by the container)",
+        len(tools),
+    )
