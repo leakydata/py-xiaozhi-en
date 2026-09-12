@@ -32,12 +32,18 @@ unsandboxed interpreter.
 from __future__ import annotations
 
 import asyncio
+import re
 import shutil
 from pathlib import Path
 
 from src.logging import get_logger
 
 logger = get_logger()
+
+# Packages the assistant installs for itself live here, inside the workspace, so
+# they persist between calls and never touch the system interpreter.
+PACKAGES_DIR = ".python-packages"
+INSTALL_TIMEOUT = 300.0
 
 DEFAULT_TIMEOUT = 30.0
 MAX_TIMEOUT = 120.0
@@ -85,16 +91,6 @@ def _argv(workspace: Path, network: bool) -> list[str]:
         "--setenv", "MPLCONFIGDIR", "/tmp/mpl",
         "--setenv", "XDG_CACHE_HOME", "/tmp/cache",
     ]
-    # Re-bind protected files read-only ON TOP of the writable workspace. bwrap
-    # applies mounts in order, so this wins. Without it the file tools' guard is
-    # theatre: a one-line script overwrote ASSISTANT.md in testing.
-    from src.mcp.tools.files import store as _store
-
-    for name in sorted(_store.PROTECTED):
-        candidate = workspace / name
-        if candidate.exists():
-            args += ["--ro-bind", str(candidate), str(candidate)]
-
     if network:
         args += ["--ro-bind-try", "/etc/resolv.conf", "/etc/resolv.conf",
                  "--unshare-pid", "--unshare-ipc", "--unshare-uts"]
@@ -102,6 +98,63 @@ def _argv(workspace: Path, network: bool) -> list[str]:
         args += ["--unshare-all"]
     args += ["/usr/bin/python3", "-I", "-"]
     return args
+
+
+async def install(package: str, workspace: Path,
+                  timeout: float = INSTALL_TIMEOUT) -> dict:
+    """Install a package into the workspace so later run_python calls can use it.
+
+    Network is on for this call only, and the target is a directory inside the
+    workspace - the system interpreter is untouched, and uninstalling is just
+    deleting a folder. uv is used when present because it is markedly faster;
+    pip is the fallback.
+    """
+    name = (package or "").strip()
+    # A package name, not an arbitrary pip argument: no flags, URLs or paths.
+    if not name or not re.fullmatch(r"[A-Za-z0-9._-]+(\[[A-Za-z0-9,._-]+\])?"
+                                    r"([=<>!~]=?[A-Za-z0-9._*+-]+)?", name):
+        return {"ok": False, "error": (
+            f"{package!r} is not a plain package name. Give something like "
+            "'pandas' or 'pandas==2.2.0'."
+        )}
+    if not available():
+        return {"ok": False, "error": "bubblewrap (bwrap) is not installed."}
+
+    target = workspace / PACKAGES_DIR
+    target.mkdir(parents=True, exist_ok=True)
+
+    uv = shutil.which("uv")
+    args = _argv(workspace, network=True)
+    # swap the trailing interpreter invocation for the installer
+    args = args[: args.index("/usr/bin/python3")]
+    if uv:
+        # uv usually lives under ~/.local/bin, which is not bound - bind the
+        # binary itself rather than exposing the home directory
+        args += ["--ro-bind", uv, uv]
+        inner = [uv, "pip", "install", "--target", str(target),
+                 "--python", "/usr/bin/python3", name]
+    else:
+        inner = ["/usr/bin/python3", "-m", "pip", "install", "--target",
+                 str(target), "--no-input", "--disable-pip-version-check", name]
+    args += inner
+    logger.info(f"[Python] installing {name}")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *args, stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT)
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except asyncio.TimeoutError:
+        proc.kill(); await proc.wait()
+        return {"ok": False, "error": f"Install timed out after {timeout:.0f}s"}
+    except Exception as e:
+        return {"ok": False, "error": f"Could not run the installer: {e}"}
+
+    text = (out or b"").decode("utf-8", "replace")
+    ok = proc.returncode == 0
+    return {"ok": ok, "package": name,
+            "output": text[-1500:] if not ok else text[-400:],
+            "note": ("Installed. It is importable from run_python straight away."
+                     if ok else "Install failed - see output.")}
 
 
 async def run(
@@ -120,6 +173,12 @@ async def run(
             "Cannot run Python safely: bubblewrap (bwrap) is not installed. "
             "Install it with: sudo apt install bubblewrap"
         )}
+
+    # -I ignores PYTHONPATH, so self-installed packages are put on sys.path
+    # explicitly rather than through the environment.
+    pkg_dir = workspace / PACKAGES_DIR
+    if pkg_dir.is_dir():
+        code = (f"import sys; sys.path.insert(0, {str(pkg_dir)!r})\n" + code)
 
     budget = max(1.0, min(float(timeout or DEFAULT_TIMEOUT), MAX_TIMEOUT))
     workspace.mkdir(parents=True, exist_ok=True)

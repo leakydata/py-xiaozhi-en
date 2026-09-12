@@ -128,6 +128,14 @@ async def what_can_you_do_payload(args: dict[str, Any]) -> str:
         return _err(e)
 
 
+async def install_package_payload(args: dict[str, Any]) -> str:
+    try:
+        return json.dumps(await python_exec.install(
+            str(args.get("package", "")), store.root()), ensure_ascii=False)
+    except Exception as e:
+        return _err(e)
+
+
 async def run_command_payload(args: dict[str, Any]) -> str:
     try:
         res = await shell.run(str(args.get("command", "")), store.root())
@@ -267,6 +275,21 @@ def register_file_tools(add_tool: Callable[[McpTool], None]) -> None:
     ))
 
     if python_exec.available():
+        tools.append(McpTool(
+            "install_python_package",
+            (
+                "Install a Python package so run_python can use it. Call this "
+                "when an import fails - do not give up and say a library is "
+                "unavailable. Installs into the workspace, not the system, and "
+                "persists for later calls. Takes 10-60 seconds. "
+                "Args: package - a plain name like 'pandas', optionally pinned "
+                "like 'pandas==2.2.0'."
+            ),
+            PropertyList([
+                Property("package", PropertyType.STRING, default_value=""),
+            ]),
+            install_package_payload,
+        ))
         tools.append(McpTool(
             "run_python",
             (

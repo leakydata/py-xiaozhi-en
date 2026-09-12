@@ -10,8 +10,11 @@ Two sources are combined:
 
   1. A summary generated from the live tool registry, so it can never drift out
      of date as tools are added or removed.
-  2. Optional user text from ASSISTANT.md in the workspace - a place to say
-     "call me X, be brief, always check memory first" without touching code.
+  2. Optional user text from ASSISTANT.md in the CONFIG directory - a place to
+     say "call me X, be brief, always check memory first" without touching code.
+     It lives beside config.json rather than in the workspace: the workspace is
+     the assistant's own scratch space with full write access, so standing
+     instructions kept there could be overwritten by its own code.
 
 Whether the backend honours `instructions` is up to the backend. If it ignores
 it, the same text is available through the what_can_you_do tool, and the
@@ -69,9 +72,9 @@ _HABITS = """How to work:
 def _workspace_extra() -> str:
     """User-authored instructions from ASSISTANT.md, if present."""
     try:
-        from src.mcp.tools.files import store
+        from src.utils.resource_finder import get_user_data_dir
 
-        path = store.root() / BRIEFING_FILE
+        path = get_user_data_dir() / "config" / BRIEFING_FILE
         if path.is_file():
             text = path.read_text(encoding="utf-8", errors="replace").strip()
             if text:

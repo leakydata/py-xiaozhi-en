@@ -45,3 +45,5 @@ py-xiaozhi/
 
 # 项目分析报告（本地查看）
 reports/
+# packages the assistant installs for itself at runtime
+.python-packages/
