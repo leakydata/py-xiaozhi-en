@@ -1,6 +1,6 @@
 import os
 
-# 需要排除的目录 & 文件（你可以自定义）
+# directories and files to leave out (edit these to taste)
 EXCLUDED_DIRS = {
     ".git",
     ".idea",
@@ -22,7 +22,9 @@ def print_directory_tree(start_path=".", indent=""):
     except PermissionError:
         return
 
-    files = [f for f in files if f not in EXCLUDED_FILES]  # 过滤不需要的文件
+    files = [
+        f for f in files if f not in EXCLUDED_FILES
+    ]  # drop the files we do not want
     dirs = [
         d
         for d in files

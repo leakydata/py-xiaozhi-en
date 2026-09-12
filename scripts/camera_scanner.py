@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""检测可用摄像头（OpenCV/V4L2 + 可选 picamera2），并写回 CAMERA 配置."""
+"""Find the available cameras (OpenCV/V4L2, plus picamera2 when present) and optionally write the choice back to the CAMERA config."""
 
 import argparse
 import logging
 import sys
 from pathlib import Path
 
-# 添加项目根目录
+# put the project root on the path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -19,28 +19,30 @@ logger = logging.getLogger("CameraScanner")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="扫描摄像头并可选写入配置")
+    parser = argparse.ArgumentParser(
+        description="Scan for cameras, and optionally save one to the config"
+    )
     parser.add_argument(
         "--select",
         type=int,
         default=None,
-        help="选择列表中的序号（从 0 开始）写入配置",
+        help="save the camera at this position in the list (counting from 0) to the config",
     )
     parser.add_argument(
         "--backend",
         choices=["auto", "opencv", "picamera2"],
         default=None,
-        help="强制写入 CAMERA.backend",
+        help="write CAMERA.backend explicitly",
     )
     parser.add_argument(
         "--device",
         default=None,
-        help="强制写入 CAMERA.device（如 /dev/video0）",
+        help="write CAMERA.device explicitly (e.g. /dev/video0)",
     )
     parser.add_argument(
         "--test",
         action="store_true",
-        help="对当前配置或 --select 结果试拍一帧",
+        help="take a test frame using the current config, or whatever --select chose",
     )
     args = parser.parse_args()
 
@@ -54,21 +56,23 @@ def main() -> int:
     )
 
     current = load_capture_config()
-    print("\n===== 当前 CAMERA 配置 =====")
+    print("\n===== current CAMERA config =====")
     print(f"  backend={current.backend}")
     print(f"  device={current.device!r}")
     print(f"  camera_index={current.camera_index}")
     print(f"  size={current.frame_width}x{current.frame_height}")
     print(f"  warm_up_frames={current.warm_up_frames}")
 
-    print("\n===== 扫描设备 =====\n")
+    print("\n===== scanning =====\n")
     devices = list_camera_devices()
     if not devices:
-        print("未发现可用摄像头。")
-        print("提示:")
-        print("  - USB: 确认已插入，ls /dev/video*")
-        print("  - 树莓派 CSI: sudo apt install python3-picamera2")
-        print("  - 用户需在 video 组: sudo usermod -aG video $USER && newgrp video")
+        print("No cameras found.")
+        print("Things to check:")
+        print("  - USB: make sure it is plugged in, and check ls /dev/video*")
+        print("  - Raspberry Pi CSI: sudo apt install python3-picamera2")
+        print(
+            "  - your user needs to be in the video group: sudo usermod -aG video $USER && newgrp video"
+        )
         return 1
 
     for i, d in enumerate(devices):
@@ -81,7 +85,7 @@ def main() -> int:
         selected_key = "picamera2"
     elif args.select is not None:
         if args.select < 0 or args.select >= len(devices):
-            print(f"--select 超出范围 0..{len(devices) - 1}")
+            print(f"--select is out of range; it must be 0..{len(devices) - 1}")
             return 1
         selected_key = devices[args.select].key
 
@@ -91,15 +95,15 @@ def main() -> int:
             updates["CAMERA.backend"] = args.backend
         for path, value in updates.items():
             config.update_config(path, value)
-        print("\n已写入配置:")
+        print("\nSaved to the config:")
         for path, value in updates.items():
             print(f"  {path} = {value!r}")
 
     if args.test or selected_key is not None:
-        print("\n===== 试拍 =====")
+        print("\n===== test capture =====")
         cfg = load_capture_config()
         if selected_key is not None:
-            # 用刚写入的选择
+            # use whatever --select just wrote
             u = apply_device_selection(selected_key)
             if args.backend:
                 u["CAMERA.backend"] = args.backend
@@ -113,13 +117,13 @@ def main() -> int:
             )
         jpeg = capture_jpeg(cfg)
         if not jpeg:
-            print("试拍失败")
+            print("The test capture failed")
             return 2
         out = project_root / "camera_scan_test.jpg"
         out.write_bytes(jpeg)
-        print(f"试拍成功: {out} ({len(jpeg)} bytes)")
+        print(f"Test capture saved: {out} ({len(jpeg)} bytes)")
 
-    print("\n完成。")
+    print("\nDone.")
     return 0
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""校验外挂 MCP 插件包结构（不启动完整应用）."""
+"""Check the structure of an external MCP plugin package, without starting the whole app."""
 
 from __future__ import annotations
 
@@ -10,15 +10,15 @@ from pathlib import Path
 
 
 def check_plugin(path: Path, *, strict: bool = False) -> list[str]:
-    """返回错误列表；空 = 通过."""
+    """Return the list of problems; an empty list means it passed."""
     errors: list[str] = []
     if not path.is_dir():
-        return [f"不是目录: {path}"]
+        return [f"not a directory: {path}"]
 
     manifest_path = path / "manifest.json"
     plugin_py = path / "plugin.py"
     if not manifest_path.is_file() and not plugin_py.is_file():
-        errors.append("缺少 manifest.json 且无 plugin.py")
+        errors.append("there is no manifest.json and no plugin.py")
         return errors
 
     manifest: dict = {}
@@ -26,61 +26,63 @@ def check_plugin(path: Path, *, strict: bool = False) -> list[str]:
         try:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         except Exception as e:
-            errors.append(f"manifest.json 无法解析: {e}")
+            errors.append(f"manifest.json could not be parsed: {e}")
             return errors
     else:
         if strict:
-            errors.append("严格模式要求 manifest.json")
+            errors.append("strict mode requires a manifest.json")
         manifest = {"id": path.name, "entry": "plugin:register"}
 
     pid = manifest.get("id") or path.name
     if not pid:
-        errors.append("manifest.id 为空")
+        errors.append("manifest.id is empty")
 
     entry = str(manifest.get("entry") or "plugin:register")
     if ":" not in entry:
-        errors.append(f"entry 须为 module:attr，得到: {entry}")
+        errors.append(f"entry must be module:attr, got: {entry}")
     else:
         mod, _attr = entry.split(":", 1)
         py = path / f"{mod.replace('.', '/')}.py"
         if not py.is_file() and not (path / mod).is_dir():
-            errors.append(f"找不到入口模块文件: {py}")
+            errors.append(f"the entry module file is missing: {py}")
 
     runtime = manifest.get("runtime", "python-inprocess")
     if runtime != "python-inprocess":
-        errors.append(f"当前仅支持 runtime=python-inprocess，得到: {runtime}")
+        errors.append(
+            f"only runtime=python-inprocess is supported at the moment, got: {runtime}"
+        )
 
     if strict:
         if "api_version" not in manifest:
-            errors.append("严格模式要求 api_version")
+            errors.append("strict mode requires api_version")
         if "python_abi" not in manifest:
-            errors.append("严格模式要求 python_abi")
+            errors.append("strict mode requires python_abi")
         if "platforms" not in manifest:
-            errors.append("严格模式要求 platforms")
+            errors.append("strict mode requires platforms")
         if "tool_name_prefix" not in manifest:
-            errors.append("严格模式要求 tool_name_prefix")
+            errors.append("strict mode requires tool_name_prefix")
 
-    # lib 可选；若存在应是目录
+    # lib is optional, but if it is there it has to be a directory
     lib = path / "lib"
     if lib.exists() and not lib.is_dir():
-        errors.append("lib 存在但不是目录")
+        errors.append("lib exists but is not a directory")
 
     return errors
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="检查 MCP 外挂插件包（manifest + 入口 + 可选 lib）"
+        description="Check an external MCP plugin package: its manifest, its entry point, and its optional lib directory"
     )
     parser.add_argument(
         "path",
         type=Path,
-        help="插件目录路径，如 mcp_plugins/com.example.hello",
+        help="path to the plugin directory, e.g. mcp_plugins/com.example.hello",
     )
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="要求 api_version / python_abi / platforms / tool_name_prefix",
+        help="also require api_version, python_abi, platforms and tool_name_prefix",
     )
     args = parser.parse_args(argv)
     path = args.path.expanduser().resolve()
