@@ -190,6 +190,18 @@ async def complete_reminder_payload(args: dict[str, Any]) -> str:
                       else {"error": f"No reminder with id {nid}."})
 
 
+async def memory_topics_payload(args: dict[str, Any]) -> str:
+    try:
+        groups = get_memory().topics()
+    except Exception as e:
+        logger.warning(f"[Memory] topics failed: {e}")
+        return json.dumps({"error": f"Could not group memories: {e}"})
+    if not groups:
+        return json.dumps({"topics": [],
+                           "note": "Not enough related memories to form themes yet."})
+    return json.dumps({"topics": groups}, ensure_ascii=False)
+
+
 async def current_time_payload(args: dict[str, Any]) -> str:
     now = _local_now()
     return json.dumps({

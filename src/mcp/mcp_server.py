@@ -312,11 +312,9 @@ class McpServer:
     async def _handle_tool_call(
         self, request_id: int, params: dict[str, Any]
     ):
-        """
-        处理工具调用请求.
-        """
+        """Handle a tools/call request."""
         logger.info(
-            f"[MCP] 收到工具调用请求! ID={request_id}, 参数={params}"
+            f"[MCP] tool call received! ID={request_id}, params={params}"
         )
 
         tool_name = params.get("name")
@@ -324,7 +322,7 @@ class McpServer:
             await self._reply_error(request_id, "Missing tool name")
             return
 
-        logger.info(f"[MCP] 尝试调用工具: {tool_name}")
+        logger.info(f"[MCP] attempting tool call: {tool_name}")
 
         if tool_name in self._disabled_tool_names():
             await self._reply_error(
@@ -332,7 +330,7 @@ class McpServer:
             )
             return
 
-        # 查找工具
+        # find the tool
         tool = None
         for t in self.tools:
             if t.name == tool_name:
@@ -345,20 +343,29 @@ class McpServer:
             )
             return
 
-        # 获取参数
+        # arguments
         arguments = params.get("arguments", {})
 
-        logger.info(f"[MCP] 开始执行工具 {tool_name}, 参数: {arguments}")
+        logger.info(f"[MCP] executing tool {tool_name}, args: {arguments}")
 
-        # 异步调用工具
+        # Call the tool, recording it in the audit log either way
+        import time as _time
+
+        from src.mcp import audit
+
+        started = _time.monotonic()
         try:
             result = await tool.call(arguments)
-            logger.info(f"[MCP] 工具 {tool_name} 执行成功，结果: {result}")
+            elapsed = int((_time.monotonic() - started) * 1000)
+            logger.info(f"[MCP] tool {tool_name} succeeded, result: {result}")
+            audit.record(tool_name, arguments, ok=True, result=result, ms=elapsed)
             await self._reply_result(request_id, json.loads(result))
         except Exception as e:
+            elapsed = int((_time.monotonic() - started) * 1000)
             logger.error(
-                f"[MCP] 工具 {tool_name} 执行失败: {e}", exc_info=True
+                f"[MCP] tool {tool_name} failed: {e}", exc_info=True
             )
+            audit.record(tool_name, arguments, ok=False, error=str(e), ms=elapsed)
             await self._reply_error(request_id, str(e))
 
     async def _parse_capabilities(self, capabilities):

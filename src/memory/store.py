@@ -300,6 +300,70 @@ class MemoryStore:
                 ).fetchall()
             return [dict(r) for r in rows]
 
+    def topics(self, threshold: float = 0.0, min_size: int = 2) -> list[dict]:
+        """Group stored notes into themes using the embeddings already on disk.
+
+        Greedy single-pass clustering on cosine similarity rather than k-means:
+        the number of themes is not known ahead of time, and a garage assistant
+        accumulates a few dozen notes, not thousands.
+
+        The cut-off is derived from the data, not fixed. BGE-small puts related
+        notes at roughly 0.54-0.62 and unrelated ones at 0.34-0.50 - too narrow a
+        gap for a constant to work across different note sets, so the threshold
+        is the 80th percentile of observed similarity. Groupings are therefore
+        approximate; the tool description says so rather than implying certainty.
+        """
+        import numpy as np
+
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                "SELECT n.id, n.kind, n.text, v.embedding FROM notes n "
+                "JOIN notes_vec v ON v.note_id = n.id ORDER BY n.id"
+            ).fetchall() if self._vec_ok else []
+        if not rows:
+            return []
+
+        ids = [r["id"] for r in rows]
+        texts = {r["id"]: r["text"] for r in rows}
+        kinds = {r["id"]: r["kind"] for r in rows}
+        vecs = np.stack([
+            np.frombuffer(r["embedding"], dtype=np.float32) for r in rows
+        ])
+        # vectors are already L2-normalised, so a dot product is the cosine
+        sim = vecs @ vecs.T
+
+        if threshold <= 0:
+            n = len(ids)
+            off = sim[~np.eye(n, dtype=bool)] if n > 1 else np.array([0.0])
+            threshold = float(np.percentile(off, 80)) if off.size else 1.0
+            threshold = max(0.50, min(threshold, 0.80))
+
+        unassigned = set(range(len(ids)))
+        clusters: list[list[int]] = []
+        while unassigned:
+            # start from whichever note is closest to the most others
+            seed = max(unassigned, key=lambda i: float(
+                sum(sim[i][j] for j in unassigned if j != i)))
+            members = [j for j in unassigned if sim[seed][j] >= threshold]
+            if seed not in members:
+                members.append(seed)
+            clusters.append(members)
+            unassigned -= set(members)
+
+        out = []
+        for members in sorted(clusters, key=len, reverse=True):
+            if len(members) < min_size:
+                continue
+            # the member most similar to the rest is the best label for the group
+            rep = max(members, key=lambda i: float(sum(sim[i][j] for j in members)))
+            out.append({
+                "theme": texts[ids[rep]][:90],
+                "size": len(members),
+                "notes": [{"id": ids[i], "kind": kinds[ids[i]],
+                           "text": texts[ids[i]][:110]} for i in members],
+            })
+        return out
+
     def count(self) -> int:
         with self._lock, self._connect() as conn:
             return int(conn.execute("SELECT COUNT(*) FROM notes").fetchone()[0])

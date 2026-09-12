@@ -9,6 +9,7 @@ from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
 
 from .tools import (
     complete_reminder_payload,
+    memory_topics_payload,
     current_time_payload,
     list_reminders_payload,
     recall_payload,
@@ -98,6 +99,19 @@ def register_memory_tools(add_tool: Callable[[McpTool], None]) -> None:
                 Property("id", PropertyType.INTEGER, default_value=0),
             ]),
             complete_reminder_payload,
+        ),
+        McpTool(
+            "memory_topics",
+            (
+                "Group everything in long-term memory into themes, so you can tell "
+                "the user what they have been talking about or what a project "
+                "involves. Grouping is by meaning rather than keywords, and it is "
+                "approximate - related notes are sometimes left out of a group, so "
+                "present themes as a rough summary, not a complete index. "
+                "Takes no arguments."
+            ),
+            PropertyList([]),
+            memory_topics_payload,
         ),
         McpTool(
             "get_current_time",

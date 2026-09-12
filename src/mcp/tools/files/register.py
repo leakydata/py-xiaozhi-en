@@ -101,6 +101,19 @@ async def run_python_payload(args: dict[str, Any]) -> str:
         return _err(e)
 
 
+async def recent_actions_payload(args: dict[str, Any]) -> str:
+    try:
+        from src.mcp import audit
+
+        return json.dumps({
+            "log": str(audit.path()),
+            "actions": audit.tail(int(args.get("limit", 20) or 20),
+                                  str(args.get("tool", "") or "") or None),
+        }, ensure_ascii=False)
+    except Exception as e:
+        return _err(e)
+
+
 async def run_command_payload(args: dict[str, Any]) -> str:
     try:
         res = await shell.run(str(args.get("command", "")), store.root())
@@ -208,6 +221,24 @@ def register_file_tools(add_tool: Callable[[McpTool], None]) -> None:
             run_command_payload,
         ),
     ]
+
+    tools.append(McpTool(
+        "recent_actions",
+        (
+            "Review what you have actually done recently - every tool call is "
+            "recorded with its arguments, whether it succeeded and how long it "
+            "took. Use it when the user asks what you did, what changed, or why "
+            "something happened. "
+            "Args: limit - how many entries (1-200); tool - optionally filter to "
+            "one tool name."
+        ),
+        PropertyList([
+            Property("limit", PropertyType.INTEGER, default_value=20,
+                     min_value=1, max_value=200),
+            Property("tool", PropertyType.STRING, default_value=""),
+        ]),
+        recent_actions_payload,
+    ))
 
     if python_exec.available():
         tools.append(McpTool(
