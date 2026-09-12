@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""表情服务 - 管理表情资源."""
+"""The emotion service - manages the emotion assets."""
 
 from pathlib import Path
 from typing import Optional
@@ -13,7 +13,7 @@ logger = get_logger()
 
 
 class EmotionService(QObject):
-    """表情服务 - 处理表情文件的查找和 URL 转换."""
+    """The emotion service - finds the emotion files and turns them into URLs."""
 
     EXTENSIONS = (".gif", ".png", ".jpg", ".jpeg", ".webp")
 
@@ -23,39 +23,39 @@ class EmotionService(QObject):
         self._emotion_dir = get_assets_dir() / "emojis"
 
         if not self._emotion_dir.exists():
-            logger.warning(f"表情目录不存在: {self._emotion_dir}")
+            logger.warning(f"no emotion directory at: {self._emotion_dir}")
 
     def get_emotion_url(self, emotion_name: str) -> str:
-        """获取表情的 QML 可用 URL.
+        """Get a URL for an emotion that QML can use.
 
         Args:
-            emotion_name: 表情名称
+            emotion_name: the emotion name
 
         Returns:
-            file:// URL 或 emoji 字符
+            a file:// URL, or an emoji character
         """
-        # 检查缓存
+        # check the cache
         if emotion_name in self._cache:
             return self._cache[emotion_name]
 
-        # 查找文件
+        # find the file
         path = self._find_emotion_file(emotion_name)
         if not path:
-            # 回退到 neutral
+            # fall back to neutral
             path = self._find_emotion_file("neutral")
 
-        # 转换为 URL
+        # turn it into a URL
         if path:
             url = QUrl.fromLocalFile(str(path)).toString()
         else:
-            url = "😊"  # 最终回退
-            logger.warning(f"表情 {emotion_name} 未找到，使用 emoji")
+            url = "😊"  # the last resort
+            logger.warning(f"no file for the emotion {emotion_name}, using an emoji")
 
         self._cache[emotion_name] = url
         return url
 
     def _find_emotion_file(self, name: str) -> Optional[Path]:
-        """查找表情文件."""
+        """Find the file for an emotion."""
         for ext in self.EXTENSIONS:
             file_path = self._emotion_dir / f"{name}{ext}"
             if file_path.exists():
@@ -63,11 +63,11 @@ class EmotionService(QObject):
         return None
 
     def clear_cache(self):
-        """清空缓存."""
+        """Clear the cache."""
         self._cache.clear()
 
     def preload(self, names: list[str]):
-        """预加载表情."""
+        """Preload the emotions."""
         for name in names:
             self.get_emotion_url(name)
-        logger.debug(f"已预加载 {len(names)} 个表情")
+        logger.debug(f"preloaded {len(names)} emotions")

@@ -15,29 +15,32 @@ logger = get_logger()
 
 class BaseCamera(ABC):
     """
-    基础摄像头类，定义接口.
+    The camera base class, defining the interface.
     """
 
     def __init__(self):
         """
-        初始化基础摄像头.
+        Initialise the base camera.
         """
-        self.jpeg_data = {"buf": b"", "len": 0}  # 图像的JPEG字节数据  # 字节数据长度
+        self.jpeg_data = {
+            "buf": b"",
+            "len": 0,
+        }  # the image as JPEG bytes, and its length
 
-        # 从配置中读取相机参数（采集细节由 capture_backend 统一读取）
+        # read the camera settings from the config (capture_backend reads the capture details itself)
         config = get_config()
         self.camera_index = config.get_config("CAMERA.camera_index", 0)
         self.frame_width = config.get_config("CAMERA.frame_width", 640)
         self.frame_height = config.get_config("CAMERA.frame_height", 480)
 
     def capture_frame(self) -> bool:
-        """使用可插拔后端采集一帧 JPEG（OpenCV/V4L2 或 picamera2）.
+        """Capture a JPEG frame through whichever backend applies (OpenCV/V4L2 or picamera2).
 
-        桌面 USB / Pi USB 走 OpenCV；Pi CSI 在 auto 模式下 OpenCV 失败后回退 picamera2。
-        带超时保护，避免驱动挂死拖死线程。
+        A desktop or Pi USB camera goes through OpenCV; a Pi CSI camera falls back to picamera2 when OpenCV fails in auto mode.
+        There is a timeout, so a wedged driver cannot take the thread down with it.
         """
         cfg = load_capture_config()
-        # 与实例字段对齐（外部若改过 index 仍以配置为准，配置是权威）
+        # keep in step with the instance fields (the config wins even if something changed the index)
         self.camera_index = cfg.camera_index
         self.frame_width = cfg.frame_width
         self.frame_height = cfg.frame_height
@@ -45,7 +48,7 @@ class BaseCamera(ABC):
         jpeg = capture_jpeg(cfg)
         if not jpeg:
             logger.error(
-                "摄像头采集失败 "
+                "camera capture failed "
                 f"(backend={cfg.backend}, device={cfg.device!r}, index={cfg.camera_index})"
             )
             return False
@@ -56,40 +59,40 @@ class BaseCamera(ABC):
         )
         return True
 
-    # 兼容旧名
+    # the legacy name
     def capture_with_cv2(self) -> bool:
         return self.capture_frame()
 
     def set_explain_url(self, url: str):  # noqa: B027
-        """设置视觉服务 URL（子类按需覆写）."""
+        """Set the vision service URL (subclasses override as needed)."""
 
     def set_explain_token(self, token: str):  # noqa: B027
-        """设置视觉服务 token（子类按需覆写）."""
+        """Set the vision service token (subclasses override as needed)."""
 
     @abstractmethod
     def capture(self) -> bool:
         """
-        捕获图像.
+        Capture an image.
         """
 
     @abstractmethod
     def analyze(self, question: str, image_data: bytes | None = None) -> str:
-        """分析图像.
+        """Analyse an image.
 
         Args:
-            question: 用户问题
-            image_data: 可选的外部图像数据，为 None 时使用 self.jpeg_data
+            question: what the user asked
+            image_data: image data from elsewhere; None uses self.jpeg_data
         """
 
     def get_jpeg_data(self) -> dict[str, Any]:
         """
-        获取JPEG数据.
+        Get the JPEG data.
         """
         return self.jpeg_data
 
     def set_jpeg_data(self, data_bytes: bytes):
         """
-        设置JPEG数据.
+        Set the JPEG data.
         """
         self.jpeg_data["buf"] = data_bytes
         self.jpeg_data["len"] = len(data_bytes)
