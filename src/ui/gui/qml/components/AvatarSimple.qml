@@ -1,4 +1,4 @@
-// 抽象圆盘头像（原版）
+// The abstract disc avatar (the original)
 // Abstract disc avatar - the original procedural face.
 import QtQuick
 import QtQuick.Shapes

@@ -1,4 +1,4 @@
-// 按钮组件
+// A button
 import QtQuick
 import QtQuick.Controls
 import "../theme"

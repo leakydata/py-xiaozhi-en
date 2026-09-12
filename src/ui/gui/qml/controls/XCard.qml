@@ -1,4 +1,4 @@
-// 卡片容器
+// A card container
 import QtQuick
 import "../theme"
 

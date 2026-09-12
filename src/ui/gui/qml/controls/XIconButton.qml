@@ -1,4 +1,4 @@
-// 图标按钮
+// An icon button
 import QtQuick
 import "../theme"
 

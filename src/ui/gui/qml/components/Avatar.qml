@@ -1,4 +1,4 @@
-// 头像切换器：按 style 选择具体头像实现
+// Avatar switcher: picks the implementation named by style
 // Avatar switcher: picks the concrete avatar by `style`.
 //
 //   "person" -> AvatarPerson.qml  cartoon person (hair, eyes, stubble)

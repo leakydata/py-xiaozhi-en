@@ -1,4 +1,4 @@
-// 程序化头像：卡通人物，随状态/情绪/音量实时变化，无需图片资源
+// A drawn avatar: a cartoon face that reacts live to state, emotion and volume, with no image assets
 // Procedural cartoon avatar: expression from the emotion name, mouth from live audio.
 import QtQuick
 import QtQuick.Shapes
