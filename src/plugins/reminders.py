@@ -1,4 +1,4 @@
-"""提醒调度：到点主动播报.
+"""Reminder scheduling: speaking a reminder when it comes due.
 
 Reminder scheduler. Polls the local store and, when something is due, speaks it
 unprompted - the piece that makes reminders actually fire rather than only
@@ -35,7 +35,7 @@ _MIN_POLL = 5.0
 
 
 class RemindersPlugin(Plugin):
-    """到点播报提醒."""
+    """Announce the reminders that have come due."""
 
     name = "reminders"
 
@@ -60,11 +60,11 @@ class RemindersPlugin(Plugin):
 
     async def start(self) -> None:
         if not self._enabled:
-            logger.info("提醒调度已禁用 (REMINDERS.ENABLED=false)")
+            logger.info("reminder scheduling is disabled (REMINDERS.ENABLED=false)")
             return
         self._running = True
         self._task = self._cmd.spawn(self._loop(), "reminder_scheduler")
-        logger.info(f"提醒调度已启动，轮询间隔 {self._poll:.0f}s")
+        logger.info(f"reminder scheduling started, polling every {self._poll:.0f}s")
 
     async def stop(self) -> None:
         self._running = False
@@ -75,7 +75,7 @@ class RemindersPlugin(Plugin):
             except (asyncio.CancelledError, Exception):
                 pass
         self._task = None
-        logger.info("提醒调度已停止")
+        logger.info("reminder scheduling stopped")
 
     # ------------------------------------------------------------------
 
@@ -88,7 +88,7 @@ class RemindersPlugin(Plugin):
             except asyncio.CancelledError:
                 raise
             except Exception as e:
-                logger.error(f"提醒调度异常: {e}", exc_info=True)
+                logger.error(f"the reminder scheduler raised: {e}", exc_info=True)
             await asyncio.sleep(self._poll)
 
     async def _tick(self) -> None:
@@ -99,10 +99,14 @@ class RemindersPlugin(Plugin):
             return
 
         if not self._ctx.is_audio_channel_opened():
-            logger.debug(f"{len(due)} 条提醒到期，但协议通道未连接，稍后重试")
+            logger.debug(
+                f"{len(due)} reminders are due, but the protocol channel is not connected - retrying later"
+            )
             return
         if not self._ctx.is_idle():
-            logger.debug(f"{len(due)} 条提醒到期，但正在对话中，稍后重试")
+            logger.debug(
+                f"{len(due)} reminders are due, but a conversation is in progress - retrying later"
+            )
             return
 
         # one per tick: several at once would talk over itself
@@ -125,12 +129,16 @@ class RemindersPlugin(Plugin):
 
         try:
             if not await self._cmd.connect_protocol():
-                logger.warning("提醒播报失败：无法建立协议连接，保留待下次重试")
+                logger.warning(
+                    "could not announce the reminder: the protocol would not connect, so it stays due for the next attempt"
+                )
                 return
             await self._cmd.send_wake_word_detected(prompt)
         except Exception as e:
             # leave it due; the next tick retries rather than losing it
-            logger.warning(f"提醒播报失败，保留待重试: {e}")
+            logger.warning(
+                f"could not announce the reminder, leaving it due to retry: {e}"
+            )
             return
 
         from src.memory.store import get_memory
@@ -138,8 +146,10 @@ class RemindersPlugin(Plugin):
         try:
             get_memory().complete(int(item["id"]))
         except Exception as e:
-            logger.warning(f"提醒已播报但标记完成失败 #{item.get('id')}: {e}")
-        logger.info(f"已播报提醒 #{item.get('id')}: {text[:60]}")
+            logger.warning(
+                f"announced the reminder but could not mark it done #{item.get('id')}: {e}"
+            )
+        logger.info(f"announced reminder #{item.get('id')}: {text[:60]}")
 
 
 def get_memory_safe_complete(item: dict) -> None:
