@@ -78,7 +78,15 @@ class ConfigManager:
                 "AUTHORIZATION_URL": "https://xiaozhi.me/",
             },
         },
-        # 提醒到点主动播报
+        # Claude Code as a deeper reasoning tool. Runs on the signed-in
+        # subscription, not the API. Always sandboxed read-only - see
+        # mcp/tools/claude_code/runner.py for why that is not configurable.
+        "CLAUDE_CODE": {
+            "ENABLED": True,
+            "TIMEOUT_SECONDS": 120,
+            "MODEL": "",
+        },
+        # Reminders announced out loud when they come due
         "REMINDERS": {
             "ENABLED": True,
             "POLL_SECONDS": 20,
