@@ -1,4 +1,4 @@
-"""激活验证码副作用：剪贴板与语音播报."""
+"""What happens alongside an activation code: the clipboard and the spoken announcement."""
 
 from __future__ import annotations
 
@@ -10,33 +10,35 @@ logger = get_logger()
 
 
 def apply_code_side_effects(code: str, message: Optional[str] = None) -> None:
-    """日志 + 剪贴板 + 播报；不负责 CLI/GUI 文案."""
+    """Log it, copy it, announce it. The CLI/GUI wording is not this function's job."""
     if not code:
         return
-    msg = message or "请在控制面板输入验证码"
-    logger.info(f"激活提示: {msg}")
-    logger.info(f"验证码: {code}")
+    msg = message or "Enter the verification code in the control panel"
+    logger.info(f"Activation: {msg}")
+    logger.info(f"Verification code: {code}")
 
-    text = f".请登录到控制面板添加设备，输入验证码：{' '.join(code)}..."
+    # The code is already in hand, so copy it straight across. This used to
+    # format it into a Chinese sentence and regex it back out again, which only
+    # worked while both halves stayed Chinese.
     try:
-        from src.utils.common_utils import handle_verification_code
+        from src.utils.common_utils import copy_to_clipboard
 
-        handle_verification_code(text)
+        copy_to_clipboard(code)
     except Exception as e:
-        logger.debug(f"复制验证码失败: {e}")
+        logger.debug(f"Failed to copy the verification code: {e}")
 
     try:
         from src.utils.activation_announcer import announce_activation_code
 
-        announce_activation_code(code, locale="zh-CN")
+        announce_activation_code(code)
     except Exception as e:
-        logger.debug(f"验证码播报失败: {e}")
+        logger.debug(f"Failed to announce the verification code: {e}")
 
 
 def announce_code(code: str) -> None:
-    """仅播报（轮询重试时用）."""
+    """Announce only (used while polling for a retry)."""
     if not code:
         return
     from src.utils.activation_announcer import announce_activation_code
 
-    announce_activation_code(code, locale="zh-CN")
+    announce_activation_code(code)

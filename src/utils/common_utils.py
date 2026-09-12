@@ -46,10 +46,11 @@ def copy_to_clipboard(text: str) -> bool:
 def extract_verification_code(text: str) -> Optional[str]:
     """Pull a verification code out of some text."""
     try:
-        # The activation keywords. These stay in Chinese deliberately: they are
-        # matched against what the tenclass server speaks aloud during activation,
-        # which is Chinese whatever language this client runs in. Same goes for
-        # the patterns below.
+        # These stay in Chinese: they parse the activation phrasing the tenclass
+        # server speaks, which is Chinese whatever language this client runs in.
+        # Nothing in this repo calls it on that path any more - the activation
+        # flow has the code in hand and copies it directly - so this is kept as
+        # a utility for callers that do have such text.
         activation_keywords = [
             "登录",
             "控制面板",
