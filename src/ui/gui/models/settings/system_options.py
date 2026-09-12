@@ -283,8 +283,6 @@ class SettingsSystemOptionsMixin:
             parent,
             title,
             start,
-            QFileDialog.Option.ShowDirsOnly
-            | QFileDialog.Option.DontResolveSymlinks,
+            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks,
         )
         return path or ""
-

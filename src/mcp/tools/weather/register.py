@@ -26,9 +26,7 @@ def register_weather_tools(add_tool: Callable[[McpTool], None]) -> None:
             PropertyList(
                 [
                     Property("city", PropertyType.STRING, default_value=""),
-                    Property(
-                        "units", PropertyType.STRING, default_value="imperial"
-                    ),
+                    Property("units", PropertyType.STRING, default_value="imperial"),
                 ]
             ),
             get_weather_payload,
@@ -50,9 +48,7 @@ def register_weather_tools(add_tool: Callable[[McpTool], None]) -> None:
                         min_value=1,
                         max_value=7,
                     ),
-                    Property(
-                        "units", PropertyType.STRING, default_value="imperial"
-                    ),
+                    Property("units", PropertyType.STRING, default_value="imperial"),
                 ]
             ),
             get_forecast_payload,

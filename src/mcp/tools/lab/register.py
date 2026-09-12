@@ -27,9 +27,14 @@ async def system_status_payload(args: dict[str, Any]) -> str:
 
 async def top_processes_payload(args: dict[str, Any]) -> str:
     try:
-        return json.dumps({"processes": hardware.top_processes(
-            int(args.get("limit", 8) or 8), str(args.get("sort_by", "cpu")))},
-            ensure_ascii=False)
+        return json.dumps(
+            {
+                "processes": hardware.top_processes(
+                    int(args.get("limit", 8) or 8), str(args.get("sort_by", "cpu"))
+                )
+            },
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 
@@ -44,55 +49,68 @@ async def list_serial_ports_payload(args: dict[str, Any]) -> str:
 async def serial_monitor_payload(args: dict[str, Any]) -> str:
     try:
         send = args.get("send")
-        return json.dumps(await hardware.serial_io(
-            str(args.get("port", "")),
-            int(args.get("baud", 115200) or 115200),
-            float(args.get("seconds", 3) or 3),
-            str(send) if send else None,
-        ), ensure_ascii=False)
+        return json.dumps(
+            await hardware.serial_io(
+                str(args.get("port", "")),
+                int(args.get("baud", 115200) or 115200),
+                float(args.get("seconds", 3) or 3),
+                str(send) if send else None,
+            ),
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 
 
 async def image_info_payload(args: dict[str, Any]) -> str:
     try:
-        return json.dumps(media.image_info(str(args.get("path", ""))),
-                          ensure_ascii=False)
+        return json.dumps(
+            media.image_info(str(args.get("path", ""))), ensure_ascii=False
+        )
     except Exception as e:
         return _err(e)
 
 
 async def edit_image_payload(args: dict[str, Any]) -> str:
     try:
-        return json.dumps(media.image_edit(
-            str(args.get("path", "")), str(args.get("output", "")),
-            width=int(args.get("width", 0) or 0),
-            height=int(args.get("height", 0) or 0),
-            rotate=int(args.get("rotate", 0) or 0),
-            grayscale=bool(args.get("grayscale", False)),
-            crop=str(args.get("crop", "") or ""),
-        ), ensure_ascii=False)
+        return json.dumps(
+            media.image_edit(
+                str(args.get("path", "")),
+                str(args.get("output", "")),
+                width=int(args.get("width", 0) or 0),
+                height=int(args.get("height", 0) or 0),
+                rotate=int(args.get("rotate", 0) or 0),
+                grayscale=bool(args.get("grayscale", False)),
+                crop=str(args.get("crop", "") or ""),
+            ),
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 
 
 async def media_info_payload(args: dict[str, Any]) -> str:
     try:
-        return json.dumps(await media.media_info(str(args.get("path", ""))),
-                          ensure_ascii=False)
+        return json.dumps(
+            await media.media_info(str(args.get("path", ""))), ensure_ascii=False
+        )
     except Exception as e:
         return _err(e)
 
 
 async def convert_media_payload(args: dict[str, Any]) -> str:
     try:
-        return json.dumps(await media.media_convert(
-            str(args.get("path", "")), str(args.get("output", "")),
-            start=str(args.get("start", "") or ""),
-            duration=str(args.get("duration", "") or ""),
-            audio_only=bool(args.get("audio_only", False)),
-            scale_width=int(args.get("scale_width", 0) or 0),
-        ), ensure_ascii=False)
+        return json.dumps(
+            await media.media_convert(
+                str(args.get("path", "")),
+                str(args.get("output", "")),
+                start=str(args.get("start", "") or ""),
+                duration=str(args.get("duration", "") or ""),
+                audio_only=bool(args.get("audio_only", False)),
+                scale_width=int(args.get("scale_width", 0) or 0),
+            ),
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 
@@ -116,11 +134,18 @@ def register_lab_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "List the processes using the most CPU or memory. "
                 "Args: limit - how many (1-25); sort_by - 'cpu' or 'memory'."
             ),
-            PropertyList([
-                Property("limit", PropertyType.INTEGER, default_value=8,
-                         min_value=1, max_value=25),
-                Property("sort_by", PropertyType.STRING, default_value="cpu"),
-            ]),
+            PropertyList(
+                [
+                    Property(
+                        "limit",
+                        PropertyType.INTEGER,
+                        default_value=8,
+                        min_value=1,
+                        max_value=25,
+                    ),
+                    Property("sort_by", PropertyType.STRING, default_value="cpu"),
+                ]
+            ),
             top_processes_payload,
         ),
         McpTool(
@@ -142,14 +167,26 @@ def register_lab_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "Args: port - e.g. '/dev/ttyACM0'; baud - usually 115200; seconds - "
                 "how long to listen (0.2-20); send - an optional line to transmit."
             ),
-            PropertyList([
-                Property("port", PropertyType.STRING, default_value=""),
-                Property("baud", PropertyType.INTEGER, default_value=115200,
-                         min_value=300, max_value=2000000),
-                Property("seconds", PropertyType.INTEGER, default_value=3,
-                         min_value=1, max_value=20),
-                Property("send", PropertyType.STRING, default_value=""),
-            ]),
+            PropertyList(
+                [
+                    Property("port", PropertyType.STRING, default_value=""),
+                    Property(
+                        "baud",
+                        PropertyType.INTEGER,
+                        default_value=115200,
+                        min_value=300,
+                        max_value=2000000,
+                    ),
+                    Property(
+                        "seconds",
+                        PropertyType.INTEGER,
+                        default_value=3,
+                        min_value=1,
+                        max_value=20,
+                    ),
+                    Property("send", PropertyType.STRING, default_value=""),
+                ]
+            ),
             serial_monitor_payload,
         ),
         McpTool(
@@ -167,18 +204,35 @@ def register_lab_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "Args: path - source; output - where to save; width; height; rotate - "
                 "degrees clockwise; grayscale; crop - 'left,top,right,bottom' pixels."
             ),
-            PropertyList([
-                Property("path", PropertyType.STRING, default_value=""),
-                Property("output", PropertyType.STRING, default_value=""),
-                Property("width", PropertyType.INTEGER, default_value=0,
-                         min_value=0, max_value=20000),
-                Property("height", PropertyType.INTEGER, default_value=0,
-                         min_value=0, max_value=20000),
-                Property("rotate", PropertyType.INTEGER, default_value=0,
-                         min_value=-360, max_value=360),
-                Property("grayscale", PropertyType.BOOLEAN, default_value=False),
-                Property("crop", PropertyType.STRING, default_value=""),
-            ]),
+            PropertyList(
+                [
+                    Property("path", PropertyType.STRING, default_value=""),
+                    Property("output", PropertyType.STRING, default_value=""),
+                    Property(
+                        "width",
+                        PropertyType.INTEGER,
+                        default_value=0,
+                        min_value=0,
+                        max_value=20000,
+                    ),
+                    Property(
+                        "height",
+                        PropertyType.INTEGER,
+                        default_value=0,
+                        min_value=0,
+                        max_value=20000,
+                    ),
+                    Property(
+                        "rotate",
+                        PropertyType.INTEGER,
+                        default_value=0,
+                        min_value=-360,
+                        max_value=360,
+                    ),
+                    Property("grayscale", PropertyType.BOOLEAN, default_value=False),
+                    Property("crop", PropertyType.STRING, default_value=""),
+                ]
+            ),
             edit_image_payload,
         ),
         McpTool(
@@ -197,15 +251,22 @@ def register_lab_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "'00:01:30'; duration - how long to keep like '30'; audio_only - "
                 "strip the video; scale_width - resize video to this width."
             ),
-            PropertyList([
-                Property("path", PropertyType.STRING, default_value=""),
-                Property("output", PropertyType.STRING, default_value=""),
-                Property("start", PropertyType.STRING, default_value=""),
-                Property("duration", PropertyType.STRING, default_value=""),
-                Property("audio_only", PropertyType.BOOLEAN, default_value=False),
-                Property("scale_width", PropertyType.INTEGER, default_value=0,
-                         min_value=0, max_value=7680),
-            ]),
+            PropertyList(
+                [
+                    Property("path", PropertyType.STRING, default_value=""),
+                    Property("output", PropertyType.STRING, default_value=""),
+                    Property("start", PropertyType.STRING, default_value=""),
+                    Property("duration", PropertyType.STRING, default_value=""),
+                    Property("audio_only", PropertyType.BOOLEAN, default_value=False),
+                    Property(
+                        "scale_width",
+                        PropertyType.INTEGER,
+                        default_value=0,
+                        min_value=0,
+                        max_value=7680,
+                    ),
+                ]
+            ),
             convert_media_payload,
         ),
     ]

@@ -81,7 +81,9 @@ class SettingsAudioDevicesMixin:
             return
 
         self._audio_devices_refreshing = True
-        self.statusMessage.emit("Refreshing audio devices (microphone/playback will briefly stop)...")
+        self.statusMessage.emit(
+            "Refreshing audio devices (microphone/playback will briefly stop)..."
+        )
 
         async def _refresh():
             from src.core.event_bus import Events
@@ -291,7 +293,9 @@ class SettingsAudioDevicesMixin:
             self.statusMessage.emit("[WARN] Audio signal clipping")
             self.testComplete.emit("input", True)
         else:
-            self.statusMessage.emit(f"[OK] Recording test passed (level: {max_amplitude:.1%})")
+            self.statusMessage.emit(
+                f"[OK] Recording test passed (level: {max_amplitude:.1%})"
+            )
             self.testComplete.emit("input", True)
 
     @Slot()

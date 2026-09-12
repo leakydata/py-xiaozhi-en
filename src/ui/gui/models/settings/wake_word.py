@@ -125,4 +125,3 @@ class SettingsWakeWordMixin:
             logger.error(f"保存唤醒词失败: {e}", exc_info=True)
             self.statusMessage.emit(f"Save failed: {e}")
             return False
-

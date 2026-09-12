@@ -26,10 +26,21 @@ _REL = re.compile(
     re.I,
 )
 _UNITS = {
-    "min": "minutes", "mins": "minutes", "minute": "minutes", "minutes": "minutes",
-    "h": "hours", "hr": "hours", "hrs": "hours", "hour": "hours", "hours": "hours",
-    "d": "days", "day": "days", "days": "days",
-    "w": "weeks", "week": "weeks", "weeks": "weeks",
+    "min": "minutes",
+    "mins": "minutes",
+    "minute": "minutes",
+    "minutes": "minutes",
+    "h": "hours",
+    "hr": "hours",
+    "hrs": "hours",
+    "hour": "hours",
+    "hours": "hours",
+    "d": "days",
+    "day": "days",
+    "days": "days",
+    "w": "weeks",
+    "week": "weeks",
+    "weeks": "weeks",
 }
 _CLOCK = re.compile(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", re.I)
 
@@ -58,7 +69,9 @@ def _parse_when(when: str) -> Optional[datetime]:
 
     base = None
     if low.startswith("tomorrow"):
-        base = (now + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+        base = (now + timedelta(days=1)).replace(
+            hour=9, minute=0, second=0, microsecond=0
+        )
     elif low.startswith("today") or low.startswith("tonight"):
         base = now.replace(second=0, microsecond=0)
         if low.startswith("tonight"):
@@ -127,11 +140,15 @@ async def recall_payload(args: dict[str, Any]) -> str:
         return json.dumps({"error": f"Could not search: {e}"})
     if not rows:
         return json.dumps(
-            {"query": query, "results": [],
-             "note": "Nothing relevant stored. Say so rather than guessing."}
+            {
+                "query": query,
+                "results": [],
+                "note": "Nothing relevant stored. Say so rather than guessing.",
+            }
         )
-    return json.dumps({"query": query, "results": [_row(r) for r in rows]},
-                      ensure_ascii=False)
+    return json.dumps(
+        {"query": query, "results": [_row(r) for r in rows]}, ensure_ascii=False
+    )
 
 
 async def set_reminder_payload(args: dict[str, Any]) -> str:
@@ -143,14 +160,17 @@ async def set_reminder_payload(args: dict[str, Any]) -> str:
         return json.dumps({"error": "No time given. Ask when they want reminding."})
     dt = _parse_when(when)
     if dt is None:
-        return json.dumps({
-            "error": f"Could not understand the time {when!r}. Ask for a clearer "
-                     "time, or pass an ISO timestamp."
-        })
+        return json.dumps(
+            {
+                "error": f"Could not understand the time {when!r}. Ask for a clearer "
+                "time, or pass an ISO timestamp."
+            }
+        )
     speaker = str(args.get("speaker", "") or "") or get_current_speaker()
     try:
         nid = get_memory().add(
-            text, kind="reminder",
+            text,
+            kind="reminder",
             due_at=dt.astimezone(timezone.utc).isoformat(timespec="seconds"),
             speaker=speaker,
         )
@@ -174,8 +194,11 @@ async def list_reminders_payload(args: dict[str, Any]) -> str:
     except Exception as e:
         return json.dumps({"error": f"Could not list reminders: {e}"})
     return json.dumps(
-        {"scope": scope, "now": _fmt(_local_now()),
-         "reminders": [_row(r) for r in rows]},
+        {
+            "scope": scope,
+            "now": _fmt(_local_now()),
+            "reminders": [_row(r) for r in rows],
+        },
         ensure_ascii=False,
     )
 
@@ -186,8 +209,9 @@ async def complete_reminder_payload(args: dict[str, Any]) -> str:
     except (TypeError, ValueError):
         return json.dumps({"error": "id must be a number."})
     ok = get_memory().complete(nid)
-    return json.dumps({"completed": ok, "id": nid} if ok
-                      else {"error": f"No reminder with id {nid}."})
+    return json.dumps(
+        {"completed": ok, "id": nid} if ok else {"error": f"No reminder with id {nid}."}
+    )
 
 
 async def memory_topics_payload(args: dict[str, Any]) -> str:
@@ -197,15 +221,18 @@ async def memory_topics_payload(args: dict[str, Any]) -> str:
         logger.warning(f"[Memory] topics failed: {e}")
         return json.dumps({"error": f"Could not group memories: {e}"})
     if not groups:
-        return json.dumps({"topics": [],
-                           "note": "Not enough related memories to form themes yet."})
+        return json.dumps(
+            {"topics": [], "note": "Not enough related memories to form themes yet."}
+        )
     return json.dumps({"topics": groups}, ensure_ascii=False)
 
 
 async def current_time_payload(args: dict[str, Any]) -> str:
     now = _local_now()
-    return json.dumps({
-        "local_time": _fmt(now),
-        "iso": now.isoformat(timespec="seconds"),
-        "timezone": str(now.tzinfo),
-    })
+    return json.dumps(
+        {
+            "local_time": _fmt(now),
+            "iso": now.isoformat(timespec="seconds"),
+            "timezone": str(now.tzinfo),
+        }
+    )

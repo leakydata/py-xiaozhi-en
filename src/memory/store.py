@@ -148,7 +148,13 @@ class MemoryStore:
                 "INSERT INTO notes(kind,text,speaker,created_at,due_at,done,tags,"
                 "source,meta) VALUES (?,?,?,?,?,0,?,?,?)",
                 (
-                    kind, text, speaker, _now(), due_at, tags, source,
+                    kind,
+                    text,
+                    speaker,
+                    _now(),
+                    due_at,
+                    tags,
+                    source,
                     json.dumps(meta, ensure_ascii=False) if meta else None,
                 ),
             )
@@ -183,7 +189,10 @@ class MemoryStore:
     # ---------- reads ----------
 
     def search(
-        self, query: str, k: int = 5, kind: Optional[str] = None,
+        self,
+        query: str,
+        k: int = 5,
+        kind: Optional[str] = None,
         min_score: float = 0.45,
     ) -> list[dict[str, Any]]:
         """Hybrid recall: dense vectors fused with FTS5 keyword ranks.
@@ -221,9 +230,11 @@ class MemoryStore:
             keyword: list[int] = []
             try:
                 fts_q = " OR ".join(
-                    w for w in "".join(
+                    w
+                    for w in "".join(
                         c if (c.isalnum() or c.isspace()) else " " for c in query
-                    ).split() if len(w) > 2
+                    ).split()
+                    if len(w) > 2
                 )
                 if fts_q:
                     keyword = [
@@ -316,19 +327,21 @@ class MemoryStore:
         import numpy as np
 
         with self._lock, self._connect() as conn:
-            rows = conn.execute(
-                "SELECT n.id, n.kind, n.text, v.embedding FROM notes n "
-                "JOIN notes_vec v ON v.note_id = n.id ORDER BY n.id"
-            ).fetchall() if self._vec_ok else []
+            rows = (
+                conn.execute(
+                    "SELECT n.id, n.kind, n.text, v.embedding FROM notes n "
+                    "JOIN notes_vec v ON v.note_id = n.id ORDER BY n.id"
+                ).fetchall()
+                if self._vec_ok
+                else []
+            )
         if not rows:
             return []
 
         ids = [r["id"] for r in rows]
         texts = {r["id"]: r["text"] for r in rows}
         kinds = {r["id"]: r["kind"] for r in rows}
-        vecs = np.stack([
-            np.frombuffer(r["embedding"], dtype=np.float32) for r in rows
-        ])
+        vecs = np.stack([np.frombuffer(r["embedding"], dtype=np.float32) for r in rows])
         # vectors are already L2-normalised, so a dot product is the cosine
         sim = vecs @ vecs.T
 
@@ -342,8 +355,10 @@ class MemoryStore:
         clusters: list[list[int]] = []
         while unassigned:
             # start from whichever note is closest to the most others
-            seed = max(unassigned, key=lambda i: float(
-                sum(sim[i][j] for j in unassigned if j != i)))
+            seed = max(
+                unassigned,
+                key=lambda i: float(sum(sim[i][j] for j in unassigned if j != i)),
+            )
             members = [j for j in unassigned if sim[seed][j] >= threshold]
             if seed not in members:
                 members.append(seed)
@@ -356,12 +371,20 @@ class MemoryStore:
                 continue
             # the member most similar to the rest is the best label for the group
             rep = max(members, key=lambda i: float(sum(sim[i][j] for j in members)))
-            out.append({
-                "theme": texts[ids[rep]][:90],
-                "size": len(members),
-                "notes": [{"id": ids[i], "kind": kinds[ids[i]],
-                           "text": texts[ids[i]][:110]} for i in members],
-            })
+            out.append(
+                {
+                    "theme": texts[ids[rep]][:90],
+                    "size": len(members),
+                    "notes": [
+                        {
+                            "id": ids[i],
+                            "kind": kinds[ids[i]],
+                            "text": texts[ids[i]][:110],
+                        }
+                        for i in members
+                    ],
+                }
+            )
         return out
 
     def count(self) -> int:

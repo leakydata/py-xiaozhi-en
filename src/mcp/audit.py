@@ -43,15 +43,17 @@ def begin(tool: str, args: Any) -> int:
     """Record a call as running. Returns a handle for finish()."""
     call_id = next(_seq)
     with _feed_lock:
-        _feed.append({
-            "id": call_id,
-            "tool": tool,
-            "args": _clip(args, 160),
-            "state": "running",
-            "started": time.time(),
-            "ms": None,
-            "detail": "",
-        })
+        _feed.append(
+            {
+                "id": call_id,
+                "tool": tool,
+                "args": _clip(args, 160),
+                "state": "running",
+                "started": time.time(),
+                "ms": None,
+                "detail": "",
+            }
+        )
     return call_id
 
 
@@ -69,7 +71,7 @@ def feed(limit: int = 40) -> list[dict]:
     """Newest last, with elapsed time filled in for anything still running."""
     now = time.time()
     with _feed_lock:
-        items = list(_feed)[-max(1, min(int(limit), FEED_SIZE)):]
+        items = list(_feed)[-max(1, min(int(limit), FEED_SIZE)) :]
     for entry in items:
         if entry["state"] == "running":
             entry["elapsed_ms"] = int((now - entry["started"]) * 1000)
@@ -89,15 +91,24 @@ def path() -> Path:
 
 def _clip(value: Any, limit: int) -> Any:
     try:
-        text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+        text = (
+            value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+        )
     except Exception:
         text = str(value)
     text = text.replace("\n", " ")
     return text[:limit] + ("..." if len(text) > limit else "")
 
 
-def record(tool: str, args: Any, *, ok: bool, result: Any = None,
-           error: str | None = None, ms: int | None = None) -> None:
+def record(
+    tool: str,
+    args: Any,
+    *,
+    ok: bool,
+    result: Any = None,
+    error: str | None = None,
+    ms: int | None = None,
+) -> None:
     entry = {
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "tool": tool,
@@ -137,4 +148,4 @@ def tail(limit: int = 20, tool: str | None = None) -> list[dict]:
         if tool and entry.get("tool") != tool:
             continue
         out.append(entry)
-    return out[-max(1, min(int(limit), 200)):]
+    return out[-max(1, min(int(limit), 200)) :]

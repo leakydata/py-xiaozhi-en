@@ -130,7 +130,9 @@ def downmix_to_mono(
         if in_channels is None:
             raise ValueError("in_channels must be given for bytes input")
         arr = np.frombuffer(pcm, dtype=dtype).reshape(-1, in_channels)
-        mono_arr = downmix_to_mono(arr, keepdims=False)  # keepdims is irrelevant for bytes output
+        mono_arr = downmix_to_mono(
+            arr, keepdims=False
+        )  # keepdims is irrelevant for bytes output
         return mono_arr.tobytes()
 
     # ndarray input: processed directly
@@ -234,14 +236,18 @@ def refresh_portaudio_devices(*, reinitialize: bool = True) -> list[dict]:
             try:
                 terminate()
                 initialize()
-                logger.info("PortAudio reinitialised, about to re-enumerate the devices")
+                logger.info(
+                    "PortAudio reinitialised, about to re-enumerate the devices"
+                )
             except Exception as e:
                 logger.warning(
                     f"PortAudio reinitialisation failed, falling back to a plain enumeration: {e}",
                     exc_info=True,
                 )
         else:
-            logger.debug("this sounddevice build has no _terminate/_initialize, skipping the reinitialisation")
+            logger.debug(
+                "this sounddevice build has no _terminate/_initialize, skipping the reinitialisation"
+            )
 
     try:
         devices = list(sd.query_devices())

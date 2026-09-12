@@ -59,11 +59,7 @@ class PluginManager:
 
     def failed_plugins(self) -> List[str]:
         """The names of every plugin that has failed."""
-        return [
-            p.name
-            for p in self._plugins
-            if getattr(p, "name", None) and p.failed
-        ]
+        return [p.name for p in self._plugins if getattr(p, "name", None) and p.failed]
 
     def _dependencies_ok(self, plugin: Plugin) -> bool:
         """Whether every dependency a plugin declares is available (registered and not failed)."""
@@ -113,7 +109,9 @@ class PluginManager:
                     in_degree[name] = in_degree.get(name, 0) + 1
                     dependents[dep].append(name)
                 else:
-                    logger.warning(f"plugin {name} declares a dependency on {dep}, which is not registered - ignoring it")
+                    logger.warning(
+                        f"plugin {name} declares a dependency on {dep}, which is not registered - ignoring it"
+                    )
 
         # Kahn's algorithm
         queue = [name for name, degree in in_degree.items() if degree == 0]
@@ -121,9 +119,7 @@ class PluginManager:
 
         while queue:
             # among the nodes with in-degree 0, take the one with the lowest priority number
-            queue.sort(
-                key=lambda n: getattr(self._by_name.get(n), "priority", 50)
-            )
+            queue.sort(key=lambda n: getattr(self._by_name.get(n), "priority", 50))
             current = queue.pop(0)
             plugin = self._by_name.get(current)
             if plugin:

@@ -89,7 +89,9 @@ class Protocol:
         """
         Abstract: report whether the audio channel is open. Implemented by subclasses.
         """
-        raise NotImplementedError("is_audio_channel_openedmust be implemented by a subclass")
+        raise NotImplementedError(
+            "is_audio_channel_openedmust be implemented by a subclass"
+        )
 
     async def open_audio_channel(self) -> bool:
         """
@@ -101,7 +103,9 @@ class Protocol:
         """
         Abstract: close the audio channel. Implemented by subclasses.
         """
-        raise NotImplementedError("close_audio_channelmust be implemented by a subclass")
+        raise NotImplementedError(
+            "close_audio_channelmust be implemented by a subclass"
+        )
 
     async def send_abort_speaking(self, reason):
         """
@@ -336,7 +340,9 @@ class Protocol:
             try:
                 self._on_connection_state_changed(False, reason)
             except Exception as e:
-                logger.error(f"connection-state-change callback failed: {e}", exc_info=True)
+                logger.error(
+                    f"connection-state-change callback failed: {e}", exc_info=True
+                )
 
         # protocol-specific cleanup in the subclass
         await self._do_cleanup()
@@ -346,7 +352,9 @@ class Protocol:
             try:
                 await self._on_audio_channel_closed()
             except Exception as e:
-                logger.error(f"audio-channel-closed callback failed: {e}", exc_info=True)
+                logger.error(
+                    f"audio-channel-closed callback failed: {e}", exc_info=True
+                )
 
         # Clean server close: the session ending is not a failure, so no reconnect and no error,
         # re-open the audio channel on the next interaction as needed
@@ -366,7 +374,9 @@ class Protocol:
                     self._auto_reconnect_enabled
                     and self._reconnect_attempts >= self._max_reconnect_attempts
                 ):
-                    await self._on_network_error(f"Connection lost and reconnect failed: {reason}")
+                    await self._on_network_error(
+                        f"Connection lost and reconnect failed: {reason}"
+                    )
                 else:
                     await self._on_network_error(f"Connection lost: {reason}")
 

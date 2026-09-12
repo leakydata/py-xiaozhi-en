@@ -33,7 +33,7 @@ MAX_OUTPUT = 20_000
 
 # Runs INSIDE the jail. Keeps one namespace alive across execs and reports
 # stdout, stderr and the traceback for each one separately.
-_DRIVER = r'''
+_DRIVER = r"""
 import sys, json, io, traceback, contextlib
 ns = {"__name__": "__main__"}
 sys.stdin.reconfigure(encoding="utf-8")
@@ -61,7 +61,7 @@ for line in sys.stdin:
         "out": out.getvalue(), "err": err.getvalue(), "failed": failed,
     }) + "\n")
     sys.__stdout__.flush()
-'''
+"""
 
 
 class Session:
@@ -100,8 +100,7 @@ class Session:
                 pass
         self.proc = None
 
-    async def execute(self, code: str, timeout: float,
-                      workspace: Path) -> dict:
+    async def execute(self, code: str, timeout: float, workspace: Path) -> dict:
         async with self.lock:
             if not self.alive:
                 await self.start(workspace)
@@ -117,42 +116,61 @@ class Session:
 
             try:
                 self.proc.stdin.write(
-                    (json.dumps({"code": code}) + "\n").encode("utf-8"))
+                    (json.dumps({"code": code}) + "\n").encode("utf-8")
+                )
                 await self.proc.stdin.drain()
                 line = await asyncio.wait_for(
-                    self.proc.stdout.readline(), timeout=timeout)
+                    self.proc.stdout.readline(), timeout=timeout
+                )
             except asyncio.TimeoutError:
                 await self.stop()
-                return {"ok": False, "session": self.name, "state_lost": True,
-                        "error": (f"Timed out after {timeout:.0f}s. The session "
-                                  "was restarted, so variables from before are "
-                                  "gone - a blocking call cannot be interrupted "
-                                  "safely.")}
+                return {
+                    "ok": False,
+                    "session": self.name,
+                    "state_lost": True,
+                    "error": (
+                        f"Timed out after {timeout:.0f}s. The session "
+                        "was restarted, so variables from before are "
+                        "gone - a blocking call cannot be interrupted "
+                        "safely."
+                    ),
+                }
             except Exception as e:
                 await self.stop()
-                return {"ok": False, "session": self.name, "state_lost": True,
-                        "error": f"Session failed: {e}"}
+                return {
+                    "ok": False,
+                    "session": self.name,
+                    "state_lost": True,
+                    "error": f"Session failed: {e}",
+                }
 
             if not line:
                 await self.stop()
-                return {"ok": False, "session": self.name, "state_lost": True,
-                        "error": "The interpreter exited (a hard crash, or "
-                                 "os._exit / quit() in the code)."}
+                return {
+                    "ok": False,
+                    "session": self.name,
+                    "state_lost": True,
+                    "error": "The interpreter exited (a hard crash, or "
+                    "os._exit / quit() in the code).",
+                }
 
             self.execs += 1
             try:
                 res = json.loads(line.decode("utf-8", "replace"))
             except Exception as e:
-                return {"ok": False, "session": self.name,
-                        "error": f"Could not read the result: {e}"}
+                return {
+                    "ok": False,
+                    "session": self.name,
+                    "error": f"Could not read the result: {e}",
+                }
 
             text = (res.get("out") or "") + (res.get("err") or "")
             return {
                 "ok": not res.get("failed"),
                 "session": self.name,
                 "execs": self.execs,
-                "output": text[:MAX_OUTPUT] or
-                          "(no output - remember to print() results)",
+                "output": text[:MAX_OUTPUT]
+                or "(no output - remember to print() results)",
                 "truncated": len(text) > MAX_OUTPUT,
             }
 
@@ -160,17 +178,27 @@ class Session:
 _sessions: dict[str, Session] = {}
 
 
-async def execute(code: str, workspace: Path, *, session: str = "default",
-                  fresh: bool = False, timeout: float = 30.0,
-                  network: bool = False) -> dict:
+async def execute(
+    code: str,
+    workspace: Path,
+    *,
+    session: str = "default",
+    fresh: bool = False,
+    timeout: float = 30.0,
+    network: bool = False,
+) -> dict:
     from . import python_exec
 
     if not code or not code.strip():
         return {"ok": False, "error": "No code given."}
     if not python_exec.available():
-        return {"ok": False, "error": (
-            "Cannot run Python safely: bubblewrap (bwrap) is not installed. "
-            "Install it with: sudo apt install bubblewrap")}
+        return {
+            "ok": False,
+            "error": (
+                "Cannot run Python safely: bubblewrap (bwrap) is not installed. "
+                "Install it with: sudo apt install bubblewrap"
+            ),
+        }
 
     name = (session or "default").strip() or "default"
     workspace.mkdir(parents=True, exist_ok=True)
@@ -212,8 +240,10 @@ async def reset(session: str = "") -> dict:
 
 
 def status() -> list[dict]:
-    return [{"session": s.name, "alive": s.alive, "execs": s.execs,
-             "network": s.network} for s in _sessions.values()]
+    return [
+        {"session": s.name, "alive": s.alive, "execs": s.execs, "network": s.network}
+        for s in _sessions.values()
+    ]
 
 
 async def shutdown() -> None:

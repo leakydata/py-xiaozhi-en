@@ -36,34 +36,101 @@ MAX_OUTPUT = 20_000
 # Read-only system state. Deliberately no cat/head/tail/find - file reading is
 # the filesystem tool's job, and it is workspace-scoped.
 ALLOWED: dict[str, str] = {
-    "df": "disk space", "du": "directory sizes", "free": "memory use",
-    "uptime": "load and uptime", "date": "current date/time",
-    "hostname": "machine name", "whoami": "current user", "uname": "kernel info",
-    "ps": "running processes", "pgrep": "find processes by name",
-    "lsblk": "block devices", "lsusb": "USB devices", "lspci": "PCI devices",
-    "lscpu": "CPU info", "sensors": "temperatures", "nvidia-smi": "GPU status",
-    "ip": "network interfaces", "ss": "network sockets", "ping": "reachability",
-    "systemctl": "service status", "journalctl": "system logs",
-    "pactl": "audio devices", "arecord": "capture devices",
-    "aplay": "playback devices", "bluetoothctl": "bluetooth status",
-    "uptime": "uptime", "who": "logged-in users", "id": "user and groups",
-    "printenv": "environment variables", "which": "locate a program",
+    "df": "disk space",
+    "du": "directory sizes",
+    "free": "memory use",
+    "uptime": "load and uptime",
+    "date": "current date/time",
+    "hostname": "machine name",
+    "whoami": "current user",
+    "uname": "kernel info",
+    "ps": "running processes",
+    "pgrep": "find processes by name",
+    "lsblk": "block devices",
+    "lsusb": "USB devices",
+    "lspci": "PCI devices",
+    "lscpu": "CPU info",
+    "sensors": "temperatures",
+    "nvidia-smi": "GPU status",
+    "ip": "network interfaces",
+    "ss": "network sockets",
+    "ping": "reachability",
+    "systemctl": "service status",
+    "journalctl": "system logs",
+    "pactl": "audio devices",
+    "arecord": "capture devices",
+    "aplay": "playback devices",
+    "bluetoothctl": "bluetooth status",
+    "uptime": "uptime",
+    "who": "logged-in users",
+    "id": "user and groups",
+    "printenv": "environment variables",
+    "which": "locate a program",
     "nmcli": "network manager status",
     "git": "repository status/log/diff (read-only subcommands only)",
 }
 
 # Even inside an allowed command, these subcommands change state.
 FORBIDDEN_ARGS = {
-    "start", "stop", "restart", "reload", "enable", "disable", "mask", "unmask",
-    "kill", "poweroff", "reboot", "halt", "shutdown", "isolate", "set-property",
-    "edit", "remove", "delete", "connect", "disconnect", "pair", "unpair",
-    "set-default-sink", "set-default-source", "set-card-profile", "suspend",
-    "load-module", "unload-module", "vacuum", "rotate", "flush",
-    "move-sink", "set-sink", "set-source", "add", "modify", "write",
+    "start",
+    "stop",
+    "restart",
+    "reload",
+    "enable",
+    "disable",
+    "mask",
+    "unmask",
+    "kill",
+    "poweroff",
+    "reboot",
+    "halt",
+    "shutdown",
+    "isolate",
+    "set-property",
+    "edit",
+    "remove",
+    "delete",
+    "connect",
+    "disconnect",
+    "pair",
+    "unpair",
+    "set-default-sink",
+    "set-default-source",
+    "set-card-profile",
+    "suspend",
+    "load-module",
+    "unload-module",
+    "vacuum",
+    "rotate",
+    "flush",
+    "move-sink",
+    "set-sink",
+    "set-source",
+    "add",
+    "modify",
+    "write",
     # git subcommands that change history, the working tree or a remote
-    "push", "commit", "merge", "rebase", "reset", "checkout", "clean",
-    "clone", "fetch", "pull", "tag", "stash", "cherry-pick", "revert",
-    "config", "gc", "prune", "am", "apply", "mv", "rm",
+    "push",
+    "commit",
+    "merge",
+    "rebase",
+    "reset",
+    "checkout",
+    "clean",
+    "clone",
+    "fetch",
+    "pull",
+    "tag",
+    "stash",
+    "cherry-pick",
+    "revert",
+    "config",
+    "gc",
+    "prune",
+    "am",
+    "apply",
+    "mv",
+    "rm",
 }
 
 # Shell metacharacters: their presence means the caller expects a shell, and
@@ -88,10 +155,14 @@ def check(command: str) -> tuple[bool, str, list[str]]:
         return False, "No command given.", []
     for meta in METACHARS:
         if meta in raw:
-            return False, (
-                f"{meta!r} is not allowed - there is no shell here, so pipes, "
-                "redirection and chaining do not work. Run one simple command."
-            ), []
+            return (
+                False,
+                (
+                    f"{meta!r} is not allowed - there is no shell here, so pipes, "
+                    "redirection and chaining do not work. Run one simple command."
+                ),
+                [],
+            )
     try:
         argv = shlex.split(raw)
     except ValueError as e:
@@ -101,9 +172,11 @@ def check(command: str) -> tuple[bool, str, list[str]]:
 
     base = os.path.basename(argv[0])
     if base not in ALLOWED:
-        return False, (
-            f"{base!r} is not permitted. Allowed: {', '.join(sorted(ALLOWED))}."
-        ), []
+        return (
+            False,
+            (f"{base!r} is not permitted. Allowed: {', '.join(sorted(ALLOWED))}."),
+            [],
+        )
     if shutil.which(base) is None:
         return False, f"{base!r} is not installed on this machine.", []
     for token in argv[1:]:
@@ -112,12 +185,20 @@ def check(command: str) -> tuple[bool, str, list[str]]:
         # that deletes system logs.
         norm = token.lstrip("-").split("=", 1)[0].lower()
         if norm in FORBIDDEN_ARGS or any(bad in norm for bad in FORBIDDEN_ARGS):
-            return False, f"{token!r} would change system state; only status is allowed.", []
+            return (
+                False,
+                f"{token!r} would change system state; only status is allowed.",
+                [],
+            )
         if _looks_like_outside_path(token):
-            return False, (
-                f"{token!r} points outside the workspace. Use the file tools to "
-                "read files."
-            ), []
+            return (
+                False,
+                (
+                    f"{token!r} points outside the workspace. Use the file tools to "
+                    "read files."
+                ),
+                [],
+            )
     return True, "", argv
 
 
@@ -129,8 +210,10 @@ async def run(command: str, workdir: Path) -> dict:
     logger.info(f"[Shell] {' '.join(argv)}")
     try:
         proc = await asyncio.create_subprocess_exec(
-            *argv, cwd=str(workdir),
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+            *argv,
+            cwd=str(workdir),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
     except Exception as e:
         return {"ok": False, "error": f"Could not run it: {e}"}

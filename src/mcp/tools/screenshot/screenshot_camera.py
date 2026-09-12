@@ -311,7 +311,9 @@ class ScreenshotCamera(BaseCamera):
             bmpinfo = ctypes.wintypes.BITMAPINFO()
             bmpinfo.bmiHeader.biSize = ctypes.sizeof(ctypes.wintypes.BITMAPINFOHEADER)
             bmpinfo.bmiHeader.biWidth = screensize[0]
-            bmpinfo.bmiHeader.biHeight = -screensize[1]  # a negative height means top-down
+            bmpinfo.bmiHeader.biHeight = -screensize[
+                1
+            ]  # a negative height means top-down
             bmpinfo.bmiHeader.biPlanes = 1
             bmpinfo.bmiHeader.biBitCount = 32
             bmpinfo.bmiHeader.biCompression = 0
@@ -475,7 +477,9 @@ class ScreenshotCamera(BaseCamera):
                     logger.debug(f"Captured display {display_num}: {screenshot.size}")
                     return screenshot
                 except Exception as e:
-                    logger.error(f"Failed to read display {display_num}: {e}", exc_info=True)
+                    logger.error(
+                        f"Failed to read display {display_num}: {e}", exc_info=True
+                    )
                     os.unlink(temp_path)
                     return None
             else:

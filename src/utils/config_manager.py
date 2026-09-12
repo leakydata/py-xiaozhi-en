@@ -30,7 +30,9 @@ def initialize_config() -> "ConfigManager":
 
             apply_path_overrides_from_config(_current, migrate=True)
         except Exception as e:
-            logger.warning("failed to apply the PATHS directory overrides: %s", e, exc_info=True)
+            logger.warning(
+                "failed to apply the PATHS directory overrides: %s", e, exc_info=True
+            )
     return _current
 
 
@@ -127,10 +129,26 @@ class ConfigManager:
         },
         "SHORTCUTS": {
             "ENABLED": True,
-            "MANUAL_PRESS": {"modifier": "ctrl", "key": "j", "description": "Push to talk"},
-            "AUTO_TOGGLE": {"modifier": "ctrl", "key": "k", "description": "Auto conversation"},
-            "ABORT": {"modifier": "ctrl", "key": "q", "description": "Abort conversation"},
-            "MODE_TOGGLE": {"modifier": "ctrl", "key": "m", "description": "Toggle mode"},
+            "MANUAL_PRESS": {
+                "modifier": "ctrl",
+                "key": "j",
+                "description": "Push to talk",
+            },
+            "AUTO_TOGGLE": {
+                "modifier": "ctrl",
+                "key": "k",
+                "description": "Auto conversation",
+            },
+            "ABORT": {
+                "modifier": "ctrl",
+                "key": "q",
+                "description": "Abort conversation",
+            },
+            "MODE_TOGGLE": {
+                "modifier": "ctrl",
+                "key": "m",
+                "description": "Toggle mode",
+            },
             "WINDOW_TOGGLE": {
                 "modifier": "ctrl",
                 "key": "w",
@@ -245,7 +263,8 @@ class ConfigManager:
                     )
                 except Exception as e:
                     logger.warning(
-                        f"Failed to migrate the config file: {e}; using defaults", exc_info=True
+                        f"Failed to migrate the config file: {e}; using defaults",
+                        exc_info=True,
                     )
 
         logger.info(f"Config directory: {self.config_dir.absolute()}")
@@ -277,7 +296,9 @@ class ConfigManager:
 
                 if not isinstance(config, dict):
                     backup = self._backup_corrupt_config(
-                        TypeError(f"the root node must be an object, got {type(config).__name__}")
+                        TypeError(
+                            f"the root node must be an object, got {type(config).__name__}"
+                        )
                     )
                     logger.error(
                         "Config root node was invalid; backed up to %s and fell back to defaults",
@@ -357,7 +378,8 @@ class ConfigManager:
                 )
             else:
                 logger.warning(
-                    "Could not write back after migrating (memory is already v%s)", self.CONFIG_VERSION
+                    "Could not write back after migrating (memory is already v%s)",
+                    self.CONFIG_VERSION,
                 )
         else:
             config["CONFIG_VERSION"] = self.CONFIG_VERSION
@@ -494,7 +516,9 @@ class ConfigManager:
             self._config = self._load_config()
             if apply_paths:
                 try:
-                    from src.utils.resource_finder import apply_path_overrides_from_config
+                    from src.utils.resource_finder import (
+                        apply_path_overrides_from_config,
+                    )
 
                     apply_path_overrides_from_config(self, migrate=False)
                 except Exception as e:

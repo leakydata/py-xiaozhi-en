@@ -57,7 +57,7 @@ async def ask_claude_payload(args: dict[str, Any]) -> str:
     question = str(args.get("question", "")).strip()
     if not question:
         return json.dumps({"error": "No question given."})
-    if (why := _unavailable()):
+    if why := _unavailable():
         return json.dumps({"error": why})
 
     timeout, model = _settings()
@@ -94,16 +94,18 @@ async def ask_claude_background_payload(args: dict[str, Any]) -> str:
     question = str(args.get("question", "")).strip()
     if not question:
         return json.dumps({"error": "No question given."})
-    if (why := _unavailable()):
+    if why := _unavailable():
         return json.dumps({"error": why})
 
     timeout, model = _settings()
     asyncio.create_task(_background(question, timeout, model))
-    return json.dumps({
-        "started": True,
-        "note": "Tell the user you are looking into it and will speak up when you "
-                "have the answer. Do not wait or call this again.",
-    })
+    return json.dumps(
+        {
+            "started": True,
+            "note": "Tell the user you are looking into it and will speak up when you "
+            "have the answer. Do not wait or call this again.",
+        }
+    )
 
 
 def register_claude_code_tools(add_tool: Callable[[McpTool], None]) -> None:

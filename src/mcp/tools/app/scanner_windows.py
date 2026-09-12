@@ -150,7 +150,9 @@ def scan_running_applications() -> List[Dict[str, str]]:
         return apps
 
     except Exception as e:
-        logger.error(f"[WindowsScanner] scan of running applications failed: {e}", exc_info=True)
+        logger.error(
+            f"[WindowsScanner] scan of running applications failed: {e}", exc_info=True
+        )
         return []
 
 
@@ -210,7 +212,9 @@ def _scan_main_start_menu_apps() -> List[Dict[str, str]]:
                                 )
 
             except Exception as e:
-                logger.debug(f"[WindowsScanner] Start menu scan failed for {start_path}: {e}")
+                logger.debug(
+                    f"[WindowsScanner] Start menu scan failed for {start_path}: {e}"
+                )
 
     return apps
 
@@ -509,7 +513,9 @@ def _resolve_shortcut_target(shortcut_path: str) -> Optional[str]:
             return target_path
 
     except ImportError:
-        logger.debug("[WindowsScanner] the win32com module is unavailable, cannot resolve shortcuts")
+        logger.debug(
+            "[WindowsScanner] the win32com module is unavailable, cannot resolve shortcuts"
+        )
     except Exception as e:
         logger.debug(f"[WindowsScanner] failed to resolve the shortcut: {e}")
 

@@ -74,9 +74,7 @@ class ActivityModel(BaseModel):
         rows = [_summarise(e) for e in reversed(entries)]  # newest first
         # Cheap change detection: rebuilding the QML list on every tick would
         # reset scroll position and churn delegates for no reason.
-        signature = "|".join(
-            f"{r['tool']}:{r['state']}:{r['took']}" for r in rows
-        )
+        signature = "|".join(f"{r['tool']}:{r['state']}:{r['took']}" for r in rows)
         if signature != self._signature:
             self._signature = signature
             self._rows = rows

@@ -174,7 +174,9 @@ class WebsocketProtocol(Protocol):
             try:
                 await self.websocket.close()
             except Exception as e:
-                logger.error(f"Error closing the WebSocket connection: {e}", exc_info=True)
+                logger.error(
+                    f"Error closing the WebSocket connection: {e}", exc_info=True
+                )
 
         self.websocket = None
 
@@ -217,7 +219,10 @@ class WebsocketProtocol(Protocol):
                                 if self._on_incoming_json:
                                     self._on_incoming_json(data)
                         except json.JSONDecodeError as e:
-                            logger.error(f"Invalid JSON message: {message}, error: {e}", exc_info=True)
+                            logger.error(
+                                f"Invalid JSON message: {message}, error: {e}",
+                                exc_info=True,
+                            )
                     elif isinstance(message, bytes):
                         # binary message, most likely audio
                         if self._on_incoming_audio:
@@ -239,7 +244,9 @@ class WebsocketProtocol(Protocol):
         except websockets.ConnectionClosedError as e:
             if not self._is_closing:
                 logger.info(f"WebSocketConnection closed with an error: {e}")
-                await self._handle_connection_loss(f"Connection error: {e.code} {e.reason}")
+                await self._handle_connection_loss(
+                    f"Connection error: {e.code} {e.reason}"
+                )
         except websockets.InvalidState as e:
             logger.error(f"WebSocketInvalid state: {e}", exc_info=True)
             await self._handle_connection_loss("connection state is bad")
@@ -264,13 +271,17 @@ class WebsocketProtocol(Protocol):
             await self.websocket.send(data)
         except websockets.ConnectionClosedOK as e:
             # the server reclaimed the session cleanly (e.g. after TTS finished); not a network error
-            logger.info(f"Connection closed cleanly by the server while sending audio: {e}")
+            logger.info(
+                f"Connection closed cleanly by the server while sending audio: {e}"
+            )
             await self._handle_connection_loss(
                 f"Server closed while sending audio: {e.code}", clean=True
             )
         except websockets.ConnectionClosedError as e:
             logger.warning(f"Connection closed unexpectedly while sending audio: {e}")
-            await self._handle_connection_loss(f"Send audio failed: {e.code} {e.reason}")
+            await self._handle_connection_loss(
+                f"Send audio failed: {e.code} {e.reason}"
+            )
         except Exception as e:
             logger.error(f"Failed to send audio data: {e}", exc_info=True)
             # do not fire the network-error callback here; the connection handler owns it
@@ -297,7 +308,8 @@ class WebsocketProtocol(Protocol):
             )
             if self.connected:
                 await self._handle_connection_loss(
-                    f"Send text failed: connection already closed {close_code}", clean=clean
+                    f"Send text failed: connection already closed {close_code}",
+                    clean=clean,
                 )
             return
 
@@ -305,7 +317,9 @@ class WebsocketProtocol(Protocol):
             await self.websocket.send(message)
         except websockets.ConnectionClosedOK as e:
             # the server reclaimed the session cleanly; not a network error
-            logger.info(f"Connection closed cleanly by the server while sending text: {e}")
+            logger.info(
+                f"Connection closed cleanly by the server while sending text: {e}"
+            )
             if self.connected and not self._is_closing:
                 await self._handle_connection_loss(
                     f"Server closed while sending text: {e.code}", clean=True
@@ -369,7 +383,9 @@ class WebsocketProtocol(Protocol):
         except Exception as e:
             logger.error(f"Error handling the server hello message: {e}", exc_info=True)
             if self._on_network_error:
-                await self._on_network_error(f"Failed to handle the server response: {str(e)}")
+                await self._on_network_error(
+                    f"Failed to handle the server response: {str(e)}"
+                )
 
     async def close_audio_channel(self):
         """

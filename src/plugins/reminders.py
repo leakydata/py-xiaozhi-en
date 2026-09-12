@@ -52,7 +52,8 @@ class RemindersPlugin(Plugin):
             cfg = ctx.get_config()
             self._enabled = bool(cfg.get_config("REMINDERS.ENABLED", True))
             self._poll = max(
-                _MIN_POLL, float(cfg.get_config("REMINDERS.POLL_SECONDS", _DEFAULT_POLL))
+                _MIN_POLL,
+                float(cfg.get_config("REMINDERS.POLL_SECONDS", _DEFAULT_POLL)),
             )
         except Exception:
             pass

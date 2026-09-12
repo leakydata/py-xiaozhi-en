@@ -36,7 +36,9 @@ class Embedder:
     _lock = threading.Lock()
 
     def __init__(self, model_dir: Optional[Path] = None) -> None:
-        self._dir = Path(model_dir) if model_dir else get_app_root() / "models" / "embedding"
+        self._dir = (
+            Path(model_dir) if model_dir else get_app_root() / "models" / "embedding"
+        )
         self._session = None
         self._tokenizer = None
         self._inputs: list[str] = []

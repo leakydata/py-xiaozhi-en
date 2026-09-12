@@ -90,7 +90,9 @@ async def handle_activation(mode: str) -> bool:
         init_result = await activation_service.initialize()
 
         if not init_result.get("success", False):
-            logger.error(f"Initialisation failed: {init_result.get('error', 'unknown error')}")
+            logger.error(
+                f"Initialisation failed: {init_result.get('error', 'unknown error')}"
+            )
             return False
 
         if not init_result.get("need_activation_ui", False):

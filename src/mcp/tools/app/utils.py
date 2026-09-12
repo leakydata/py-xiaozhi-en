@@ -324,7 +324,9 @@ async def get_cached_applications(force_refresh: bool = False) -> list[dict[str,
             return _cached_applications or []
 
     except Exception as e:
-        logger.error(f"[AppUtils] failed to refresh the application cache: {e}", exc_info=True)
+        logger.error(
+            f"[AppUtils] failed to refresh the application cache: {e}", exc_info=True
+        )
         return _cached_applications or []
 
 
@@ -375,7 +377,9 @@ async def find_best_matching_app(
         return best_app
 
     except Exception as e:
-        logger.error(f"[AppUtils] failed to find a matching application: {e}", exc_info=True)
+        logger.error(
+            f"[AppUtils] failed to find a matching application: {e}", exc_info=True
+        )
         return None
 
 

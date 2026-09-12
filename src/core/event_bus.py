@@ -67,7 +67,9 @@ class Events:
     UI_TOGGLE_WINDOW = "ui_toggle_window"  # show/hide the main window (GUI)
 
     # configuration change events
-    CONFIG_CHANGED = "config_changed"  # the configuration changed (a hot reload is needed)
+    CONFIG_CHANGED = (
+        "config_changed"  # the configuration changed (a hot reload is needed)
+    )
     # after the exposed MCP tools change: drop and reconnect the protocol so the server re-runs tools/list
     PROTOCOL_RECONNECT_REQUEST = "protocol_reconnect_request"
 

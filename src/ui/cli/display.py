@@ -30,7 +30,9 @@ class CLIDisplay:
         self._last_drawn_rows = 0
         self._render_lock = None
         self._initialized = False  # whether it has been initialised
-        self._log_handler_installed = False  # whether the log handler has been installed
+        self._log_handler_installed = (
+            False  # whether the log handler has been installed
+        )
 
         # dashboard data
         self._dash_status = "Standby"
@@ -183,7 +185,9 @@ class CLIDisplay:
 
             task.add_done_callback(_on_done)
         except Exception as e:
-            logging.getLogger(__name__).error(f"Failed to create the render task: {e}", exc_info=True)
+            logging.getLogger(__name__).error(
+                f"Failed to create the render task: {e}", exc_info=True
+            )
 
     async def _safe_render(self):
         """Render safely (under the lock)."""
@@ -238,7 +242,9 @@ class CLIDisplay:
 
         # frame
         top_bar = "┌" + ("─" * (max(2, cols - 2))) + "┐"
-        title_line = "│" + title.center(max(2, cols - 2) + 14) + "│"  # +14 compensates for the ANSI escapes
+        title_line = (
+            "│" + title.center(max(2, cols - 2) + 14) + "│"
+        )  # +14 compensates for the ANSI escapes
         sep_line = "├" + ("─" * (max(2, cols - 2))) + "┤"
         bottom_bar = "└" + ("─" * (max(2, cols - 2))) + "┘"
 

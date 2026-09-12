@@ -194,7 +194,10 @@ class MusicPlayer:
             self.prepare_for_io()
             hit = await search_song(song_name, self.config)
             if hit is None:
-                return {"status": "error", "message": f"No track found for: {song_name}"}
+                return {
+                    "status": "error",
+                    "message": f"No track found for: {song_name}",
+                }
 
             eng.current_song = hit.display_name
             eng.song_id = hit.song_id
@@ -220,7 +223,11 @@ class MusicPlayer:
 
     async def get_lyrics(self) -> dict:
         if not self.lyrics:
-            return {"status": "info", "message": "This track has no lyrics", "lyrics": []}
+            return {
+                "status": "info",
+                "message": "This track has no lyrics",
+                "lyrics": [],
+            }
         lines = [f"[{self._format_time(t)}] {text}" for t, text in self.lyrics]
         return {
             "status": "success",

@@ -21,19 +21,33 @@ FFMPEG_TIMEOUT = 180.0
 
 # -------------------------------------------------------------------- images
 
+
 def image_info(path: str) -> dict[str, Any]:
     from PIL import Image
 
     p = store.resolve(path)
     with Image.open(p) as im:
-        return {"path": store.rel_to_root(p), "format": im.format,
-                "mode": im.mode, "width": im.width, "height": im.height,
-                "bytes": p.stat().st_size}
+        return {
+            "path": store.rel_to_root(p),
+            "format": im.format,
+            "mode": im.mode,
+            "width": im.width,
+            "height": im.height,
+            "bytes": p.stat().st_size,
+        }
 
 
-def image_edit(path: str, out: str, *, width: int = 0, height: int = 0,
-               rotate: int = 0, grayscale: bool = False,
-               crop: str = "", quality: int = 88) -> dict[str, Any]:
+def image_edit(
+    path: str,
+    out: str,
+    *,
+    width: int = 0,
+    height: int = 0,
+    rotate: int = 0,
+    grayscale: bool = False,
+    crop: str = "",
+    quality: int = 88,
+) -> dict[str, Any]:
     """Resize / rotate / crop / greyscale in one pass."""
     from PIL import Image
 
@@ -57,15 +71,22 @@ def image_edit(path: str, out: str, *, width: int = 0, height: int = 0,
         if dst.suffix.lower() in (".jpg", ".jpeg") and im.mode not in ("RGB", "L"):
             im = im.convert("RGB")
         dst.parent.mkdir(parents=True, exist_ok=True)
-        params = {"quality": int(quality)} if dst.suffix.lower() in (".jpg", ".jpeg") else {}
+        params = (
+            {"quality": int(quality)} if dst.suffix.lower() in (".jpg", ".jpeg") else {}
+        )
         im.save(dst, **params)
-        result = {"path": store.rel_to_root(dst), "width": im.width,
-                  "height": im.height, "bytes": dst.stat().st_size}
+        result = {
+            "path": store.rel_to_root(dst),
+            "width": im.width,
+            "height": im.height,
+            "bytes": dst.stat().st_size,
+        }
     logger.info(f"[Image] {store.rel_to_root(src)} -> {result['path']}")
     return result
 
 
 # --------------------------------------------------------------------- media
+
 
 def _ff(name: str) -> str | None:
     return shutil.which(name)
@@ -74,16 +95,22 @@ def _ff(name: str) -> str | None:
 async def _run_ff(args: list[str]) -> dict:
     try:
         proc = await asyncio.create_subprocess_exec(
-            *args, cwd=str(store.root()),
-            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+            *args,
+            cwd=str(store.root()),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
         out, _ = await asyncio.wait_for(proc.communicate(), timeout=FFMPEG_TIMEOUT)
     except asyncio.TimeoutError:
         return {"ok": False, "error": f"ffmpeg timed out after {FFMPEG_TIMEOUT:.0f}s"}
     except Exception as e:
         return {"ok": False, "error": f"Could not run ffmpeg: {e}"}
     text = (out or b"").decode("utf-8", "replace")
-    return {"ok": proc.returncode == 0, "exit_code": proc.returncode,
-            "log": text[-2000:]}
+    return {
+        "ok": proc.returncode == 0,
+        "exit_code": proc.returncode,
+        "log": text[-2000:],
+    }
 
 
 async def media_info(path: str) -> dict:
@@ -93,9 +120,16 @@ async def media_info(path: str) -> dict:
     p = store.resolve(path)
     if not p.exists():
         return {"ok": False, "error": f"{store.rel_to_root(p)} does not exist"}
-    args = [probe, "-v", "error", "-show_entries",
-            "format=duration,size,bit_rate:stream=codec_type,codec_name,width,height,sample_rate,channels",
-            "-of", "default=noprint_wrappers=1", str(p)]
+    args = [
+        probe,
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration,size,bit_rate:stream=codec_type,codec_name,width,height,sample_rate,channels",
+        "-of",
+        "default=noprint_wrappers=1",
+        str(p),
+    ]
     res = await _run_ff(args)
     if not res.get("ok"):
         return res
@@ -107,8 +141,15 @@ async def media_info(path: str) -> dict:
     return {"ok": True, "path": store.rel_to_root(p), "info": info}
 
 
-async def media_convert(path: str, out: str, *, start: str = "", duration: str = "",
-                        audio_only: bool = False, scale_width: int = 0) -> dict:
+async def media_convert(
+    path: str,
+    out: str,
+    *,
+    start: str = "",
+    duration: str = "",
+    audio_only: bool = False,
+    scale_width: int = 0,
+) -> dict:
     """Transcode, trim, extract audio or downscale - whatever the extensions imply."""
     ff = _ff("ffmpeg")
     if not ff:

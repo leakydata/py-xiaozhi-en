@@ -218,13 +218,18 @@ class PlaybackEngine:
                 if not await self._refresh_stream_source():
                     return {
                         "status": "error",
-                        "message": self._downloader.last_error or "Could not refresh the stream URL",
+                        "message": self._downloader.last_error
+                        or "Could not refresh the stream URL",
                     }
             elif not self._current_source:
-                return {"status": "error", "message": "There is no source to resume from"}
-            elif not is_http_url(self._current_source) and not Path(
-                self._current_source
-            ).exists():
+                return {
+                    "status": "error",
+                    "message": "There is no source to resume from",
+                }
+            elif (
+                not is_http_url(self._current_source)
+                and not Path(self._current_source).exists()
+            ):
                 return {"status": "error", "message": "Could not find the audio file"}
 
             fmt = self._hooks.format_time
@@ -285,9 +290,10 @@ class PlaybackEngine:
                 return {"status": "error", "message": "Nothing is playing"}
             if not self._current_source:
                 return {"status": "error", "message": "There is no source to seek in"}
-            if not is_http_url(self._current_source) and not Path(
-                self._current_source
-            ).exists():
+            if (
+                not is_http_url(self._current_source)
+                and not Path(self._current_source).exists()
+            ):
                 return {"status": "error", "message": "Could not find the audio file"}
 
             if self.total_duration <= 0 and not is_http_url(self._current_source):
@@ -415,7 +421,9 @@ class PlaybackEngine:
                     return await self.start_playback(cached)
 
             if self._hooks.is_speaking():
-                logger.info("TTS is speaking; the playback session is reserved and the stream opens once it finishes")
+                logger.info(
+                    "TTS is speaking; the playback session is reserved and the stream opens once it finishes"
+                )
                 self._current_source = None
                 self._stream_headers = None
                 self.is_playing = True
@@ -436,7 +444,9 @@ class PlaybackEngine:
                 api_url, song_id=self.song_id or None
             )
             if not media_url:
-                detail = self._downloader.last_error or "could not resolve the stream URL"
+                detail = (
+                    self._downloader.last_error or "could not resolve the stream URL"
+                )
                 logger.error(f"failed to get the stream URL: {detail}")
                 return False
 
@@ -447,7 +457,9 @@ class PlaybackEngine:
                     self.total_duration = duration
                     logger.info(f"duration probed from the stream: {duration:.2f}s")
                 else:
-                    logger.warning("could not get the stream duration, falling back to the lyrics duration or 0")
+                    logger.warning(
+                        "could not get the stream duration, falling back to the lyrics duration or 0"
+                    )
 
             host = urlparse(media_url).hostname or media_url[:48]
             logger.info(f"streaming: {host}")
@@ -469,7 +481,9 @@ class PlaybackEngine:
             self._stream_headers = headers if is_http_url(source) else None
 
             if self._hooks.is_speaking():
-                logger.info("TTS is speaking; the local source is ready and playback starts once it finishes")
+                logger.info(
+                    "TTS is speaking; the local source is ready and playback starts once it finishes"
+                )
                 if self.decoder:
                     await self.decoder.stop()
                     self.decoder = None
@@ -578,7 +592,9 @@ class PlaybackEngine:
             self.decoder = None
         if self.song_id and self._cache.find_song_file(self.song_id):
             self._library.invalidate()
-            logger.debug(f"playback finished, the local cache is available: {self.song_id}")
+            logger.debug(
+                f"playback finished, the local cache is available: {self.song_id}"
+            )
 
         if self._playback_task and not self._playback_task.done():
             if self._playback_task is not asyncio.current_task():

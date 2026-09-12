@@ -122,10 +122,14 @@ class ActivationModel(BaseModel):
         self.set_activated(False)
         self.set_activating(False)
 
-    def set_status_inconsistent(self, local_activated: bool = False, server_activated: bool = False):
+    def set_status_inconsistent(
+        self, local_activated: bool = False, server_activated: bool = False
+    ):
         """设置状态不一致."""
         if local_activated and not server_activated:
-            self.set_activation_status("Reactivation required", "#FF7D00")  # warning color
+            self.set_activation_status(
+                "Reactivation required", "#FF7D00"
+            )  # warning color
         else:
             self.set_activation_status("Auto-repaired", "#00B42A")  # success color
 

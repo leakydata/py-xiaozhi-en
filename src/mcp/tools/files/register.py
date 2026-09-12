@@ -22,29 +22,42 @@ async def list_files_payload(args: dict[str, Any]) -> str:
     try:
         path = str(args.get("path", ".") or ".")
         return json.dumps(
-            {"path": path, "workspace": str(store.root()),
-             "entries": store.list_dir(path)}, ensure_ascii=False)
+            {
+                "path": path,
+                "workspace": str(store.root()),
+                "entries": store.list_dir(path),
+            },
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 
 
 async def read_file_payload(args: dict[str, Any]) -> str:
     try:
-        return json.dumps(store.read_file(
-            str(args.get("path", "")),
-            int(args.get("max_bytes", store.MAX_READ_BYTES) or store.MAX_READ_BYTES),
-        ), ensure_ascii=False)
+        return json.dumps(
+            store.read_file(
+                str(args.get("path", "")),
+                int(
+                    args.get("max_bytes", store.MAX_READ_BYTES) or store.MAX_READ_BYTES
+                ),
+            ),
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 
 
 async def write_file_payload(args: dict[str, Any]) -> str:
     try:
-        return json.dumps(store.write_file(
-            str(args.get("path", "")),
-            str(args.get("content", "")),
-            append=bool(args.get("append", False)),
-        ), ensure_ascii=False)
+        return json.dumps(
+            store.write_file(
+                str(args.get("path", "")),
+                str(args.get("content", "")),
+                append=bool(args.get("append", False)),
+            ),
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 
@@ -65,9 +78,10 @@ async def make_folder_payload(args: dict[str, Any]) -> str:
 
 async def move_path_payload(args: dict[str, Any]) -> str:
     try:
-        return json.dumps(store.move(str(args.get("source", "")),
-                                     str(args.get("destination", ""))),
-                          ensure_ascii=False)
+        return json.dumps(
+            store.move(str(args.get("source", "")), str(args.get("destination", ""))),
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 
@@ -91,7 +105,8 @@ async def search_in_files_payload(args: dict[str, Any]) -> str:
 async def run_python_payload(args: dict[str, Any]) -> str:
     try:
         res = await py_session.execute(
-            str(args.get("code", "")), store.root(),
+            str(args.get("code", "")),
+            store.root(),
             session=str(args.get("session", "default") or "default"),
             fresh=bool(args.get("fresh", False)),
             timeout=float(args.get("timeout", python_exec.DEFAULT_TIMEOUT) or 30),
@@ -115,11 +130,16 @@ async def recent_actions_payload(args: dict[str, Any]) -> str:
     try:
         from src.mcp import audit
 
-        return json.dumps({
-            "log": str(audit.path()),
-            "actions": audit.tail(int(args.get("limit", 20) or 20),
-                                  str(args.get("tool", "") or "") or None),
-        }, ensure_ascii=False)
+        return json.dumps(
+            {
+                "log": str(audit.path()),
+                "actions": audit.tail(
+                    int(args.get("limit", 20) or 20),
+                    str(args.get("tool", "") or "") or None,
+                ),
+            },
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 
@@ -130,8 +150,9 @@ async def what_can_you_do_payload(args: dict[str, Any]) -> str:
         from src.mcp import briefing
         from src.mcp.mcp_server import McpServer
 
-        server = (McpServer.get_instance() if hasattr(McpServer, "get_instance")
-                  else None)
+        server = (
+            McpServer.get_instance() if hasattr(McpServer, "get_instance") else None
+        )
         tools = getattr(server, "tools", []) if server else []
         return json.dumps({"briefing": briefing.build(tools)}, ensure_ascii=False)
     except Exception as e:
@@ -140,8 +161,10 @@ async def what_can_you_do_payload(args: dict[str, Any]) -> str:
 
 async def install_package_payload(args: dict[str, Any]) -> str:
     try:
-        return json.dumps(await python_exec.install(
-            str(args.get("package", "")), store.root()), ensure_ascii=False)
+        return json.dumps(
+            await python_exec.install(str(args.get("package", "")), store.root()),
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 
@@ -175,11 +198,18 @@ def register_file_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "Read a text file from the workspace. "
                 "Args: path - relative path; max_bytes - how much to read."
             ),
-            PropertyList([
-                Property("path", PropertyType.STRING, default_value=""),
-                Property("max_bytes", PropertyType.INTEGER, default_value=20000,
-                         min_value=1, max_value=store.MAX_READ_BYTES),
-            ]),
+            PropertyList(
+                [
+                    Property("path", PropertyType.STRING, default_value=""),
+                    Property(
+                        "max_bytes",
+                        PropertyType.INTEGER,
+                        default_value=20000,
+                        min_value=1,
+                        max_value=store.MAX_READ_BYTES,
+                    ),
+                ]
+            ),
             read_file_payload,
         ),
         McpTool(
@@ -190,11 +220,13 @@ def register_file_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "Args: path - relative path; content - the full text to write; "
                 "append - true to add to the end instead of replacing."
             ),
-            PropertyList([
-                Property("path", PropertyType.STRING, default_value=""),
-                Property("content", PropertyType.STRING, default_value=""),
-                Property("append", PropertyType.BOOLEAN, default_value=False),
-            ]),
+            PropertyList(
+                [
+                    Property("path", PropertyType.STRING, default_value=""),
+                    Property("content", PropertyType.STRING, default_value=""),
+                    Property("append", PropertyType.BOOLEAN, default_value=False),
+                ]
+            ),
             write_file_payload,
         ),
         McpTool(
@@ -219,10 +251,12 @@ def register_file_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "Move or rename a file or folder inside the workspace. "
                 "Args: source, destination - both relative paths."
             ),
-            PropertyList([
-                Property("source", PropertyType.STRING, default_value=""),
-                Property("destination", PropertyType.STRING, default_value=""),
-            ]),
+            PropertyList(
+                [
+                    Property("source", PropertyType.STRING, default_value=""),
+                    Property("destination", PropertyType.STRING, default_value=""),
+                ]
+            ),
             move_path_payload,
         ),
         McpTool(
@@ -254,95 +288,125 @@ def register_file_tools(add_tool: Callable[[McpTool], None]) -> None:
         ),
     ]
 
-    tools.append(McpTool(
-        "what_can_you_do",
-        (
-            "Get your own startup briefing: everything you can do, your workspace "
-            "location, and any standing instructions the user wrote. Call this if "
-            "you are unsure what tools you have, or when the user asks what you "
-            "are capable of. Takes no arguments."
-        ),
-        PropertyList([]),
-        what_can_you_do_payload,
-    ))
+    tools.append(
+        McpTool(
+            "what_can_you_do",
+            (
+                "Get your own startup briefing: everything you can do, your workspace "
+                "location, and any standing instructions the user wrote. Call this if "
+                "you are unsure what tools you have, or when the user asks what you "
+                "are capable of. Takes no arguments."
+            ),
+            PropertyList([]),
+            what_can_you_do_payload,
+        )
+    )
 
-    tools.append(McpTool(
-        "recent_actions",
-        (
-            "Review what you have actually done recently - every tool call is "
-            "recorded with its arguments, whether it succeeded and how long it "
-            "took. Use it when the user asks what you did, what changed, or why "
-            "something happened. "
-            "Args: limit - how many entries (1-200); tool - optionally filter to "
-            "one tool name."
-        ),
-        PropertyList([
-            Property("limit", PropertyType.INTEGER, default_value=20,
-                     min_value=1, max_value=200),
-            Property("tool", PropertyType.STRING, default_value=""),
-        ]),
-        recent_actions_payload,
-    ))
+    tools.append(
+        McpTool(
+            "recent_actions",
+            (
+                "Review what you have actually done recently - every tool call is "
+                "recorded with its arguments, whether it succeeded and how long it "
+                "took. Use it when the user asks what you did, what changed, or why "
+                "something happened. "
+                "Args: limit - how many entries (1-200); tool - optionally filter to "
+                "one tool name."
+            ),
+            PropertyList(
+                [
+                    Property(
+                        "limit",
+                        PropertyType.INTEGER,
+                        default_value=20,
+                        min_value=1,
+                        max_value=200,
+                    ),
+                    Property("tool", PropertyType.STRING, default_value=""),
+                ]
+            ),
+            recent_actions_payload,
+        )
+    )
 
     if python_exec.available():
-        tools.append(McpTool(
-            "install_python_package",
-            (
-                "Install a Python package so run_python can use it. Call this "
-                "when an import fails - do not give up and say a library is "
-                "unavailable. Installs into the workspace, not the system, and "
-                "persists for later calls. Takes 10-60 seconds. "
-                "Args: package - a plain name like 'pandas', optionally pinned "
-                "like 'pandas==2.2.0'."
-            ),
-            PropertyList([
-                Property("package", PropertyType.STRING, default_value=""),
-            ]),
-            install_package_payload,
-        ))
-        tools.append(McpTool(
-            "run_python",
-            (
-                "Write and run Python 3 code to do something you have no dedicated "
-                "tool for: calculations, parsing, converting, generating or "
-                "analysing files. The code runs in a locked sandbox where ONLY the "
-                "workspace folder is writable - the rest of the computer is "
-                "invisible to it - so use it freely. The workspace is the current "
-                "directory, so open('notes.txt') just works. Print what you want to "
-                "see; nothing is returned otherwise. "
-                "The interpreter STAYS ALIVE between calls, like a notebook: "
-                "variables, imports and loaded data persist, so build a task up "
-                "over several calls instead of repeating work. Pass fresh=true "
-                "when you want to start clean, or a different session name to keep "
-                "two pieces of work apart. If an import is missing, call "
-                "install_python_package rather than giving up. "
-                "Args: code - the code to run; session - which interpreter "
-                "(default 'default'); fresh - restart it first; timeout - seconds "
-                "(1-120); network - true only if it must reach the internet."
-            ),
-            PropertyList([
-                Property("code", PropertyType.STRING, default_value=""),
-                Property("session", PropertyType.STRING, default_value="default"),
-                Property("fresh", PropertyType.BOOLEAN, default_value=False),
-                Property("timeout", PropertyType.INTEGER, default_value=30,
-                         min_value=1, max_value=int(python_exec.MAX_TIMEOUT)),
-                Property("network", PropertyType.BOOLEAN, default_value=False),
-            ]),
-            run_python_payload,
-        ))
-        tools.append(McpTool(
-            "reset_python",
-            (
-                "Throw away a Python session and its variables, so the next "
-                "run_python starts clean. Use it when state has got into a mess, "
-                "or to free memory after a big job. "
-                "Args: session - which one to drop; leave blank for all."
-            ),
-            PropertyList([
-                Property("session", PropertyType.STRING, default_value=""),
-            ]),
-            reset_python_payload,
-        ))
+        tools.append(
+            McpTool(
+                "install_python_package",
+                (
+                    "Install a Python package so run_python can use it. Call this "
+                    "when an import fails - do not give up and say a library is "
+                    "unavailable. Installs into the workspace, not the system, and "
+                    "persists for later calls. Takes 10-60 seconds. "
+                    "Args: package - a plain name like 'pandas', optionally pinned "
+                    "like 'pandas==2.2.0'."
+                ),
+                PropertyList(
+                    [
+                        Property("package", PropertyType.STRING, default_value=""),
+                    ]
+                ),
+                install_package_payload,
+            )
+        )
+        tools.append(
+            McpTool(
+                "run_python",
+                (
+                    "Write and run Python 3 code to do something you have no dedicated "
+                    "tool for: calculations, parsing, converting, generating or "
+                    "analysing files. The code runs in a locked sandbox where ONLY the "
+                    "workspace folder is writable - the rest of the computer is "
+                    "invisible to it - so use it freely. The workspace is the current "
+                    "directory, so open('notes.txt') just works. Print what you want to "
+                    "see; nothing is returned otherwise. "
+                    "The interpreter STAYS ALIVE between calls, like a notebook: "
+                    "variables, imports and loaded data persist, so build a task up "
+                    "over several calls instead of repeating work. Pass fresh=true "
+                    "when you want to start clean, or a different session name to keep "
+                    "two pieces of work apart. If an import is missing, call "
+                    "install_python_package rather than giving up. "
+                    "Args: code - the code to run; session - which interpreter "
+                    "(default 'default'); fresh - restart it first; timeout - seconds "
+                    "(1-120); network - true only if it must reach the internet."
+                ),
+                PropertyList(
+                    [
+                        Property("code", PropertyType.STRING, default_value=""),
+                        Property(
+                            "session", PropertyType.STRING, default_value="default"
+                        ),
+                        Property("fresh", PropertyType.BOOLEAN, default_value=False),
+                        Property(
+                            "timeout",
+                            PropertyType.INTEGER,
+                            default_value=30,
+                            min_value=1,
+                            max_value=int(python_exec.MAX_TIMEOUT),
+                        ),
+                        Property("network", PropertyType.BOOLEAN, default_value=False),
+                    ]
+                ),
+                run_python_payload,
+            )
+        )
+        tools.append(
+            McpTool(
+                "reset_python",
+                (
+                    "Throw away a Python session and its variables, so the next "
+                    "run_python starts clean. Use it when state has got into a mess, "
+                    "or to free memory after a big job. "
+                    "Args: session - which one to drop; leave blank for all."
+                ),
+                PropertyList(
+                    [
+                        Property("session", PropertyType.STRING, default_value=""),
+                    ]
+                ),
+                reset_python_payload,
+            )
+        )
     else:
         logger.warning(
             "bubblewrap (bwrap) missing - run_python not registered. "

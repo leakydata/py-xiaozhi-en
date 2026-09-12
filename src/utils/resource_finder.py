@@ -276,9 +276,9 @@ def apply_path_overrides_from_config(
     cache_skip: set[str] = set()
     try:
         music_under_old_cache = old_music.resolve() == (old_cache / "music").resolve()
-        music_stays_default_under_new = new_music.resolve() == (
-            new_cache / "music"
-        ).resolve()
+        music_stays_default_under_new = (
+            new_music.resolve() == (new_cache / "music").resolve()
+        )
         # the old music lived under cache but the new one is not the new cache/music -> the music entry migrates it, so cache must not copy it again
         if music_under_old_cache and not music_stays_default_under_new:
             cache_skip.add("music")

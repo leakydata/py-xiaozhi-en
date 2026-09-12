@@ -233,7 +233,10 @@ class MusicDownloader:
     ) -> tuple[str | None, str | None]:
         # free tracks play; for paid ones the official endpoint simply says no
         if not song_id or song_id == "unknown":
-            return None, "No track ID, so the official endpoint cannot be used as a fallback"
+            return (
+                None,
+                "No track ID, so the official endpoint cannot be used as a fallback",
+            )
 
         headers = self._browser_headers()
         last_reason: str | None = None
@@ -291,7 +294,9 @@ class MusicDownloader:
                 if reason:
                     reasons.append(reason)
 
-            self.last_error = "; ".join(reasons) if reasons else "Could not resolve a stream URL"
+            self.last_error = (
+                "; ".join(reasons) if reasons else "Could not resolve a stream URL"
+            )
             logger.error(f"could not resolve a stream URL: {self.last_error}")
             return None
         except Exception as e:
@@ -326,9 +331,7 @@ class MusicDownloader:
                 return cache_path
             except (requests.RequestException, OSError) as e:
                 last_err = e
-                logger.warning(
-                    f"download attempt {attempt + 1}/3 failed: {e}"
-                )
+                logger.warning(f"download attempt {attempt + 1}/3 failed: {e}")
         assert last_err is not None
         raise last_err
 
@@ -428,7 +431,9 @@ class MusicDownloader:
             if not ok:
                 return
             if not part.exists() or part.stat().st_size <= 1024:
-                logger.warning(f"the prefetched file is too small, discarding it: {part.name}")
+                logger.warning(
+                    f"the prefetched file is too small, discarding it: {part.name}"
+                )
                 if part.exists():
                     part.unlink()
                 return
@@ -447,7 +452,9 @@ class MusicDownloader:
                 pass
             raise
         except Exception as e:
-            logger.warning(f"background prefetch failed for {song_id}: {e}", exc_info=True)
+            logger.warning(
+                f"background prefetch failed for {song_id}: {e}", exc_info=True
+            )
             try:
                 if part.exists():
                     part.unlink()

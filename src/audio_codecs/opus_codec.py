@@ -18,8 +18,11 @@ logger = get_logger()
 
 
 _OPUS_BANDWIDTHS = {
-    "NB": "8kHz", "MB": "12kHz", "WB": "16kHz",
-    "SWB": "24kHz", "FB": "48kHz",
+    "NB": "8kHz",
+    "MB": "12kHz",
+    "WB": "16kHz",
+    "SWB": "24kHz",
+    "FB": "48kHz",
 }
 
 
@@ -178,7 +181,7 @@ class OpusCodec:
         decoder_state must be cleared first or the memory is freed twice.
         Idempotent: safe to call more than once.
         """
-        if getattr(self, '_closed', False):
+        if getattr(self, "_closed", False):
             return
         self._closed = True
 

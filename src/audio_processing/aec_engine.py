@@ -153,7 +153,9 @@ class AecEngine:
         if n % self._frame != 0:
             if not self._near_misaligned_logged:
                 self._near_misaligned_logged = True
-                logger.warning(f"capture frame length {n} is not a whole number of 10ms frames, AEC bypasses this path")
+                logger.warning(
+                    f"capture frame length {n} is not a whole number of 10ms frames, AEC bypasses this path"
+                )
             return block
 
         try:
@@ -173,7 +175,10 @@ class AecEngine:
                         self._frame * 2,
                     )
                     ret = self._apm.process_stream(
-                        self._near_in, self._stream_cfg, self._stream_cfg, self._near_out
+                        self._near_in,
+                        self._stream_cfg,
+                        self._stream_cfg,
+                        self._near_out,
                     )
                     if ret != 0:
                         raise RuntimeError(f"process_stream returned {ret}")

@@ -99,9 +99,7 @@ def register_cleanup_resources(container: "ServiceContainer") -> None:
     pool = container.resource_pool
 
     # 最先注册 = 最后释放：共享服务 unbind 在插件清理之后
-    pool.register(
-        "shared_services", lambda: unbind_shared_services(container)
-    )
+    pool.register("shared_services", lambda: unbind_shared_services(container))
 
     # 事件总线最后释放（次先注册）
     pool.register("event_bus", container.event_bus.clear)

@@ -25,16 +25,33 @@ _geo_cache: dict[str, dict] = {}
 
 # WMO weather interpretation codes -> plain English.
 _WMO = {
-    0: "clear sky", 1: "mainly clear", 2: "partly cloudy", 3: "overcast",
-    45: "fog", 48: "freezing fog",
-    51: "light drizzle", 53: "drizzle", 55: "heavy drizzle",
-    56: "light freezing drizzle", 57: "freezing drizzle",
-    61: "light rain", 63: "rain", 65: "heavy rain",
-    66: "light freezing rain", 67: "freezing rain",
-    71: "light snow", 73: "snow", 75: "heavy snow", 77: "snow grains",
-    80: "light rain showers", 81: "rain showers", 82: "violent rain showers",
-    85: "light snow showers", 86: "heavy snow showers",
-    95: "thunderstorm", 96: "thunderstorm with hail",
+    0: "clear sky",
+    1: "mainly clear",
+    2: "partly cloudy",
+    3: "overcast",
+    45: "fog",
+    48: "freezing fog",
+    51: "light drizzle",
+    53: "drizzle",
+    55: "heavy drizzle",
+    56: "light freezing drizzle",
+    57: "freezing drizzle",
+    61: "light rain",
+    63: "rain",
+    65: "heavy rain",
+    66: "light freezing rain",
+    67: "freezing rain",
+    71: "light snow",
+    73: "snow",
+    75: "heavy snow",
+    77: "snow grains",
+    80: "light rain showers",
+    81: "rain showers",
+    82: "violent rain showers",
+    85: "light snow showers",
+    86: "heavy snow showers",
+    95: "thunderstorm",
+    96: "thunderstorm with hail",
     99: "thunderstorm with heavy hail",
 }
 
@@ -103,10 +120,16 @@ async def get_weather_payload(args: dict[str, Any]) -> str:
             params = {
                 "latitude": place["latitude"],
                 "longitude": place["longitude"],
-                "current": ",".join([
-                    "temperature_2m", "apparent_temperature", "relative_humidity_2m",
-                    "precipitation", "weather_code", "wind_speed_10m",
-                ]),
+                "current": ",".join(
+                    [
+                        "temperature_2m",
+                        "apparent_temperature",
+                        "relative_humidity_2m",
+                        "precipitation",
+                        "weather_code",
+                        "wind_speed_10m",
+                    ]
+                ),
                 "temperature_unit": temp_unit,
                 "wind_speed_unit": wind_unit,
                 "timezone": "auto",
@@ -120,17 +143,20 @@ async def get_weather_payload(args: dict[str, Any]) -> str:
         return _err(f"Weather lookup failed: {e}")
 
     cur = data.get("current", {})
-    return json.dumps({
-        "location": _label(place),
-        "condition": _describe(cur.get("weather_code")),
-        "temperature": cur.get("temperature_2m"),
-        "feels_like": cur.get("apparent_temperature"),
-        "humidity_pct": cur.get("relative_humidity_2m"),
-        "precipitation": cur.get("precipitation"),
-        "wind_speed": cur.get("wind_speed_10m"),
-        "units": {"temperature": tsym, "wind": wind_unit},
-        "observed_at": cur.get("time"),
-    }, ensure_ascii=False)
+    return json.dumps(
+        {
+            "location": _label(place),
+            "condition": _describe(cur.get("weather_code")),
+            "temperature": cur.get("temperature_2m"),
+            "feels_like": cur.get("apparent_temperature"),
+            "humidity_pct": cur.get("relative_humidity_2m"),
+            "precipitation": cur.get("precipitation"),
+            "wind_speed": cur.get("wind_speed_10m"),
+            "units": {"temperature": tsym, "wind": wind_unit},
+            "observed_at": cur.get("time"),
+        },
+        ensure_ascii=False,
+    )
 
 
 async def get_forecast_payload(args: dict[str, Any]) -> str:
@@ -152,10 +178,14 @@ async def get_forecast_payload(args: dict[str, Any]) -> str:
             params = {
                 "latitude": place["latitude"],
                 "longitude": place["longitude"],
-                "daily": ",".join([
-                    "weather_code", "temperature_2m_max", "temperature_2m_min",
-                    "precipitation_probability_max",
-                ]),
+                "daily": ",".join(
+                    [
+                        "weather_code",
+                        "temperature_2m_max",
+                        "temperature_2m_min",
+                        "precipitation_probability_max",
+                    ]
+                ),
                 "forecast_days": days,
                 "temperature_unit": temp_unit,
                 "wind_speed_unit": wind_unit,
@@ -173,18 +203,25 @@ async def get_forecast_payload(args: dict[str, Any]) -> str:
     dates = d.get("time", []) or []
     out = []
     for i, date in enumerate(dates[:days]):
+
         def at(key, idx=i):
             seq = d.get(key) or []
             return seq[idx] if idx < len(seq) else None
-        out.append({
-            "date": date,
-            "condition": _describe(at("weather_code")),
-            "high": at("temperature_2m_max"),
-            "low": at("temperature_2m_min"),
-            "precip_chance_pct": at("precipitation_probability_max"),
-        })
-    return json.dumps({
-        "location": _label(place),
-        "units": {"temperature": tsym},
-        "forecast": out,
-    }, ensure_ascii=False)
+
+        out.append(
+            {
+                "date": date,
+                "condition": _describe(at("weather_code")),
+                "high": at("temperature_2m_max"),
+                "low": at("temperature_2m_min"),
+                "precip_chance_pct": at("precipitation_probability_max"),
+            }
+        )
+    return json.dumps(
+        {
+            "location": _label(place),
+            "units": {"temperature": tsym},
+            "forecast": out,
+        },
+        ensure_ascii=False,
+    )

@@ -113,7 +113,9 @@ class MqttProtocol(Protocol):
                 except (asyncio.CancelledError, Exception):
                     return
                 if exc:
-                    logger.error(f"MQTT scheduled task {name} raised: {exc}", exc_info=exc)
+                    logger.error(
+                        f"MQTT scheduled task {name} raised: {exc}", exc_info=exc
+                    )
 
             fut.add_done_callback(_done)
 
@@ -122,7 +124,9 @@ class MqttProtocol(Protocol):
                 task = self.loop.create_task(coro, name=f"mqtt:{name}")
                 _track_future(task)
             except Exception as e:
-                logger.error(f"MQTT failed to create the task {name}: {e}", exc_info=True)
+                logger.error(
+                    f"MQTT failed to create the task {name}: {e}", exc_info=True
+                )
                 if asyncio.iscoroutine(coro):
                     coro.close()
             return
@@ -131,14 +135,18 @@ class MqttProtocol(Protocol):
             fut = asyncio.run_coroutine_threadsafe(coro, self.loop)
             _track_future(fut)
         except Exception as e:
-            logger.error(f"MQTT cross-thread scheduling failed for {name}: {e}", exc_info=True)
+            logger.error(
+                f"MQTT cross-thread scheduling failed for {name}: {e}", exc_info=True
+            )
             if asyncio.iscoroutine(coro):
                 coro.close()
 
     async def connect(self):
         """Connect to the MQTT server and open the UDP audio channel."""
         if self._is_closing:
-            logger.warning("the connection is shutting down, abandoning the new connection attempt")
+            logger.warning(
+                "the connection is shutting down, abandoning the new connection attempt"
+            )
             return False
 
         self.server_hello_event = asyncio.Event()
@@ -152,9 +160,14 @@ class MqttProtocol(Protocol):
             self.password = mqtt_config.get("password")
             self.publish_topic = mqtt_config.get("publish_topic")
             self.subscribe_topic = mqtt_config.get("subscribe_topic")
-            logger.info(f"got the MQTT configuration from the OTA server: {self.endpoint}")
+            logger.info(
+                f"got the MQTT configuration from the OTA server: {self.endpoint}"
+            )
         except Exception as e:
-            logger.warning(f"failed to get the MQTT configuration from the OTA server: {e}", exc_info=True)
+            logger.warning(
+                f"failed to get the MQTT configuration from the OTA server: {e}",
+                exc_info=True,
+            )
 
         if (
             not self.endpoint
@@ -176,7 +189,9 @@ class MqttProtocol(Protocol):
                 self.mqtt_client.loop_stop()
                 self.mqtt_client.disconnect()
             except Exception as e:
-                logger.warning(f"error while disconnecting the MQTT client: {e}", exc_info=True)
+                logger.warning(
+                    f"error while disconnecting the MQTT client: {e}", exc_info=True
+                )
 
         try:
             host, port = parse_mqtt_endpoint(self.endpoint)
@@ -206,7 +221,8 @@ class MqttProtocol(Protocol):
                 logger.info("TLS-encrypted connection configured")
             except Exception as e:
                 logger.error(
-                    f"TLS configuration failed, cannot connect securely to the MQTT server: {e}", exc_info=True
+                    f"TLS configuration failed, cannot connect securely to the MQTT server: {e}",
+                    exc_info=True,
                 )
                 if self._on_network_error:
                     await self._on_network_error(f"TLS configuration failed: {str(e)}")
@@ -225,7 +241,9 @@ class MqttProtocol(Protocol):
                 logger.error(f"failed to connect to the MQTT server, return code: {rc}")
                 self.loop.call_soon_threadsafe(
                     lambda: connect_future.set_exception(
-                        Exception(f"failed to connect to the MQTT server, return code: {rc}")
+                        Exception(
+                            f"failed to connect to the MQTT server, return code: {rc}"
+                        )
                     )
                 )
 
@@ -235,7 +253,9 @@ class MqttProtocol(Protocol):
                 payload = msg.payload.decode("utf-8")
                 self._handle_mqtt_message(payload)
             except Exception as e:
-                logger.error(f"error while handling an MQTT message: {e}", exc_info=True)
+                logger.error(
+                    f"error while handling an MQTT message: {e}", exc_info=True
+                )
 
         def on_disconnect_callback(client, userdata, rc):
             try:
@@ -248,7 +268,11 @@ class MqttProtocol(Protocol):
                 self.connected = False
 
                 if self._on_connection_state_changed and was_connected:
-                    reason = "normal disconnect" if rc == 0 else f"unexpected disconnect (rc={rc})"
+                    reason = (
+                        "normal disconnect"
+                        if rc == 0
+                        else f"unexpected disconnect (rc={rc})"
+                    )
                     self.loop.call_soon_threadsafe(
                         lambda: self._on_connection_state_changed(False, reason)
                     )
@@ -283,7 +307,9 @@ class MqttProtocol(Protocol):
                             name="network_error",
                         )
             except Exception as e:
-                logger.error(f"failed to handle the MQTT disconnect: {e}", exc_info=True)
+                logger.error(
+                    f"failed to handle the MQTT disconnect: {e}", exc_info=True
+                )
 
         def on_publish_callback(client, userdata, mid):
             self._last_activity_time = time.time()
@@ -349,13 +375,17 @@ class MqttProtocol(Protocol):
             except Exception as e:
                 logger.error(f"failed to create the UDP socket: {e}", exc_info=True)
                 if self._on_network_error:
-                    await self._on_network_error(f"failed to open the UDP connection: {e}")
+                    await self._on_network_error(
+                        f"failed to open the UDP connection: {e}"
+                    )
                 return False
 
         except Exception as e:
             logger.error(f"failed to connect to the MQTT server: {e}", exc_info=True)
             if self._on_network_error:
-                await self._on_network_error(f"failed to connect to the MQTT server: {e}")
+                await self._on_network_error(
+                    f"failed to connect to the MQTT server: {e}"
+                )
             return False
 
     def _handle_mqtt_message(self, payload):
@@ -371,7 +401,9 @@ class MqttProtocol(Protocol):
                 return
 
             if msg_type == "hello":
-                logger.debug(f"the service link returned the initial configuration: {data}")
+                logger.debug(
+                    f"the service link returned the initial configuration: {data}"
+                )
                 transport = data.get("transport")
                 if transport != "udp":
                     logger.error(f"unsupported transport: {transport}")
@@ -493,7 +525,9 @@ class MqttProtocol(Protocol):
             if self._on_audio_channel_closed:
                 await self._on_audio_channel_closed()
         except Exception as e:
-            logger.error(f"error while handling the goodbye message: {e}", exc_info=True)
+            logger.error(
+                f"error while handling the goodbye message: {e}", exc_info=True
+            )
 
     def _stop_udp_receiver(self):
         """Stop UDP (used by the disconnect callback and similar paths)."""

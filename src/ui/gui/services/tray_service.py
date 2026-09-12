@@ -71,7 +71,9 @@ class TrayService(QObject):
 
             # 双击激活
             self._tray.activated.connect(
-                lambda reason: on_show() if reason == QSystemTrayIcon.DoubleClick else None
+                lambda reason: on_show()
+                if reason == QSystemTrayIcon.DoubleClick
+                else None
             )
 
             self._tray.show()

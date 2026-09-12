@@ -46,9 +46,7 @@ class McpServer:
         self._send_callback = None
         self._camera = None
 
-    def add_tool(
-        self, tool: McpTool | tuple[str, str, PropertyList, Callable]
-    ):
+    def add_tool(self, tool: McpTool | tuple[str, str, PropertyList, Callable]):
         """
         添加工具.
         """
@@ -209,9 +207,7 @@ class McpServer:
                 logger.error(f"Invalid id for method: {method}")
                 return
 
-            logger.info(
-                f"[MCP] 处理方法: {method}, ID: {request_id}, 参数: {params}"
-            )
+            logger.info(f"[MCP] 处理方法: {method}, ID: {request_id}, 参数: {params}")
 
             # 处理不同的方法
             if method == "initialize":
@@ -222,18 +218,14 @@ class McpServer:
                 await self._handle_tool_call(request_id, params)
             else:
                 logger.error(f"Method not implemented: {method}")
-                await self._reply_error(
-                    request_id, f"Method not implemented: {method}"
-                )
+                await self._reply_error(request_id, f"Method not implemented: {method}")
 
         except Exception as e:
             logger.error(f"Error parsing MCP message: {e}", exc_info=True)
             if request_id is not None:
                 await self._reply_error(request_id, str(e))
 
-    async def _handle_initialize(
-        self, request_id: int, params: dict[str, Any]
-    ):
+    async def _handle_initialize(self, request_id: int, params: dict[str, Any]):
         """Handle the initialize handshake."""
         capabilities = params.get("capabilities", {})
         await self._parse_capabilities(capabilities)
@@ -282,9 +274,7 @@ class McpServer:
             if tool.name not in disabled:
                 yield tool
 
-    async def _handle_tools_list(
-        self, request_id: int, params: dict[str, Any]
-    ):
+    async def _handle_tools_list(self, request_id: int, params: dict[str, Any]):
         """
         处理工具列表请求（已按 MCP_TOOLS.DISABLED 过滤）.
         """
@@ -321,13 +311,9 @@ class McpServer:
 
         await self._reply_result(request_id, result)
 
-    async def _handle_tool_call(
-        self, request_id: int, params: dict[str, Any]
-    ):
+    async def _handle_tool_call(self, request_id: int, params: dict[str, Any]):
         """Handle a tools/call request."""
-        logger.info(
-            f"[MCP] tool call received! ID={request_id}, params={params}"
-        )
+        logger.info(f"[MCP] tool call received! ID={request_id}, params={params}")
 
         tool_name = params.get("name")
         if not tool_name:
@@ -337,9 +323,7 @@ class McpServer:
         logger.info(f"[MCP] attempting tool call: {tool_name}")
 
         if tool_name in self._disabled_tool_names():
-            await self._reply_error(
-                request_id, f"Tool disabled: {tool_name}"
-            )
+            await self._reply_error(request_id, f"Tool disabled: {tool_name}")
             return
 
         # find the tool
@@ -350,9 +334,7 @@ class McpServer:
                 break
 
         if not tool:
-            await self._reply_error(
-                request_id, f"Unknown tool: {tool_name}"
-            )
+            await self._reply_error(request_id, f"Unknown tool: {tool_name}")
             return
 
         # arguments
@@ -376,9 +358,7 @@ class McpServer:
             await self._reply_result(request_id, json.loads(result))
         except Exception as e:
             elapsed = int((_time.monotonic() - started) * 1000)
-            logger.error(
-                f"[MCP] tool {tool_name} failed: {e}", exc_info=True
-            )
+            logger.error(f"[MCP] tool {tool_name} failed: {e}", exc_info=True)
             audit.record(tool_name, arguments, ok=False, error=str(e), ms=elapsed)
             audit.finish(call_id, ok=False, detail=str(e), ms=elapsed)
             await self._reply_error(request_id, str(e))
@@ -414,9 +394,7 @@ class McpServer:
         }
 
         result_len = len(json.dumps(result))
-        logger.info(
-            f"[MCP] 发送成功响应: ID={request_id}, 结果长度={result_len}"
-        )
+        logger.info(f"[MCP] 发送成功响应: ID={request_id}, 结果长度={result_len}")
 
         if self._send_callback:
             await self._send_callback(json.dumps(payload))
@@ -433,9 +411,7 @@ class McpServer:
             "error": {"code": -32603, "message": message},
         }
 
-        logger.error(
-            f"[MCP] 发送错误响应: ID={request_id}, 错误={message}"
-        )
+        logger.error(f"[MCP] 发送错误响应: ID={request_id}, 错误={message}")
 
         if self._send_callback:
             await self._send_callback(json.dumps(payload))

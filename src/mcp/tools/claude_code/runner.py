@@ -44,9 +44,14 @@ logger = get_logger()
 
 # Everything that can write, execute, or delegate to something that can.
 DENY = [
-    "Bash", "BashOutput", "KillShell",
-    "Write", "Edit", "NotebookEdit",
-    "Task", "Agent",
+    "Bash",
+    "BashOutput",
+    "KillShell",
+    "Write",
+    "Edit",
+    "NotebookEdit",
+    "Task",
+    "Agent",
 ]
 
 # Pre-approved so they run without a prompter. Web only - see the note above on
@@ -77,8 +82,17 @@ async def ask(
     if not exe:
         return {"ok": False, "error": "The claude CLI is not installed or not on PATH."}
 
-    cmd = [exe, "-p", prompt, "--output-format", "json",
-           "--allowedTools", *ALLOW, "--disallowedTools", *DENY]
+    cmd = [
+        exe,
+        "-p",
+        prompt,
+        "--output-format",
+        "json",
+        "--allowedTools",
+        *ALLOW,
+        "--disallowedTools",
+        *DENY,
+    ]
     if model:
         cmd += ["--model", model]
 

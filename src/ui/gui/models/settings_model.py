@@ -187,7 +187,9 @@ class SettingsModel(
             logger.info("设置已保存")
             self._snapshot_mcp_disabled()
             if mcp_changed:
-                self.statusMessage.emit("Settings saved (MCP tools changed; reconnecting to update)")
+                self.statusMessage.emit(
+                    "Settings saved (MCP tools changed; reconnecting to update)"
+                )
                 self.mcpToolsNeedReconnect.emit()
             else:
                 self.statusMessage.emit("Settings saved")
@@ -208,35 +210,77 @@ class SettingsModel(
         logger.info("设置已重新加载")
 
     # ========== QML Properties（实现见各 mixin）==========
-    clientId = Property(str, SettingsSystemOptionsMixin._get_clientId, SettingsSystemOptionsMixin._set_clientId, notify=settingsChanged)
-    deviceId = Property(str, SettingsSystemOptionsMixin._get_deviceId, SettingsSystemOptionsMixin._set_deviceId, notify=settingsChanged)
-    otaUrl = Property(str, SettingsSystemOptionsMixin._get_otaUrl, SettingsSystemOptionsMixin._set_otaUrl, notify=settingsChanged)
+    clientId = Property(
+        str,
+        SettingsSystemOptionsMixin._get_clientId,
+        SettingsSystemOptionsMixin._set_clientId,
+        notify=settingsChanged,
+    )
+    deviceId = Property(
+        str,
+        SettingsSystemOptionsMixin._get_deviceId,
+        SettingsSystemOptionsMixin._set_deviceId,
+        notify=settingsChanged,
+    )
+    otaUrl = Property(
+        str,
+        SettingsSystemOptionsMixin._get_otaUrl,
+        SettingsSystemOptionsMixin._set_otaUrl,
+        notify=settingsChanged,
+    )
     websocketUrl = Property(
-        str, SettingsSystemOptionsMixin._get_websocketUrl, SettingsSystemOptionsMixin._set_websocketUrl, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_websocketUrl,
+        SettingsSystemOptionsMixin._set_websocketUrl,
+        notify=settingsChanged,
     )
     websocketToken = Property(
-        str, SettingsSystemOptionsMixin._get_websocketToken, SettingsSystemOptionsMixin._set_websocketToken, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_websocketToken,
+        SettingsSystemOptionsMixin._set_websocketToken,
+        notify=settingsChanged,
     )
     authorizationUrl = Property(
-        str, SettingsSystemOptionsMixin._get_authorizationUrl, SettingsSystemOptionsMixin._set_authorizationUrl, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_authorizationUrl,
+        SettingsSystemOptionsMixin._set_authorizationUrl,
+        notify=settingsChanged,
     )
     activationVersion = Property(
-        str, SettingsSystemOptionsMixin._get_activationVersion, SettingsSystemOptionsMixin._set_activationVersion, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_activationVersion,
+        SettingsSystemOptionsMixin._set_activationVersion,
+        notify=settingsChanged,
     )
     windowSizeMode = Property(
-        str, SettingsSystemOptionsMixin._get_windowSizeMode, SettingsSystemOptionsMixin._set_windowSizeMode, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_windowSizeMode,
+        SettingsSystemOptionsMixin._set_windowSizeMode,
+        notify=settingsChanged,
     )
     avatarStyle = Property(
-        str, SettingsSystemOptionsMixin._get_avatarStyle, SettingsSystemOptionsMixin._set_avatarStyle, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_avatarStyle,
+        SettingsSystemOptionsMixin._set_avatarStyle,
+        notify=settingsChanged,
     )
     musicSearchUrl = Property(
-        str, SettingsSystemOptionsMixin._get_musicSearchUrl, SettingsSystemOptionsMixin._set_musicSearchUrl, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_musicSearchUrl,
+        SettingsSystemOptionsMixin._set_musicSearchUrl,
+        notify=settingsChanged,
     )
     musicUrlApi = Property(
-        str, SettingsSystemOptionsMixin._get_musicUrlApi, SettingsSystemOptionsMixin._set_musicUrlApi, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_musicUrlApi,
+        SettingsSystemOptionsMixin._set_musicUrlApi,
+        notify=settingsChanged,
     )
     musicUrlApiKey = Property(
-        str, SettingsSystemOptionsMixin._get_musicUrlApiKey, SettingsSystemOptionsMixin._set_musicUrlApiKey, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_musicUrlApiKey,
+        SettingsSystemOptionsMixin._set_musicUrlApiKey,
+        notify=settingsChanged,
     )
     musicDefaultPlatform = Property(
         str,
@@ -245,37 +289,70 @@ class SettingsModel(
         notify=settingsChanged,
     )
     musicDefaultQuality = Property(
-        str, SettingsSystemOptionsMixin._get_musicDefaultQuality, SettingsSystemOptionsMixin._set_musicDefaultQuality, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_musicDefaultQuality,
+        SettingsSystemOptionsMixin._set_musicDefaultQuality,
+        notify=settingsChanged,
     )
     mqttEndpoint = Property(
-        str, SettingsSystemOptionsMixin._get_mqttEndpoint, SettingsSystemOptionsMixin._set_mqttEndpoint, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_mqttEndpoint,
+        SettingsSystemOptionsMixin._set_mqttEndpoint,
+        notify=settingsChanged,
     )
     mqttClientId = Property(
-        str, SettingsSystemOptionsMixin._get_mqttClientId, SettingsSystemOptionsMixin._set_mqttClientId, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_mqttClientId,
+        SettingsSystemOptionsMixin._set_mqttClientId,
+        notify=settingsChanged,
     )
     mqttUsername = Property(
-        str, SettingsSystemOptionsMixin._get_mqttUsername, SettingsSystemOptionsMixin._set_mqttUsername, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_mqttUsername,
+        SettingsSystemOptionsMixin._set_mqttUsername,
+        notify=settingsChanged,
     )
     mqttPassword = Property(
-        str, SettingsSystemOptionsMixin._get_mqttPassword, SettingsSystemOptionsMixin._set_mqttPassword, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_mqttPassword,
+        SettingsSystemOptionsMixin._set_mqttPassword,
+        notify=settingsChanged,
     )
     mqttPublishTopic = Property(
-        str, SettingsSystemOptionsMixin._get_mqttPublishTopic, SettingsSystemOptionsMixin._set_mqttPublishTopic, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_mqttPublishTopic,
+        SettingsSystemOptionsMixin._set_mqttPublishTopic,
+        notify=settingsChanged,
     )
     mqttSubscribeTopic = Property(
-        str, SettingsSystemOptionsMixin._get_mqttSubscribeTopic, SettingsSystemOptionsMixin._set_mqttSubscribeTopic, notify=settingsChanged
+        str,
+        SettingsSystemOptionsMixin._get_mqttSubscribeTopic,
+        SettingsSystemOptionsMixin._set_mqttSubscribeTopic,
+        notify=settingsChanged,
     )
     aecEnabled = Property(
-        bool, SettingsSystemOptionsMixin._get_aecEnabled, SettingsSystemOptionsMixin._set_aecEnabled, notify=settingsChanged
+        bool,
+        SettingsSystemOptionsMixin._get_aecEnabled,
+        SettingsSystemOptionsMixin._set_aecEnabled,
+        notify=settingsChanged,
     )
     aecMusicParallel = Property(
-        bool, SettingsSystemOptionsMixin._get_aecMusicParallel, SettingsSystemOptionsMixin._set_aecMusicParallel, notify=settingsChanged
+        bool,
+        SettingsSystemOptionsMixin._get_aecMusicParallel,
+        SettingsSystemOptionsMixin._set_aecMusicParallel,
+        notify=settingsChanged,
     )
     aecFrameDelay = Property(
-        int, SettingsSystemOptionsMixin._get_aecFrameDelay, SettingsSystemOptionsMixin._set_aecFrameDelay, notify=settingsChanged
+        int,
+        SettingsSystemOptionsMixin._get_aecFrameDelay,
+        SettingsSystemOptionsMixin._set_aecFrameDelay,
+        notify=settingsChanged,
     )
     aecEnablePreprocess = Property(
-        bool, SettingsSystemOptionsMixin._get_aecEnablePreprocess, SettingsSystemOptionsMixin._set_aecEnablePreprocess, notify=settingsChanged
+        bool,
+        SettingsSystemOptionsMixin._get_aecEnablePreprocess,
+        SettingsSystemOptionsMixin._set_aecEnablePreprocess,
+        notify=settingsChanged,
     )
     pathCacheDir = Property(
         str,
@@ -401,38 +478,107 @@ class SettingsModel(
         self._set_mcpToolGroupEnabled(group, enabled)
 
     wakeWordEnabled = Property(
-        bool, SettingsWakeWordMixin._get_wakeWordEnabled, SettingsWakeWordMixin._set_wakeWordEnabled, notify=settingsChanged
+        bool,
+        SettingsWakeWordMixin._get_wakeWordEnabled,
+        SettingsWakeWordMixin._set_wakeWordEnabled,
+        notify=settingsChanged,
     )
-    modelPath = Property(str, SettingsWakeWordMixin._get_modelPath, SettingsWakeWordMixin._set_modelPath, notify=settingsChanged)
-    numThreads = Property(int, SettingsWakeWordMixin._get_numThreads, SettingsWakeWordMixin._set_numThreads, notify=settingsChanged)
+    modelPath = Property(
+        str,
+        SettingsWakeWordMixin._get_modelPath,
+        SettingsWakeWordMixin._set_modelPath,
+        notify=settingsChanged,
+    )
+    numThreads = Property(
+        int,
+        SettingsWakeWordMixin._get_numThreads,
+        SettingsWakeWordMixin._set_numThreads,
+        notify=settingsChanged,
+    )
     keywordsScore = Property(
-        float, SettingsWakeWordMixin._get_keywordsScore, SettingsWakeWordMixin._set_keywordsScore, notify=settingsChanged
+        float,
+        SettingsWakeWordMixin._get_keywordsScore,
+        SettingsWakeWordMixin._set_keywordsScore,
+        notify=settingsChanged,
     )
     keywordsThreshold = Property(
-        float, SettingsWakeWordMixin._get_keywordsThreshold, SettingsWakeWordMixin._set_keywordsThreshold, notify=settingsChanged
+        float,
+        SettingsWakeWordMixin._get_keywordsThreshold,
+        SettingsWakeWordMixin._set_keywordsThreshold,
+        notify=settingsChanged,
     )
-    wakeWord = Property(str, SettingsWakeWordMixin._get_wakeWord, SettingsWakeWordMixin._set_wakeWord, notify=wakeWordChanged)
-    wakeWordLang = Property(str, SettingsWakeWordMixin._get_wakeWordLang, notify=wakeWordChanged)
-    wakeWordPreview = Property(str, SettingsWakeWordMixin._get_wakeWordPreview, notify=wakeWordChanged)
+    wakeWord = Property(
+        str,
+        SettingsWakeWordMixin._get_wakeWord,
+        SettingsWakeWordMixin._set_wakeWord,
+        notify=wakeWordChanged,
+    )
+    wakeWordLang = Property(
+        str, SettingsWakeWordMixin._get_wakeWordLang, notify=wakeWordChanged
+    )
+    wakeWordPreview = Property(
+        str, SettingsWakeWordMixin._get_wakeWordPreview, notify=wakeWordChanged
+    )
     cameraIndex = Property(
-        int, SettingsCameraOptionsMixin._get_cameraIndex, SettingsCameraOptionsMixin._set_cameraIndex, notify=settingsChanged
+        int,
+        SettingsCameraOptionsMixin._get_cameraIndex,
+        SettingsCameraOptionsMixin._set_cameraIndex,
+        notify=settingsChanged,
     )
-    frameWidth = Property(int, SettingsCameraOptionsMixin._get_frameWidth, SettingsCameraOptionsMixin._set_frameWidth, notify=settingsChanged)
+    frameWidth = Property(
+        int,
+        SettingsCameraOptionsMixin._get_frameWidth,
+        SettingsCameraOptionsMixin._set_frameWidth,
+        notify=settingsChanged,
+    )
     frameHeight = Property(
-        int, SettingsCameraOptionsMixin._get_frameHeight, SettingsCameraOptionsMixin._set_frameHeight, notify=settingsChanged
+        int,
+        SettingsCameraOptionsMixin._get_frameHeight,
+        SettingsCameraOptionsMixin._set_frameHeight,
+        notify=settingsChanged,
     )
-    fps = Property(int, SettingsCameraOptionsMixin._get_fps, SettingsCameraOptionsMixin._set_fps, notify=settingsChanged)
-    vlApiUrl = Property(str, SettingsCameraOptionsMixin._get_vlApiUrl, SettingsCameraOptionsMixin._set_vlApiUrl, notify=settingsChanged)
-    vlApiKey = Property(str, SettingsCameraOptionsMixin._get_vlApiKey, SettingsCameraOptionsMixin._set_vlApiKey, notify=settingsChanged)
-    vlModels = Property(str, SettingsCameraOptionsMixin._get_vlModels, SettingsCameraOptionsMixin._set_vlModels, notify=settingsChanged)
+    fps = Property(
+        int,
+        SettingsCameraOptionsMixin._get_fps,
+        SettingsCameraOptionsMixin._set_fps,
+        notify=settingsChanged,
+    )
+    vlApiUrl = Property(
+        str,
+        SettingsCameraOptionsMixin._get_vlApiUrl,
+        SettingsCameraOptionsMixin._set_vlApiUrl,
+        notify=settingsChanged,
+    )
+    vlApiKey = Property(
+        str,
+        SettingsCameraOptionsMixin._get_vlApiKey,
+        SettingsCameraOptionsMixin._set_vlApiKey,
+        notify=settingsChanged,
+    )
+    vlModels = Property(
+        str,
+        SettingsCameraOptionsMixin._get_vlModels,
+        SettingsCameraOptionsMixin._set_vlModels,
+        notify=settingsChanged,
+    )
     selectedInputIndex = Property(
-        int, SettingsAudioDevicesMixin._get_selectedInputIndex, SettingsAudioDevicesMixin._set_selectedInputIndex, notify=settingsChanged
+        int,
+        SettingsAudioDevicesMixin._get_selectedInputIndex,
+        SettingsAudioDevicesMixin._set_selectedInputIndex,
+        notify=settingsChanged,
     )
     selectedOutputIndex = Property(
-        int, SettingsAudioDevicesMixin._get_selectedOutputIndex, SettingsAudioDevicesMixin._set_selectedOutputIndex, notify=settingsChanged
+        int,
+        SettingsAudioDevicesMixin._get_selectedOutputIndex,
+        SettingsAudioDevicesMixin._set_selectedOutputIndex,
+        notify=settingsChanged,
     )
-    inputDeviceInfo = Property(str, SettingsAudioDevicesMixin._get_inputDeviceInfo, notify=settingsChanged)
-    outputDeviceInfo = Property(str, SettingsAudioDevicesMixin._get_outputDeviceInfo, notify=settingsChanged)
+    inputDeviceInfo = Property(
+        str, SettingsAudioDevicesMixin._get_inputDeviceInfo, notify=settingsChanged
+    )
+    outputDeviceInfo = Property(
+        str, SettingsAudioDevicesMixin._get_outputDeviceInfo, notify=settingsChanged
+    )
     opusOutputSampleRate = Property(
         int,
         SettingsAudioDevicesMixin._get_opusOutputSampleRate,
@@ -440,10 +586,16 @@ class SettingsModel(
         notify=settingsChanged,
     )
     frameDuration = Property(
-        int, SettingsAudioDevicesMixin._get_frameDuration, SettingsAudioDevicesMixin._set_frameDuration, notify=settingsChanged
+        int,
+        SettingsAudioDevicesMixin._get_frameDuration,
+        SettingsAudioDevicesMixin._set_frameDuration,
+        notify=settingsChanged,
     )
     shortcutsEnabled = Property(
-        bool, SettingsShortcutsMixin._get_shortcutsEnabled, SettingsShortcutsMixin._set_shortcutsEnabled, notify=settingsChanged
+        bool,
+        SettingsShortcutsMixin._get_shortcutsEnabled,
+        SettingsShortcutsMixin._set_shortcutsEnabled,
+        notify=settingsChanged,
     )
     shortcutManualModifier = Property(
         str,
@@ -452,7 +604,10 @@ class SettingsModel(
         notify=settingsChanged,
     )
     shortcutManualKey = Property(
-        str, SettingsShortcutsMixin._get_shortcutManualKey, SettingsShortcutsMixin._set_shortcutManualKey, notify=settingsChanged
+        str,
+        SettingsShortcutsMixin._get_shortcutManualKey,
+        SettingsShortcutsMixin._set_shortcutManualKey,
+        notify=settingsChanged,
     )
     shortcutAutoModifier = Property(
         str,
@@ -461,7 +616,10 @@ class SettingsModel(
         notify=settingsChanged,
     )
     shortcutAutoKey = Property(
-        str, SettingsShortcutsMixin._get_shortcutAutoKey, SettingsShortcutsMixin._set_shortcutAutoKey, notify=settingsChanged
+        str,
+        SettingsShortcutsMixin._get_shortcutAutoKey,
+        SettingsShortcutsMixin._set_shortcutAutoKey,
+        notify=settingsChanged,
     )
     shortcutAbortModifier = Property(
         str,
@@ -470,7 +628,10 @@ class SettingsModel(
         notify=settingsChanged,
     )
     shortcutAbortKey = Property(
-        str, SettingsShortcutsMixin._get_shortcutAbortKey, SettingsShortcutsMixin._set_shortcutAbortKey, notify=settingsChanged
+        str,
+        SettingsShortcutsMixin._get_shortcutAbortKey,
+        SettingsShortcutsMixin._set_shortcutAbortKey,
+        notify=settingsChanged,
     )
     shortcutModeModifier = Property(
         str,
@@ -479,7 +640,10 @@ class SettingsModel(
         notify=settingsChanged,
     )
     shortcutModeKey = Property(
-        str, SettingsShortcutsMixin._get_shortcutModeKey, SettingsShortcutsMixin._set_shortcutModeKey, notify=settingsChanged
+        str,
+        SettingsShortcutsMixin._get_shortcutModeKey,
+        SettingsShortcutsMixin._set_shortcutModeKey,
+        notify=settingsChanged,
     )
     shortcutWindowModifier = Property(
         str,
@@ -488,9 +652,14 @@ class SettingsModel(
         notify=settingsChanged,
     )
     shortcutWindowKey = Property(
-        str, SettingsShortcutsMixin._get_shortcutWindowKey, SettingsShortcutsMixin._set_shortcutWindowKey, notify=settingsChanged
+        str,
+        SettingsShortcutsMixin._get_shortcutWindowKey,
+        SettingsShortcutsMixin._set_shortcutWindowKey,
+        notify=settingsChanged,
     )
     selectedCameraIndex = Property(
-        int, SettingsCameraDevicesMixin._get_selectedCameraIndex, SettingsCameraDevicesMixin._set_selectedCameraIndex, notify=settingsChanged
+        int,
+        SettingsCameraDevicesMixin._get_selectedCameraIndex,
+        SettingsCameraDevicesMixin._set_selectedCameraIndex,
+        notify=settingsChanged,
     )
-

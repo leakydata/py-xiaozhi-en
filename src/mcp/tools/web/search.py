@@ -78,11 +78,13 @@ async def _mojeek(session: aiohttp.ClientSession, query: str, n: int) -> list[di
         snip = _SNIPPET.search(block)
         if not url:
             continue
-        out.append({
-            "title": strip_tags(title.group(1)) if title else "",
-            "url": url.group(1),
-            "snippet": strip_tags(snip.group(1)) if snip else "",
-        })
+        out.append(
+            {
+                "title": strip_tags(title.group(1)) if title else "",
+                "url": url.group(1),
+                "snippet": strip_tags(snip.group(1)) if snip else "",
+            }
+        )
         if len(out) >= n:
             break
     return out
@@ -152,8 +154,12 @@ async def web_search_payload(args: dict[str, Any]) -> str:
 
     if not results:
         return json.dumps(
-            {"query": query, "provider": provider, "results": [],
-             "note": "No results found."},
+            {
+                "query": query,
+                "provider": provider,
+                "results": [],
+                "note": "No results found.",
+            },
             ensure_ascii=False,
         )
     return json.dumps(

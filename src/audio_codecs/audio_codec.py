@@ -66,9 +66,7 @@ class AudioCodec:
         self.stream_manager = None
 
         # TTS kept separate from music: each has its own FIFO and they are mixed in the output callback, so neither blocks the other
-        self._tts_fifo = PcmFifo(
-            int(AudioConfig.OUTPUT_SAMPLE_RATE * _TTS_FIFO_MAX_S)
-        )
+        self._tts_fifo = PcmFifo(int(AudioConfig.OUTPUT_SAMPLE_RATE * _TTS_FIFO_MAX_S))
         self._music_fifo = PcmFifo(
             int(AudioConfig.OUTPUT_SAMPLE_RATE * _MUSIC_FIFO_MAX_S)
         )
@@ -267,9 +265,7 @@ class AudioCodec:
 
         # the protocol output rate can change on a config hot-reload, so the FIFO and mix blocks are rebuilt with it
         # (the streams are stopped here, so there is no concurrent reader)
-        self._tts_fifo = PcmFifo(
-            int(AudioConfig.OUTPUT_SAMPLE_RATE * _TTS_FIFO_MAX_S)
-        )
+        self._tts_fifo = PcmFifo(int(AudioConfig.OUTPUT_SAMPLE_RATE * _TTS_FIFO_MAX_S))
         self._music_fifo = PcmFifo(
             int(AudioConfig.OUTPUT_SAMPLE_RATE * _MUSIC_FIFO_MAX_S)
         )
@@ -332,7 +328,9 @@ class AudioCodec:
                 ),
             )
         except Exception as e:
-            logger.warning(f"Failed to create the AEC engine, bypassed: {e}", exc_info=True)
+            logger.warning(
+                f"Failed to create the AEC engine, bypassed: {e}", exc_info=True
+            )
             self._aec = None
 
     # === public interface (kept for compatibility) ===
@@ -538,7 +536,9 @@ class AudioCodec:
             return True
 
         except Exception as e:
-            logger.error(f"AudioCodec: audio device hot reload failed: {e}", exc_info=True)
+            logger.error(
+                f"AudioCodec: audio device hot reload failed: {e}", exc_info=True
+            )
             return False
 
     async def close(self):
@@ -583,7 +583,9 @@ class AudioCodec:
         if getattr(self, "_closed", False) or getattr(self, "_is_closing", False):
             return
 
-        logger.warning("AudioCodec was not closed properly; running emergency cleanup (prefer async close())")
+        logger.warning(
+            "AudioCodec was not closed properly; running emergency cleanup (prefer async close())"
+        )
 
         try:
             # 1. stop the audio streams (synchronous)
@@ -609,7 +611,8 @@ class AudioCodec:
                     self._audio_listeners.clear()
             except Exception as e:
                 logger.warning(
-                    f"Failed to clear audio listeners (the lock may be broken): {e}", exc_info=True
+                    f"Failed to clear audio listeners (the lock may be broken): {e}",
+                    exc_info=True,
                 )
 
             logger.debug("AudioCodec destructor cleanup complete")

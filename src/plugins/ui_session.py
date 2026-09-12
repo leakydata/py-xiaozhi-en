@@ -151,7 +151,11 @@ class SessionActions:
 
     async def auto_session_toggle(self, _data=None) -> None:
         # 主按钮：开始对话 / 停止对话
-        if self._auto_session_active or self._ctx.is_listening() or self._ctx.is_speaking():
+        if (
+            self._auto_session_active
+            or self._ctx.is_listening()
+            or self._ctx.is_speaking()
+        ):
             await self._stop_auto_session()
             return
 

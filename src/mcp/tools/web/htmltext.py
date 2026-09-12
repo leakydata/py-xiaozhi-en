@@ -13,16 +13,47 @@ from html.parser import HTMLParser
 
 # Containers whose text is chrome, not content.
 _DROP = {
-    "script", "style", "noscript", "svg", "canvas", "template", "head",
+    "script",
+    "style",
+    "noscript",
+    "svg",
+    "canvas",
+    "template",
+    "head",
     # site chrome: keeps nav menus and cookie bars out of the extracted text,
     # which otherwise eat the model's context before the article starts
-    "nav", "footer", "aside", "form", "menu", "button", "select", "option",
-    "iframe", "dialog",
+    "nav",
+    "footer",
+    "aside",
+    "form",
+    "menu",
+    "button",
+    "select",
+    "option",
+    "iframe",
+    "dialog",
 }
 # Tags that imply a line break in the extracted text.
 _BLOCK = {
-    "p", "div", "section", "article", "header", "br", "li", "tr",
-    "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "table", "ul", "ol",
+    "p",
+    "div",
+    "section",
+    "article",
+    "header",
+    "br",
+    "li",
+    "tr",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "blockquote",
+    "pre",
+    "table",
+    "ul",
+    "ol",
 }
 
 _WS = re.compile(r"[ \t\f\v]+")

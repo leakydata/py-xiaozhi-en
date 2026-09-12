@@ -58,7 +58,9 @@ class AudioDeviceManager:
             logger.info(f"Looking for input device: {input_device_name}")
             input_info = find_device_by_name("input", input_device_name)
             if input_info:
-                logger.info(f"✓ input device found: {input_info['name']} (ID: {input_info['index']})")
+                logger.info(
+                    f"✓ input device found: {input_info['name']} (ID: {input_info['index']})"
+                )
             else:
                 logger.warning(f"✗ device not found '{input_device_name}', reselecting")
 
@@ -66,9 +68,13 @@ class AudioDeviceManager:
             logger.info(f"Looking for output device: {output_device_name}")
             output_info = find_device_by_name("output", output_device_name)
             if output_info:
-                logger.info(f"✓ output device found: {output_info['name']} (ID: {output_info['index']})")
+                logger.info(
+                    f"✓ output device found: {output_info['name']} (ID: {output_info['index']})"
+                )
             else:
-                logger.warning(f"✗ device not found '{output_device_name}', reselecting")
+                logger.warning(
+                    f"✗ device not found '{output_device_name}', reselecting"
+                )
 
         # 2. if the name lookup failed, auto-select a new device
         if not input_info:
@@ -105,11 +111,19 @@ class AudioDeviceManager:
             input_device_name != input_info["name"]
             or output_device_name != output_info["name"]
         ):
-            self.config.update_config("AUDIO_DEVICES.input_device_name", input_info["name"])
-            self.config.update_config("AUDIO_DEVICES.input_sample_rate", device_input_sample_rate)
+            self.config.update_config(
+                "AUDIO_DEVICES.input_device_name", input_info["name"]
+            )
+            self.config.update_config(
+                "AUDIO_DEVICES.input_sample_rate", device_input_sample_rate
+            )
             self.config.update_config("AUDIO_DEVICES.input_channels", input_channels)
-            self.config.update_config("AUDIO_DEVICES.output_device_name", output_info["name"])
-            self.config.update_config("AUDIO_DEVICES.output_sample_rate", device_output_sample_rate)
+            self.config.update_config(
+                "AUDIO_DEVICES.output_device_name", output_info["name"]
+            )
+            self.config.update_config(
+                "AUDIO_DEVICES.output_sample_rate", device_output_sample_rate
+            )
             self.config.update_config("AUDIO_DEVICES.output_channels", output_channels)
             logger.info("Device configuration saved")
 

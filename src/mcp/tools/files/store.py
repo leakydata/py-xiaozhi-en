@@ -23,7 +23,6 @@ MAX_READ_BYTES = 200_000
 MAX_WRITE_BYTES = 2_000_000
 
 
-
 class OutsideWorkspace(Exception):
     """Raised when a path escapes the workspace root."""
 
@@ -85,12 +84,14 @@ def list_dir(rel: str = ".") -> list[dict]:
     for child in sorted(target.iterdir(), key=lambda c: (c.is_file(), c.name.lower())):
         try:
             stat = child.stat()
-            out.append({
-                "name": child.name,
-                "path": rel_to_root(child),
-                "type": "folder" if child.is_dir() else "file",
-                "bytes": stat.st_size if child.is_file() else None,
-            })
+            out.append(
+                {
+                    "name": child.name,
+                    "path": rel_to_root(child),
+                    "type": "folder" if child.is_dir() else "file",
+                    "bytes": stat.st_size if child.is_file() else None,
+                }
+            )
         except OSError:
             continue
     return out
@@ -125,8 +126,11 @@ def write_file(rel: str, content: str, append: bool = False) -> dict:
     with open(target, "ab" if append else "wb") as fh:
         fh.write(data)
     logger.info(f"[Files] {'appended to' if append else 'wrote'} {rel_to_root(target)}")
-    return {"path": rel_to_root(target), "bytes": target.stat().st_size,
-            "appended": append}
+    return {
+        "path": rel_to_root(target),
+        "bytes": target.stat().st_size,
+        "appended": append,
+    }
 
 
 def delete(rel: str) -> dict:
@@ -170,11 +174,13 @@ def search(query: str, limit: int = 40) -> list[dict]:
     for p in root().rglob("*"):
         if q in p.name.lower():
             try:
-                hits.append({
-                    "path": rel_to_root(p),
-                    "type": "folder" if p.is_dir() else "file",
-                    "bytes": p.stat().st_size if p.is_file() else None,
-                })
+                hits.append(
+                    {
+                        "path": rel_to_root(p),
+                        "type": "folder" if p.is_dir() else "file",
+                        "bytes": p.stat().st_size if p.is_file() else None,
+                    }
+                )
             except OSError:
                 continue
             if len(hits) >= limit:
@@ -199,8 +205,9 @@ def grep(pattern: str, limit: int = 40) -> list[dict]:
             continue
         for i, line in enumerate(text.splitlines(), 1):
             if needle in line:
-                out.append({"path": rel_to_root(p), "line": i,
-                            "text": line.strip()[:200]})
+                out.append(
+                    {"path": rel_to_root(p), "line": i, "text": line.strip()[:200]}
+                )
                 if len(out) >= limit:
                     return out
     return out

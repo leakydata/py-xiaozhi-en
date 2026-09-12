@@ -36,26 +36,58 @@ BRIEFING_FILE = "ASSISTANT.md"
 
 # Grouped so the model gets a map rather than a flat list of 39 names.
 _GROUPS: list[tuple[str, tuple[str, ...]]] = [
-    ("Memory - things said in past conversations",
-     ("remember", "recall", "memory_topics")),
-    ("Reminders - you announce these out loud when they come due",
-     ("set_reminder", "list_reminders", "complete_reminder", "get_current_time")),
-    ("The web",
-     ("web_search", "fetch_page")),
-    ("Deeper reasoning - a stronger model, for hard questions",
-     ("ask_claude", "ask_claude_background")),
-    ("Files - your own workspace folder",
-     ("list_files", "read_file", "write_file", "make_folder", "move_path",
-      "delete_path", "find_files", "search_in_files")),
-    ("Running code - for anything with no dedicated tool. The interpreter "
-     "stays alive between calls, so build work up over several of them",
-     ("run_python", "install_python_package", "reset_python")),
-    ("This computer",
-     ("system_status", "top_processes", "run_command", "recent_actions",
-      "what_can_you_do")),
-    ("Hardware and media",
-     ("list_serial_ports", "serial_monitor", "image_info", "edit_image",
-      "media_info", "convert_media")),
+    (
+        "Memory - things said in past conversations",
+        ("remember", "recall", "memory_topics"),
+    ),
+    (
+        "Reminders - you announce these out loud when they come due",
+        ("set_reminder", "list_reminders", "complete_reminder", "get_current_time"),
+    ),
+    ("The web", ("web_search", "fetch_page")),
+    (
+        "Deeper reasoning - a stronger model, for hard questions",
+        ("ask_claude", "ask_claude_background"),
+    ),
+    (
+        "Files - your own workspace folder",
+        (
+            "list_files",
+            "read_file",
+            "write_file",
+            "make_folder",
+            "move_path",
+            "delete_path",
+            "find_files",
+            "search_in_files",
+        ),
+    ),
+    (
+        "Running code - for anything with no dedicated tool. The interpreter "
+        "stays alive between calls, so build work up over several of them",
+        ("run_python", "install_python_package", "reset_python"),
+    ),
+    (
+        "This computer",
+        (
+            "system_status",
+            "top_processes",
+            "run_command",
+            "recent_actions",
+            "what_can_you_do",
+        ),
+    ),
+    (
+        "Hardware and media",
+        (
+            "list_serial_ports",
+            "serial_monitor",
+            "image_info",
+            "edit_image",
+            "media_info",
+            "convert_media",
+        ),
+    ),
 ]
 
 _HABITS = """How to work:
@@ -116,8 +148,11 @@ def build(tools: Iterable["McpTool"]) -> str:
     try:
         from src.mcp.tools.files import store
 
-        lines += ["", f"Your workspace folder is {store.root()}. File tools are "
-                      "confined to it, and run_python runs inside it."]
+        lines += [
+            "",
+            f"Your workspace folder is {store.root()}. File tools are "
+            "confined to it, and run_python runs inside it.",
+        ]
     except Exception:
         pass
 

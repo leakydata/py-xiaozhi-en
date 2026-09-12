@@ -37,12 +37,14 @@ def register_memory_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "sentence; kind - note, fact or event; speaker - who said it; "
                 "tags - optional comma-separated labels."
             ),
-            PropertyList([
-                Property("text", PropertyType.STRING, default_value=""),
-                Property("kind", PropertyType.STRING, default_value="note"),
-                Property("speaker", PropertyType.STRING, default_value=""),
-                Property("tags", PropertyType.STRING, default_value=""),
-            ]),
+            PropertyList(
+                [
+                    Property("text", PropertyType.STRING, default_value=""),
+                    Property("kind", PropertyType.STRING, default_value="note"),
+                    Property("speaker", PropertyType.STRING, default_value=""),
+                    Property("tags", PropertyType.STRING, default_value=""),
+                ]
+            ),
             remember_payload,
         ),
         McpTool(
@@ -57,11 +59,18 @@ def register_memory_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "guessing. "
                 "Args: query - what to look for; max_results - 1-10."
             ),
-            PropertyList([
-                Property("query", PropertyType.STRING, default_value=""),
-                Property("max_results", PropertyType.INTEGER, default_value=5,
-                         min_value=1, max_value=10),
-            ]),
+            PropertyList(
+                [
+                    Property("query", PropertyType.STRING, default_value=""),
+                    Property(
+                        "max_results",
+                        PropertyType.INTEGER,
+                        default_value=5,
+                        min_value=1,
+                        max_value=10,
+                    ),
+                ]
+            ),
             recall_payload,
         ),
         McpTool(
@@ -74,11 +83,13 @@ def register_memory_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "timestamp, or a phrase like 'in 30 minutes', 'tomorrow 9am', "
                 "'in 2 days'; speaker - who it is for."
             ),
-            PropertyList([
-                Property("text", PropertyType.STRING, default_value=""),
-                Property("when", PropertyType.STRING, default_value=""),
-                Property("speaker", PropertyType.STRING, default_value=""),
-            ]),
+            PropertyList(
+                [
+                    Property("text", PropertyType.STRING, default_value=""),
+                    Property("when", PropertyType.STRING, default_value=""),
+                    Property("speaker", PropertyType.STRING, default_value=""),
+                ]
+            ),
             set_reminder_payload,
         ),
         McpTool(
@@ -87,17 +98,21 @@ def register_memory_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "List reminders. Args: scope - 'upcoming' (not yet due), 'due' "
                 "(due now and unfinished), or 'all'."
             ),
-            PropertyList([
-                Property("scope", PropertyType.STRING, default_value="upcoming"),
-            ]),
+            PropertyList(
+                [
+                    Property("scope", PropertyType.STRING, default_value="upcoming"),
+                ]
+            ),
             list_reminders_payload,
         ),
         McpTool(
             "complete_reminder",
             "Mark a reminder as done. Args: id - the reminder's id.",
-            PropertyList([
-                Property("id", PropertyType.INTEGER, default_value=0),
-            ]),
+            PropertyList(
+                [
+                    Property("id", PropertyType.INTEGER, default_value=0),
+                ]
+            ),
             complete_reminder_payload,
         ),
         McpTool(

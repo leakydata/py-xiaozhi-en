@@ -17,7 +17,6 @@ _STOP_SENTINEL = object()
 
 
 class WakeWordDetector:
-
     def __init__(self):
         self.audio_codec = None
         self._running = False
@@ -88,28 +87,44 @@ class WakeWordDetector:
             return True
 
         except Exception as e:
-            logger.error(f"wake word detector initialisation failed: {e}", exc_info=True)
+            logger.error(
+                f"wake word detector initialisation failed: {e}", exc_info=True
+            )
             self.enabled = False
             return False
 
     def _load_config(self, config: ConfigManager):
         self._num_threads = config.get_config("WAKE_WORD_OPTIONS.NUM_THREADS", 4)
         self._provider = config.get_config("WAKE_WORD_OPTIONS.PROVIDER", "cpu")
-        self._max_active_paths = config.get_config("WAKE_WORD_OPTIONS.MAX_ACTIVE_PATHS", 2)
-        self._keywords_score = config.get_config("WAKE_WORD_OPTIONS.KEYWORDS_SCORE", 1.8)
-        self._keywords_threshold = config.get_config("WAKE_WORD_OPTIONS.KEYWORDS_THRESHOLD", 0.2)
-        self._num_trailing_blanks = config.get_config("WAKE_WORD_OPTIONS.NUM_TRAILING_BLANKS", 1)
+        self._max_active_paths = config.get_config(
+            "WAKE_WORD_OPTIONS.MAX_ACTIVE_PATHS", 2
+        )
+        self._keywords_score = config.get_config(
+            "WAKE_WORD_OPTIONS.KEYWORDS_SCORE", 1.8
+        )
+        self._keywords_threshold = config.get_config(
+            "WAKE_WORD_OPTIONS.KEYWORDS_THRESHOLD", 0.2
+        )
+        self._num_trailing_blanks = config.get_config(
+            "WAKE_WORD_OPTIONS.NUM_TRAILING_BLANKS", 1
+        )
 
         # Validate
         if not 0.1 <= self._keywords_threshold <= 1.0:
-            logger.warning(f"keyword threshold {self._keywords_threshold} is out of range, resetting to 0.25")
+            logger.warning(
+                f"keyword threshold {self._keywords_threshold} is out of range, resetting to 0.25"
+            )
             self._keywords_threshold = 0.25
 
         if not 0.1 <= self._keywords_score <= 10.0:
-            logger.warning(f"keyword score {self._keywords_score} is out of range, resetting to 2.0")
+            logger.warning(
+                f"keyword score {self._keywords_score} is out of range, resetting to 2.0"
+            )
             self._keywords_score = 2.0
 
-        logger.debug(f"KWS config: threshold={self._keywords_threshold}, score={self._keywords_score}")
+        logger.debug(
+            f"KWS config: threshold={self._keywords_threshold}, score={self._keywords_score}"
+        )
 
     def _load_model(self) -> bool:
         """Load sherpa-onnx KeywordSpotter model."""
@@ -124,7 +139,13 @@ class WakeWordDetector:
             lang = get_config().get_config("WAKE_WORD_OPTIONS.WAKE_WORD_LANG", "zh")
             keywords_path = get_user_keywords_path(lang)
 
-            required_files = [encoder_path, decoder_path, joiner_path, tokens_path, keywords_path]
+            required_files = [
+                encoder_path,
+                decoder_path,
+                joiner_path,
+                tokens_path,
+                keywords_path,
+            ]
             for file_path in required_files:
                 if not file_path.exists():
                     logger.error(f"the model file does not exist: {file_path}")
@@ -359,10 +380,15 @@ class WakeWordDetector:
             except asyncio.CancelledError:
                 break
             except RuntimeError as e:
-                if "no running event loop" in str(e) or "Event loop is closed" in str(e):
+                if "no running event loop" in str(e) or "Event loop is closed" in str(
+                    e
+                ):
                     break
                 error_count += 1
-                logger.error(f"detection loop error ({error_count}/{MAX_ERRORS}): {e}", exc_info=True)
+                logger.error(
+                    f"detection loop error ({error_count}/{MAX_ERRORS}): {e}",
+                    exc_info=True,
+                )
 
                 if error_count >= MAX_ERRORS:
                     logger.critical("hit the error limit, stopping detection")
@@ -371,7 +397,10 @@ class WakeWordDetector:
                 await asyncio.sleep(1)
             except Exception as e:
                 error_count += 1
-                logger.error(f"detection loop error ({error_count}/{MAX_ERRORS}): {e}", exc_info=True)
+                logger.error(
+                    f"detection loop error ({error_count}/{MAX_ERRORS}): {e}",
+                    exc_info=True,
+                )
 
                 if self.on_error:
                     try:
