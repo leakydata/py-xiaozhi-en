@@ -133,6 +133,7 @@ class McpServer:
         from src.mcp.tools.volume import register_volume_tools
         from src.mcp.tools.weather import register_weather_tools
         from src.mcp.tools.claude_code import register_claude_code_tools
+        from src.mcp.tools.files import register_file_tools
         from src.mcp.tools.memory import register_memory_tools
         from src.mcp.tools.web import register_web_tools
 
@@ -142,6 +143,7 @@ class McpServer:
         register_web_tools(self.add_tool)
         register_memory_tools(self.add_tool)
         register_claude_code_tools(self.add_tool)
+        register_file_tools(self.add_tool)
 
         # 外挂：用户目录插件包（自带 lib/），失败隔离
         try:

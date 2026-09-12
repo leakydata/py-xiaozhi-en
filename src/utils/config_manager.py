@@ -86,6 +86,11 @@ class ConfigManager:
             "TIMEOUT_SECONDS": 120,
             "MODEL": "",
         },
+        # Workspace the assistant may read and write. Every file tool is
+        # confined to this folder; blank = {user data}/workspace
+        "FILES": {
+            "ROOT": "",
+        },
         # Reminders announced out loud when they come due
         "REMINDERS": {
             "ENABLED": True,
