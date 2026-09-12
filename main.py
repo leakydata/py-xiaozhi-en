@@ -5,7 +5,7 @@ import os
 import signal
 import sys
 
-# Windows: 强制 C/C++ 运行时使用 UTF-8，解决 sherpa-onnx 读取声调拼音文件乱码
+# Windows: force the C/C++ runtime to UTF-8, or sherpa-onnx garbles the toned pinyin files
 if sys.platform == "win32":
     os.environ["PYTHONIOENCODING"] = "utf-8"
     try:
@@ -14,44 +14,44 @@ if sys.platform == "win32":
         pass
 
 os.environ["QSG_RHI_BACKEND"] = "opengl"
-# 强制 qasync 使用 PySide6
+# force qasync to use PySide6
 os.environ["QT_API"] = "pyside6"
-# 使用 Basic 样式以支持自定义控件
+# Basic style, so custom controls are supported
 os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
 
 
 def parse_args():
-    """解析命令行参数."""
+    """Parse command-line arguments."""
     from src.constants.system import SystemConstants
 
     parser = argparse.ArgumentParser(description=SystemConstants.APP_DISPLAY_NAME)
-    # 运行模式选择
-    # - gui: 图形界面模式，使用 PySide6 + QML
-    # - cli: 命令行模式，使用终端交互（轻量，适合无屏/SSH）
-    # - tui: 全屏 TUI（Textual），可编辑配置；需 uv sync --extra tui
-    # - gpio: GPIO 按键模式，仅支持 Linux（树莓派），通过物理按键控制
+    # run mode
+    # - gui: graphical interface, PySide6 + QML
+    # - cli: terminal interaction (light; good for headless/SSH)
+    # - tui: full-screen TUI (Textual) with editable config; needs uv sync --extra tui
+    # - gpio: physical buttons over GPIO; Linux only (Raspberry Pi)
     parser.add_argument(
         "--mode",
         choices=["gui", "cli", "tui", "gpio"],
         default="gui",
-        help="运行模式（默认 gui）：gui / cli / tui(全屏终端) / gpio(仅Linux)",
+        help="run mode (default gui): gui / cli / tui (full-screen terminal) / gpio (Linux only)",
     )
     parser.add_argument(
         "--protocol",
         choices=["mqtt", "websocket"],
         default="websocket",
         metavar="PROTOCOL",
-        help="通信协议：mqtt 或 websocket（默认 websocket；须写 --protocol mqtt）",
+        help="transport: mqtt or websocket (default websocket; pass --protocol mqtt to switch)",
     )
     parser.add_argument(
         "--skip-activation",
         action="store_true",
-        help="跳过激活流程，直接启动应用（仅用于调试）",
+        help="skip activation and start straight away (debugging only)",
     )
     return parser.parse_args()
 
 
-# 先解析参数，再初始化配置与日志（禁止 ConfigManager 懒单例）
+# Parse arguments before initialising config and logging (no lazy ConfigManager singleton)
 _args = parse_args()
 
 from src.utils.config_manager import initialize_config  # noqa: E402
@@ -60,7 +60,7 @@ initialize_config()
 
 from src.logging import load_logging_config, setup_logging  # noqa: E402
 
-# CLI/TUI 模式禁用控制台日志输出（由界面接管）
+# CLI/TUI modes take over the terminal, so console logging is off there
 setup_logging(
     enable_console=(_args.mode not in ("cli", "tui")),
     config=load_logging_config(),
@@ -74,67 +74,67 @@ logger = get_logger()
 
 
 async def handle_activation(mode: str) -> bool:
-    """处理设备激活流程.
+    """Run the device activation flow.
 
     Args:
-        mode: 运行模式，"gui"、"cli"、"tui" 或 "gpio"
+        mode: run mode - "gui", "cli", "tui" or "gpio"
 
     Returns:
-        bool: 激活是否成功
+        bool: whether activation succeeded
     """
     try:
         from src.activation import ActivationService, create_activation_ui
 
-        logger.info("开始设备激活流程检查...")
+        logger.info("Starting device activation check...")
         activation_service = await ActivationService.create()
         init_result = await activation_service.initialize()
 
         if not init_result.get("success", False):
-            logger.error(f"初始化失败: {init_result.get('error', '未知错误')}")
+            logger.error(f"Initialisation failed: {init_result.get('error', 'unknown error')}")
             return False
 
         if not init_result.get("need_activation_ui", False):
-            logger.info("设备已激活，无需激活流程")
+            logger.info("Device already activated; no activation needed")
             return True
 
         ui = create_activation_ui(mode, activation_service, init_result)
         return await ui.run()
 
     except Exception as e:
-        logger.error(f"激活流程异常: {e}", exc_info=True)
+        logger.error(f"Activation flow error: {e}", exc_info=True)
         return False
 
 
 async def start_app(mode: str, protocol: str, skip_activation: bool) -> int:
-    """启动应用的统一入口."""
-    global _container  # 用于 SIGINT 处理
-    logger.info(f"启动{SystemConstants.APP_DISPLAY_NAME}")
+    """Single entry point for starting the app."""
+    global _container  # used by the SIGINT handler
+    logger.info(f"Starting {SystemConstants.APP_DISPLAY_NAME}")
 
-    # 处理激活流程
+    # activation
     if not skip_activation:
         activation_success = await handle_activation(mode)
         if not activation_success:
-            logger.error("设备激活失败，程序退出")
+            logger.error("Device activation failed; exiting")
             return 1
     else:
-        logger.warning("跳过激活流程（调试模式）")
+        logger.warning("Skipping activation (debug mode)")
 
-    # 创建并启动应用程序
+    # build and run the application
     _container = ServiceContainer()
     return await _container.run(mode=mode, protocol=protocol)
 
 
-# 全局容器引用，用于 SIGINT 处理
+# global container reference, used by the SIGINT handler
 _container = None
 
 
 if __name__ == "__main__":
     exit_code = 1
     try:
-        # 使用已解析的参数
+        # use the already-parsed arguments
         args = _args
 
-        # 检测Wayland环境并设置Qt平台插件配置
+        # detect Wayland and set the Qt platform plugin accordingly
         import os
 
         is_wayland = (
@@ -145,11 +145,11 @@ if __name__ == "__main__":
         if args.mode == "gui" and is_wayland:
             if "QT_QPA_PLATFORM" not in os.environ:
                 os.environ["QT_QPA_PLATFORM"] = "wayland;xcb"
-                logger.info("Wayland环境：设置QT_QPA_PLATFORM=wayland;xcb")
+                logger.info("Wayland detected: setting QT_QPA_PLATFORM=wayland;xcb")
             os.environ.setdefault("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
-            logger.info("Wayland环境检测完成，已应用兼容性配置")
+            logger.info("Wayland detection complete; compatibility settings applied")
 
-        # 信号处理
+        # signal handling
         try:
             if hasattr(signal, "SIGTRAP"):
                 signal.signal(signal.SIGTRAP, signal.SIG_IGN)
@@ -157,23 +157,23 @@ if __name__ == "__main__":
             pass
 
         if args.mode == "gui":
-            # GUI 模式：使用 PySide6 + qasync
+            # GUI mode: PySide6 + qasync
             try:
                 import qasync
                 from PySide6.QtWidgets import QApplication
             except ImportError as e:
                 logger.error(
-                    "GUI 模式需要 PySide6 + qasync，当前环境未安装。\n"
-                    "请用项目 venv 安装 GUI 依赖后重试：\n"
+                    "GUI mode needs PySide6 + qasync, which are not installed.\n"
+                    "Install the GUI extras into the project venv and try again:\n"
                     "  uv sync --extra gui\n"
-                    "  # 或: pip install '.[gui]'\n"
-                    "然后：\n"
+                    "  # or: pip install '.[gui]'\n"
+                    "then:\n"
                     "  uv run python main.py\n"
-                    "  # 或: .venv/bin/python main.py\n"
-                    "不要 GUI 时可用：\n"
+                    "  # or: .venv/bin/python main.py\n"
+                    "Without a GUI you can use:\n"
                     "  python main.py --mode cli\n"
-                    "  python main.py --mode tui   # 需 uv sync --extra tui\n"
-                    f"(原始错误: {e})"
+                    "  python main.py --mode tui   # needs uv sync --extra tui\n"
+                    f"(original error: {e})"
                 )
                 sys.exit(1)
 
@@ -182,23 +182,23 @@ if __name__ == "__main__":
 
             loop = qasync.QEventLoop(qt_app)
             asyncio.set_event_loop(loop)
-            logger.info("已创建 PySide6 + qasync 事件循环")
+            logger.info("Created the PySide6 + qasync event loop")
 
-            # 设置 SIGINT 信号处理 - 通过 TaskManager 请求关闭
+            # SIGINT: ask the TaskManager to shut down
             shutdown_state = {"requested": False}
 
             def handle_sigint(*_):
                 if shutdown_state["requested"]:
                     return
                 shutdown_state["requested"] = True
-                logger.info("收到 SIGINT 信号，正在退出...")
+                logger.info("SIGINT received, exiting...")
 
-                # 通过 TaskManager 请求优雅关闭
+                # request a graceful shutdown through the TaskManager
                 try:
                     if _container and _container.tasks:
                         _container.tasks.request_shutdown()
                     else:
-                        # 容器未就绪，直接退出 Qt
+                        # container not ready yet - quit Qt directly
                         if loop.is_running():
                             loop.call_soon_threadsafe(qt_app.quit)
                 except Exception:
@@ -212,37 +212,37 @@ if __name__ == "__main__":
                         start_app(args.mode, args.protocol, args.skip_activation)
                     )
             except RuntimeError as e:
-                # 捕获 qasync 的 "Event loop stopped before Future completed" 错误
+                # swallow qasync's "Event loop stopped before Future completed"
                 if "Event loop stopped before Future completed" in str(e):
-                    logger.debug("事件循环已正常终止")
+                    logger.debug("Event loop terminated normally")
                     exit_code = 0
                 else:
                     raise
         else:
-            # CLI / TUI / GPIO：标准 asyncio
+            # CLI / TUI / GPIO: plain asyncio
             if args.mode == "tui":
                 try:
                     import textual  # noqa: F401
                 except ImportError as e:
                     logger.error(
-                        "TUI 模式需要 textual。请运行:\n"
+                        "TUI mode needs textual. Run:\n"
                         "  uv sync --extra tui\n"
                         "  pip install '.[tui]'\n"
-                        "无屏/SSH 请继续用: python main.py --mode cli\n"
-                        f"(原始错误: {e})"
+                        "Headless or over SSH, use: python main.py --mode cli\n"
+                        f"(original error: {e})"
                     )
                     sys.exit(1)
 
-            # CLI / GPIO 模式：标准 asyncio；SIGINT 请求 TaskManager 关闭
+            # CLI / GPIO: plain asyncio; SIGINT asks the TaskManager to shut down
             shutdown_state = {"requested": False}
 
             def handle_sigint_cli(*_):
                 if shutdown_state["requested"]:
-                    # 二次 Ctrl+C：硬退
-                    logger.warning("再次收到 SIGINT，强制退出")
+                    # second Ctrl+C: hard exit
+                    logger.warning("SIGINT again, forcing exit")
                     os._exit(130)
                 shutdown_state["requested"] = True
-                logger.info("收到 SIGINT 信号，正在退出...")
+                logger.info("SIGINT received, exiting...")
                 try:
                     if _container and _container.tasks:
                         _container.tasks.request_shutdown()
@@ -255,10 +255,10 @@ if __name__ == "__main__":
             )
 
     except KeyboardInterrupt:
-        logger.info("程序被用户中断")
+        logger.info("Interrupted by the user")
         exit_code = 0
     except Exception as e:
-        logger.error(f"程序异常退出: {e}", exc_info=True)
+        logger.error(f"Exited with an error: {e}", exc_info=True)
         exit_code = 1
     finally:
         sys.exit(exit_code)
