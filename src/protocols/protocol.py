@@ -10,102 +10,102 @@ logger = get_logger()
 class Protocol:
     def __init__(self):
         self.session_id = ""
-        # 初始化回调函数为None
+        # callbacks start as None
         self._on_incoming_json = None
         self._on_incoming_audio = None
         self._on_audio_channel_opened = None
         self._on_audio_channel_closed = None
         self._on_network_error = None
-        # 新增连接状态变化回调
+        # connection-state-change callback
         self._on_connection_state_changed = None
         self._on_reconnecting = None
 
-        # 连接状态与自动重连（公共，从子类上移）
+        # connection state and auto-reconnect (shared; hoisted from subclasses)
         self._is_closing = False
         self._reconnect_attempts = 0
-        self._max_reconnect_attempts = 5  # 默认重连5次
-        self._auto_reconnect_enabled = False  # 默认禁用自动重连
+        self._max_reconnect_attempts = 5  # 5 attempts by default
+        self._auto_reconnect_enabled = False  # disabled by default
         self._connection_monitor_task = None
 
     def on_incoming_json(self, callback):
         """
-        设置JSON消息接收回调函数.
+        Set the callback for incoming JSON messages.
         """
         self._on_incoming_json = callback
 
     def on_incoming_audio(self, callback):
         """
-        设置音频数据接收回调函数.
+        Set the callback for incoming audio data.
         """
         self._on_incoming_audio = callback
 
     def on_audio_channel_opened(self, callback):
         """
-        设置音频通道打开回调函数.
+        Set the audio-channel-opened callback.
         """
         self._on_audio_channel_opened = callback
 
     def on_audio_channel_closed(self, callback):
         """
-        设置音频通道关闭回调函数.
+        Set the audio-channel-closed callback.
         """
         self._on_audio_channel_closed = callback
 
     def on_network_error(self, callback):
         """
-        设置网络错误回调函数.
+        Set the network-error callback.
         """
         self._on_network_error = callback
 
     def on_connection_state_changed(self, callback):
-        """设置连接状态变化回调函数.
+        """Set the connection-state-change callback.
 
         Args:
-            callback: 回调函数，接收参数 (connected: bool, reason: str)
+            callback: callback taking (connected: bool, reason: str)
         """
         self._on_connection_state_changed = callback
 
     def on_reconnecting(self, callback):
-        """设置重连尝试回调函数.
+        """Set the reconnect-attempt callback.
 
         Args:
-            callback: 回调函数，接收参数 (attempt: int, max_attempts: int)
+            callback: callback taking (attempt: int, max_attempts: int)
         """
         self._on_reconnecting = callback
 
     async def send_text(self, message):
         """
-        发送文本消息的抽象方法，需要在子类中实现.
+        Abstract: send a text message. Implemented by subclasses.
         """
-        raise NotImplementedError("send_text方法必须由子类实现")
+        raise NotImplementedError("send_textmust be implemented by a subclass")
 
     async def send_audio(self, data: bytes):
         """
-        发送音频数据的抽象方法，需要在子类中实现.
+        Abstract: send audio data. Implemented by subclasses.
         """
-        raise NotImplementedError("send_audio方法必须由子类实现")
+        raise NotImplementedError("send_audiomust be implemented by a subclass")
 
     def is_audio_channel_opened(self) -> bool:
         """
-        检查音频通道是否打开的抽象方法，需要在子类中实现.
+        Abstract: report whether the audio channel is open. Implemented by subclasses.
         """
-        raise NotImplementedError("is_audio_channel_opened方法必须由子类实现")
+        raise NotImplementedError("is_audio_channel_openedmust be implemented by a subclass")
 
     async def open_audio_channel(self) -> bool:
         """
-        打开音频通道的抽象方法，需要在子类中实现.
+        Abstract: open the audio channel. Implemented by subclasses.
         """
-        raise NotImplementedError("open_audio_channel方法必须由子类实现")
+        raise NotImplementedError("open_audio_channelmust be implemented by a subclass")
 
     async def close_audio_channel(self):
         """
-        关闭音频通道的抽象方法，需要在子类中实现.
+        Abstract: close the audio channel. Implemented by subclasses.
         """
-        raise NotImplementedError("close_audio_channel方法必须由子类实现")
+        raise NotImplementedError("close_audio_channelmust be implemented by a subclass")
 
     async def send_abort_speaking(self, reason):
         """
-        发送中止语音的消息.
+        Send an abort-speaking message.
         """
         message = {"session_id": self.session_id, "type": "abort"}
         if reason == AbortReason.WAKE_WORD_DETECTED:
@@ -114,7 +114,7 @@ class Protocol:
 
     async def send_wake_word_detected(self, wake_word):
         """
-        发送检测到唤醒词的消息.
+        Send a wake-word-detected message.
         """
         message = {
             "session_id": self.session_id,
@@ -126,7 +126,7 @@ class Protocol:
 
     async def send_start_listening(self, mode):
         """
-        发送开始监听的消息.
+        Send a start-listening message.
         """
         mode_map = {
             ListeningMode.REALTIME: "realtime",
@@ -143,28 +143,28 @@ class Protocol:
 
     async def send_stop_listening(self):
         """
-        发送停止监听的消息.
+        Send a stop-listening message.
         """
         message = {"session_id": self.session_id, "type": "listen", "state": "stop"}
         await self.send_text(json.dumps(message))
 
     async def send_iot_descriptors(self, descriptors):
         """
-        发送物联网设备描述信息.
+        Send IoT device descriptors.
         """
         try:
-            # 解析描述符数据
+            # parse the descriptor data
             if isinstance(descriptors, str):
                 descriptors_data = json.loads(descriptors)
             else:
                 descriptors_data = descriptors
 
-            # 检查是否为数组
+            # check whether it is an array
             if not isinstance(descriptors_data, list):
                 logger.error("IoT descriptors should be an array")
                 return
 
-            # 为每个描述符发送单独的消息
+            # send a separate message for each descriptor
             for i, descriptor in enumerate(descriptors_data):
                 if descriptor is None:
                     logger.error(f"Failed to get IoT descriptor at index {i}")
@@ -192,7 +192,7 @@ class Protocol:
 
     async def send_iot_states(self, states):
         """
-        发送物联网设备状态信息.
+        Send IoT device states.
         """
         if isinstance(states, str):
             states_data = json.loads(states)
@@ -209,7 +209,7 @@ class Protocol:
 
     async def send_mcp_message(self, payload):
         """
-        发送MCP消息.
+        Send an MCP message.
         """
         if isinstance(payload, str):
             payload_data = json.loads(payload)
@@ -224,43 +224,43 @@ class Protocol:
 
         await self.send_text(json.dumps(message))
 
-    # ============ 连接状态检查（模板方法，子类实现） ============
+    # ====== connection health check (template method, subclasses implement) ======
 
     def _is_connected(self) -> bool:
-        """检查连接是否存活.
+        """Check whether the connection is alive.
 
-        子类必须实现该方法，返回当前协议连接的健康状态.
+        Subclasses must implement this and report whether the link is healthy.
 
         Returns:
-            bool: 连接存活返回 True，否则返回 False
+            bool: True if the connection is alive, otherwise False
         """
-        raise NotImplementedError("_is_connected方法必须由子类实现")
+        raise NotImplementedError("_is_connectedmust be implemented by a subclass")
 
-    # ============ 协议特定清理（模板方法，子类实现） ============
+    # ============ protocol-specific cleanup (template method, subclasses implement) ====
 
     async def _do_cleanup(self):
-        """清理协议特定资源（不包括公共状态和监控任务）.
+        """Release protocol-specific resources (not shared state or the monitor task).
 
-        子类实现该方法时应：
-        - 关闭协议特定的网络连接（socket / websocket / mqtt client 等）
-        - 取消协议特定的后台任务（心跳、消息处理等）
-        - 重置协议特定的时间戳/状态
+        A subclass implementing this should:
+        - close the protocol-specific connection (socket / websocket / mqtt client)
+        - cancel protocol-specific background tasks (heartbeat, message handling)
+        - reset protocol-specific timestamps and state
 
-        不要在此方法中：
-        - 设置 self.connected = False（基类 _handle_connection_loss 负责）
-        - 取消 self._connection_monitor_task（基类 _handle_connection_loss 负责）
+        Do NOT do the following in this method:
+        - set self.connected = False (the base _handle_connection_loss does it)
+        - cancel self._connection_monitor_task (the base _handle_connection_loss does it)
         """
-        raise NotImplementedError("_do_cleanup方法必须由子类实现")
+        raise NotImplementedError("_do_cleanupmust be implemented by a subclass")
 
-    # ============ 连接监控（公共，子类可覆盖 _monitor_interval） ============
+    # ====== connection monitoring (shared; subclasses may override _monitor_interval) ======
 
     @property
     def _monitor_interval(self) -> float:
-        """连接监控检查间隔（秒），子类可覆盖."""
+        """Monitor poll interval in seconds; subclasses may override."""
         return 5.0
 
     def _start_connection_monitor(self):
-        """启动连接健康监控后台任务."""
+        """Start the background connection-health monitor."""
         if (
             self._connection_monitor_task is None
             or self._connection_monitor_task.done()
@@ -270,90 +270,90 @@ class Protocol:
             )
 
     async def _connection_monitor(self):
-        """连接健康状态监控协程.
+        """Coroutine that watches connection health.
 
-        循环检查 self._is_connected() 返回值，
-        发现断开则调用 self._handle_connection_loss().
+        It polls self._is_connected() in a loop,
+        and calls self._handle_connection_loss() when it finds the link is down.
         """
         try:
             while not self._is_closing:
                 await asyncio.sleep(self._monitor_interval)
 
                 if not self._is_connected():
-                    logger.warning("检测到连接已断开")
-                    await self._handle_connection_loss("连接检测失败")
+                    logger.warning("detected that the connection dropped")
+                    await self._handle_connection_loss("connection check failed")
                     break
 
         except asyncio.CancelledError:
-            logger.debug("连接监控任务被取消")
+            logger.debug("connection monitor task cancelled")
         except Exception as e:
-            logger.error(f"连接监控异常: {e}", exc_info=True)
+            logger.error(f"connection monitor error: {e}", exc_info=True)
 
-    # ============ 自动重连（公共） ============
+    # ============ automatic reconnect (shared) ============
 
     def enable_auto_reconnect(self, enabled: bool = True, max_attempts: int = 5):
-        """启用或禁用自动重连功能.
+        """Enable or disable automatic reconnection.
 
         Args:
-            enabled: 是否启用自动重连
-            max_attempts: 最大重连尝试次数
+            enabled: whether auto-reconnect is enabled
+            max_attempts: maximum reconnect attempts
         """
         self._auto_reconnect_enabled = enabled
         if enabled:
             self._max_reconnect_attempts = max_attempts
-            logger.info(f"启用自动重连，最大尝试次数: {max_attempts}")
+            logger.info(f"Auto-reconnect enabled, max attempts: {max_attempts}")
         else:
             self._max_reconnect_attempts = 0
-            logger.info("禁用自动重连")
+            logger.info("auto-reconnect disabled")
 
     async def _handle_connection_loss(self, reason: str, *, clean: bool = False):
-        """处理连接丢失（公共逻辑）.
+        """Handle a lost connection (shared logic).
 
-        流程：
-        1. 更新连接状态
-        2. 取消连接监控任务
-        3. 调用子类 _do_cleanup() 清理协议特定资源
-        4. 通知观察者（状态变化、音频通道关闭）
-        5. 根据配置决定是否自动重连
+        Flow:
+        1. update the connection state
+        2. cancel the connection monitor task
+        3. call the subclass _do_cleanup() to release protocol-specific resources
+        4. notify observers (state change, audio channel closed)
+        5. decide from config whether to reconnect automatically
 
         Args:
-            clean: 服务端正常关闭（如会话结束）。只收回通道，
-                   不触发自动重连，也不上报网络错误。
+            clean: Clean server close (e.g. the session ended). Only the channel is reclaimed,
+                   does not trigger auto-reconnect and does not report a network error.
         """
         if clean:
-            logger.info(f"连接已由服务端正常关闭: {reason}")
+            logger.info(f"Connection closed cleanly by the server: {reason}")
         else:
-            logger.warning(f"连接丢失: {reason}")
+            logger.warning(f"Connection lost: {reason}")
 
         was_connected = self.connected
         self.connected = False
 
-        # 取消连接监控任务
+        # cancel the connection monitor task
         await self._cancel_monitor_task()
 
-        # 通知连接状态变化
+        # notify the connection-state change
         if self._on_connection_state_changed and was_connected:
             try:
                 self._on_connection_state_changed(False, reason)
             except Exception as e:
-                logger.error(f"调用连接状态变化回调失败: {e}", exc_info=True)
+                logger.error(f"connection-state-change callback failed: {e}", exc_info=True)
 
-        # 调用子类协议特定清理
+        # protocol-specific cleanup in the subclass
         await self._do_cleanup()
 
-        # 通知音频通道关闭
+        # notify that the audio channel closed
         if self._on_audio_channel_closed:
             try:
                 await self._on_audio_channel_closed()
             except Exception as e:
-                logger.error(f"调用音频通道关闭回调失败: {e}", exc_info=True)
+                logger.error(f"audio-channel-closed callback failed: {e}", exc_info=True)
 
-        # 服务端正常关闭：会话结束不算故障，不重连也不报错，
-        # 下次交互时按需重新 open_audio_channel
+        # Clean server close: the session ending is not a failure, so no reconnect and no error,
+        # re-open the audio channel on the next interaction as needed
         if clean:
             return
 
-        # 根据配置决定是否尝试自动重连
+        # decide from config whether to attempt a reconnect
         if (
             not self._is_closing
             and self._auto_reconnect_enabled
@@ -366,56 +366,56 @@ class Protocol:
                     self._auto_reconnect_enabled
                     and self._reconnect_attempts >= self._max_reconnect_attempts
                 ):
-                    await self._on_network_error(f"连接丢失且重连失败: {reason}")
+                    await self._on_network_error(f"Connection lost and reconnect failed: {reason}")
                 else:
-                    await self._on_network_error(f"连接丢失: {reason}")
+                    await self._on_network_error(f"Connection lost: {reason}")
 
     async def _attempt_reconnect(self, original_reason: str):
-        """尝试自动重连（公共逻辑）.
+        """Attempt an automatic reconnect (shared logic).
 
-        使用指数退避策略，调用子类的 connect() 进行实际连接.
+        Exponential backoff, calling the subclass connect() to do the real work.
         """
         self._reconnect_attempts += 1
 
-        # 通知开始重连
+        # notify that a reconnect is starting
         if self._on_reconnecting:
             try:
                 self._on_reconnecting(
                     self._reconnect_attempts, self._max_reconnect_attempts
                 )
             except Exception as e:
-                logger.error(f"调用重连回调失败: {e}", exc_info=True)
+                logger.error(f"reconnect callback failed: {e}", exc_info=True)
 
         logger.info(
-            f"尝试自动重连 ({self._reconnect_attempts}/{self._max_reconnect_attempts})"
+            f"Attempting auto-reconnect ({self._reconnect_attempts}/{self._max_reconnect_attempts})"
         )
 
-        # 指数退避等待，最大30秒
+        # exponential backoff, capped at 30 seconds
         await asyncio.sleep(min(self._reconnect_attempts * 2, 30))
 
         try:
             success = await self.connect()
             if success:
-                logger.info("自动重连成功")
+                logger.info("Auto-reconnect succeeded")
                 if self._on_connection_state_changed:
-                    self._on_connection_state_changed(True, "重连成功")
+                    self._on_connection_state_changed(True, "reconnected")
             else:
                 logger.warning(
-                    f"自动重连失败 ({self._reconnect_attempts}/{self._max_reconnect_attempts})"
+                    f"Auto-reconnect failed ({self._reconnect_attempts}/{self._max_reconnect_attempts})"
                 )
                 if self._reconnect_attempts >= self._max_reconnect_attempts:
                     if self._on_network_error:
                         await self._on_network_error(
-                            f"重连失败，已达到最大重连次数: {original_reason}"
+                            f"Reconnect failed, maximum attempts reached: {original_reason}"
                         )
         except Exception as e:
-            logger.error(f"重连过程中出错: {e}", exc_info=True)
+            logger.error(f"error while reconnecting: {e}", exc_info=True)
             if self._reconnect_attempts >= self._max_reconnect_attempts:
                 if self._on_network_error:
-                    await self._on_network_error(f"重连异常: {str(e)}")
+                    await self._on_network_error(f"reconnect error: {str(e)}")
 
     async def _cancel_monitor_task(self):
-        """取消并等待连接监控任务完成."""
+        """Cancel the connection monitor task and wait for it to finish."""
         if self._connection_monitor_task and not self._connection_monitor_task.done():
             self._connection_monitor_task.cancel()
             try:
@@ -424,10 +424,10 @@ class Protocol:
                 pass
 
     def get_connection_info(self) -> dict:
-        """获取连接信息（基类实现，子类可扩展）.
+        """Connection information (base implementation; subclasses may extend).
 
         Returns:
-            dict: 包含连接状态、重连次数等信息的字典
+            dict: a dict with connection state, reconnect count and related details
         """
         return {
             "is_closing": self._is_closing,
