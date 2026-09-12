@@ -1,4 +1,4 @@
-"""应用管理 MCP 工具：显式 register_app_tools."""
+"""The application MCP tools, registered explicitly through register_app_tools."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ logger = get_logger()
 
 
 def register_app_tools(add_tool: Callable[[McpTool], None]) -> None:
-    """向 McpServer 注册应用管理工具."""
+    """Register the application tools with McpServer."""
 
     async def launch_application(args):
         return await _launch_application(args)
@@ -38,16 +38,15 @@ def register_app_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "on the user's computer across Windows, macOS, and Linux platforms. It automatically detects the "
                 "operating system and uses appropriate launch methods.\n"
                 "Use this tool when the user wants to:\n"
-                "1. Open specific software applications (e.g., 'QQ', 'QQ音乐', 'WeChat', '微信')\n"
-                "2. Launch system utilities (e.g., 'Calculator', '计算器', 'Notepad', '记事本')\n"
+                "1. Open a particular application (e.g. 'Firefox', 'Slack', 'Spotify')\n"
+                "2. Launch a system utility (e.g. 'Calculator', 'Text Editor', 'Terminal')\n"
                 "3. Start browsers (e.g., 'Chrome', 'Firefox', 'Safari')\n"
                 "4. Open media players (e.g., 'VLC', 'Windows Media Player')\n"
                 "5. Launch development tools (e.g., 'VS Code', 'PyCharm')\n"
                 "6. Start games or other installed programs\n\n"
-                "Examples of valid app names:\n"
-                "- Chinese: 'QQ音乐', '微信', '计算器', '记事本', '浏览器'\n"
-                "- English: 'QQ', 'WeChat', 'Calculator', 'Notepad', 'Chrome'\n"
-                "- Mixed: 'QQ Music', 'Microsoft Word', 'Adobe Photoshop'\n\n"
+                "Names that work: 'Calculator', 'Files', 'Chrome', 'Microsoft Word', "
+                "'Adobe Photoshop'. Chinese names such as 微信 or QQ音乐 are still matched "
+                "for anyone whose applications are installed under them.\n\n"
                 "The system will try multiple launch strategies including direct execution, system commands, "
                 "and path searching to find and start the application."
             ),
@@ -69,8 +68,8 @@ def register_app_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "(QQ, WeChat, Chrome, etc.). Each application entry contains the clean name for launching and display "
                 "name for reference.\n\n"
                 "After scanning, use the 'name' field from results with self.application.launch to start applications. "
-                "For example, if scan shows {name: 'QQ', display_name: 'QQ音乐'}, use self.application.launch "
-                "with app_name='QQ' to launch it."
+                "For example, if the scan returns {name: 'firefox', display_name: 'Firefox'}, "
+                "call self.application.launch with app_name='firefox'."
             ),
             PropertyList(
                 [Property("force_refresh", PropertyType.BOOLEAN, default_value=False)]
@@ -126,4 +125,4 @@ def register_app_tools(add_tool: Callable[[McpTool], None]) -> None:
 
     for tool in tools:
         add_tool(tool)
-    logger.info("已注册 %d 个应用 MCP 工具（register_app_tools）", len(tools))
+    logger.info("registered %d application MCP tools", len(tools))

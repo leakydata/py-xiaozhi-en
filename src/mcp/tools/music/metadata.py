@@ -1,4 +1,4 @@
-"""本地音频文件元数据."""
+"""Metadata read from a local audio file."""
 
 from pathlib import Path
 
@@ -16,7 +16,7 @@ except ImportError:
 
 
 class MusicMetadata:
-    """一首缓存文件的标题/艺人等信息."""
+    """The title, artist and so on for one cached file."""
 
     def __init__(self, file_path: Path):
         self.file_path = file_path
@@ -50,7 +50,7 @@ class MusicMetadata:
         except ID3NoHeaderError:
             return True
         except Exception as e:
-            logger.debug(f"提取元数据失败 {self.filename}: {e}")
+            logger.debug(f"failed to read the metadata from {self.filename}: {e}")
             return False
 
     def _get_tag_value(self, tags: dict, tag_names: list[str]) -> str | None:
@@ -65,12 +65,12 @@ class MusicMetadata:
 
     def format_duration(self) -> str:
         if self.duration is None:
-            return "未知"
+            return "Unknown"
         minutes = int(self.duration) // 60
         seconds = int(self.duration) % 60
         return f"{minutes:02d}:{seconds:02d}"
 
     def display_name(self) -> str:
-        title = self.title or "未知标题"
-        artist = self.artist or "未知艺术家"
+        title = self.title or "Unknown Title"
+        artist = self.artist or "Unknown Artist"
         return f"{title} - {artist}"

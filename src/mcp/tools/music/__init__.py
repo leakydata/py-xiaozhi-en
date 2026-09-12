@@ -1,10 +1,10 @@
-"""音乐相关工具.
+"""The music tools.
 
-- music_player: 播放会话（由容器创建并注入 MCP；对外唯一入口）
-- playback / bus: PlaybackEngine / MusicEventBridge（内部组合，勿当公开 API）
-- cache / download / lyrics: 缓存、直链、歌词
-- online_search / local_library / metadata: 搜歌与本地库
-- register_music_tools: 向 McpServer 注册工具（闭包持有 player）
+- music_player: the playback session, created by the container and injected into MCP - the only public entry point
+- playback / bus: PlaybackEngine and MusicEventBridge, composed internally - not a public API
+- cache / download / lyrics: the cache, the direct links, and the lyrics
+- online_search / local_library / metadata: searching online, and the local library
+- register_music_tools: registers the tools with McpServer, the closures holding the player
 """
 
 from .register import register_music_tools

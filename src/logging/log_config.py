@@ -1,6 +1,6 @@
-"""日志配置模块.
+"""Logging configuration.
 
-提供日志系统的配置数据类与加载函数（无单例 get_instance）。
+The configuration dataclass and the loader for the logging system (no get_instance singleton).
 """
 
 import os
@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 
 class Environment(Enum):
-    """运行环境枚举."""
+    """Which environment this is running in."""
 
     DEVELOPMENT = "development"
     TESTING = "testing"
@@ -20,7 +20,7 @@ class Environment(Enum):
 
 @dataclass
 class LoggingConfig:
-    """日志配置数据类."""
+    """The logging configuration."""
 
     level: str = "INFO"
     format_type: str = "colored"  # colored, json, simple
@@ -92,10 +92,10 @@ def _get_default_log_dir() -> Path:
 
 
 def load_logging_config(app_config: Any | None = None) -> LoggingConfig:
-    """加载日志配置（纯函数，无单例）.
+    """Load the logging configuration (a plain function, no singleton).
 
     Args:
-        app_config: 可选 ConfigManager 实例；未传时若已 initialize_config 则读取 LOGGING 段。
+        app_config: an optional ConfigManager. Left out, the LOGGING section is read if initialize_config has already run.
     """
     config = LoggingConfig()
 
@@ -140,7 +140,7 @@ def load_logging_config(app_config: Any | None = None) -> LoggingConfig:
                 if third_party:
                     config.third_party_levels.update(third_party)
     except Exception:
-        # 配置未就绪时使用默认
+        # fall back to the defaults when the configuration is not ready
         pass
 
     env_level = os.environ.get("LOG_LEVEL")

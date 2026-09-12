@@ -1,8 +1,8 @@
-"""快捷键配置属性."""
+"""The keyboard shortcut settings."""
 
 
 class SettingsShortcutsMixin:
-    # ========== 快捷键设置 ==========
+    # ========== shortcut settings ==========
 
     def _get_shortcutsEnabled(self) -> bool:
         return self._get_value("SHORTCUTS.ENABLED", True)
@@ -10,7 +10,7 @@ class SettingsShortcutsMixin:
     def _set_shortcutsEnabled(self, value: bool):
         self._set_value("SHORTCUTS.ENABLED", value)
 
-    # 快捷键：手动模式
+    # shortcut: manual mode
     def _get_shortcutManualModifier(self) -> str:
         return self._get_value("SHORTCUTS.MANUAL_PRESS.modifier", "ctrl")
 
@@ -23,7 +23,7 @@ class SettingsShortcutsMixin:
     def _set_shortcutManualKey(self, value: str):
         self._set_value("SHORTCUTS.MANUAL_PRESS.key", value)
 
-    # 快捷键：自动模式
+    # shortcut: auto mode
     def _get_shortcutAutoModifier(self) -> str:
         return self._get_value("SHORTCUTS.AUTO_TOGGLE.modifier", "ctrl")
 
@@ -36,7 +36,7 @@ class SettingsShortcutsMixin:
     def _set_shortcutAutoKey(self, value: str):
         self._set_value("SHORTCUTS.AUTO_TOGGLE.key", value)
 
-    # 快捷键：中断
+    # shortcut: interrupt
     def _get_shortcutAbortModifier(self) -> str:
         return self._get_value("SHORTCUTS.ABORT.modifier", "ctrl")
 
@@ -49,7 +49,7 @@ class SettingsShortcutsMixin:
     def _set_shortcutAbortKey(self, value: str):
         self._set_value("SHORTCUTS.ABORT.key", value)
 
-    # 快捷键：模式切换
+    # shortcut: switch mode
     def _get_shortcutModeModifier(self) -> str:
         return self._get_value("SHORTCUTS.MODE_TOGGLE.modifier", "ctrl")
 
@@ -62,7 +62,7 @@ class SettingsShortcutsMixin:
     def _set_shortcutModeKey(self, value: str):
         self._set_value("SHORTCUTS.MODE_TOGGLE.key", value)
 
-    # 快捷键：窗口显示/隐藏
+    # shortcut: show or hide the window
     def _get_shortcutWindowModifier(self) -> str:
         return self._get_value("SHORTCUTS.WINDOW_TOGGLE.modifier", "ctrl")
 
@@ -74,4 +74,3 @@ class SettingsShortcutsMixin:
 
     def _set_shortcutWindowKey(self, value: str):
         self._set_value("SHORTCUTS.WINDOW_TOGGLE.key", value)
-
