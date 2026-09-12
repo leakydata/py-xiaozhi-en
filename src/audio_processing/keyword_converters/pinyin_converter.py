@@ -4,15 +4,31 @@ from typing import List
 
 from .base import KeywordConverter
 
-# 声母列表（按长度降序排列以优先匹配长声母）
+# The pinyin initials, longest first so a two-character initial matches before a one-character one
 INITIALS = [
-    "zh", "ch", "sh",  # 翘舌音（2字符，优先匹配）
-    "b", "p", "m", "f",  # 唇音
-    "d", "t", "n", "l",  # 舌尖音
-    "g", "k", "h",  # 舌根音
-    "j", "q", "x",  # 舌面音
-    "r", "z", "c", "s",  # 其他
-    "y", "w",  # 零声母标记
+    "zh",
+    "ch",
+    "sh",  # retroflex, two characters, matched first
+    "b",
+    "p",
+    "m",
+    "f",  # labials
+    "d",
+    "t",
+    "n",
+    "l",  # alveolars
+    "g",
+    "k",
+    "h",  # velars
+    "j",
+    "q",
+    "x",  # palatals
+    "r",
+    "z",
+    "c",
+    "s",  # the rest
+    "y",
+    "w",  # markers for a zero initial
 ]
 
 
@@ -25,6 +41,7 @@ class PinyinConverter(KeywordConverter):
         if self._pypinyin is None:
             try:
                 from pypinyin import Style, lazy_pinyin
+
                 self._pypinyin = lazy_pinyin
                 self._style = Style.TONE
             except ImportError:
@@ -53,7 +70,7 @@ class PinyinConverter(KeywordConverter):
 
         for initial in INITIALS:
             if pinyin_lower.startswith(initial):
-                final = pinyin[len(initial):]
+                final = pinyin[len(initial) :]
                 if final:
                     return [initial, final]
                 else:

@@ -1,4 +1,4 @@
-"""设置窗口：SettingsModel 懒加载与打开设置."""
+"""The settings window: lazily creating SettingsModel, and opening the window."""
 
 from src.core.event_bus import EventBus, Events
 from src.core.task_manager import TaskManager
@@ -9,7 +9,7 @@ logger = get_logger()
 
 
 class SettingsController:
-    """懒创建 SettingsModel；打开设置时 reload + 通知 QML."""
+    """Creates SettingsModel on demand; opening the settings reloads it and tells QML."""
 
     def __init__(
         self,
@@ -27,7 +27,7 @@ class SettingsController:
         return self.ensure_model()
 
     def ensure_model(self):
-        """懒创建 SettingsModel（首次注入 QML / 打开设置时）."""
+        """Create SettingsModel on demand - on the first QML injection, or when the settings open."""
         if self._settings_model is None:
             from src.ui.gui.models import SettingsModel
 
@@ -39,25 +39,27 @@ class SettingsController:
             self._settings_model.mcpToolsNeedReconnect.connect(
                 self._on_mcp_tools_need_reconnect
             )
-            logger.debug("SettingsController: SettingsModel 已懒加载")
+            logger.debug("SettingsController: SettingsModel created")
         return self._settings_model
 
     def _on_config_saved(self) -> None:
-        logger.info("SettingsController: 配置已保存，触发热重载")
+        logger.info("SettingsController: settings saved, triggering a reload")
         self._tasks.spawn(
             self._event_bus.emit(Events.CONFIG_CHANGED), name="ui:config_changed"
         )
 
     def _on_mcp_tools_need_reconnect(self) -> None:
-        """MCP 工具黑名单变更：请求会话层断开并重连以刷新服务端 tools/list."""
-        logger.info("SettingsController: MCP 工具列表变更，请求协议重连")
+        """The MCP disabled-tools list changed: ask the session to reconnect so the server lists the tools again."""
+        logger.info(
+            "SettingsController: the MCP tool list changed, asking the protocol to reconnect"
+        )
         self._tasks.spawn(
             self._event_bus.emit(Events.PROTOCOL_RECONNECT_REQUEST),
             name="ui:protocol_reconnect",
         )
 
     def open_settings(self) -> None:
-        """reload 配置/设备列表，再让 QML 显示设置窗."""
+        """Reload the settings and the device list, then have QML show the window."""
         self.ensure_model().reload()
         self._bridge.showSettingsWindow.emit()
-        logger.debug("SettingsController: 已发送打开设置窗口信号")
+        logger.debug("SettingsController: sent the open-settings signal")

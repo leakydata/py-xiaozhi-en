@@ -1,4 +1,4 @@
-// 自定义下拉框组件
+// A custom combo box
 import QtQuick
 import QtQuick.Controls
 import "../theme"
@@ -9,7 +9,7 @@ ComboBox {
     implicitWidth: 200
     implicitHeight: 36
 
-    // 背景
+    // background
     background: Rectangle {
         radius: Theme.radiusSm
         color: root.enabled ? Theme.background : Theme.backgroundSecondary
@@ -21,7 +21,7 @@ ComboBox {
         }
     }
 
-    // 显示内容 - 直接使用 displayText
+    // the shown value, taken straight from displayText
     contentItem: Text {
         leftPadding: Theme.spacingMd
         rightPadding: root.indicator.width + Theme.spacingMd
@@ -33,7 +33,7 @@ ComboBox {
         elide: Text.ElideRight
     }
 
-    // 下拉箭头
+    // the drop-down arrow
     indicator: Item {
         x: root.width - width - Theme.spacingSm
         y: (root.height - height) / 2
@@ -48,7 +48,7 @@ ComboBox {
         }
     }
 
-    // 弹出菜单
+    // the pop-up menu
     popup: Popup {
         y: root.height + 4
         width: root.width
@@ -59,7 +59,7 @@ ComboBox {
             color: Theme.background
             radius: Theme.radiusMd
 
-            // 阴影效果 (多层模拟)
+            // the shadow, faked with several layers
             Rectangle {
                 z: -1
                 anchors.fill: parent
@@ -92,7 +92,7 @@ ComboBox {
         }
     }
 
-    // 列表项
+    // the list items
     delegate: ItemDelegate {
         id: delegateItem
         required property int index

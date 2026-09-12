@@ -1,4 +1,4 @@
-// macOS 风格交通灯按钮组件
+// The macOS-style traffic light buttons
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
@@ -14,7 +14,7 @@ Row {
     property bool showMaximize: true
     property bool hovered: closeArea.containsMouse || minimizeArea.containsMouse || maximizeArea.containsMouse
 
-    // 关闭按钮 (红色)
+    // close (red)
     Rectangle {
         width: 12
         height: 12
@@ -23,7 +23,7 @@ Row {
         border.width: 0.5
         border.color: "#E0443E"
 
-        // 叉号图标
+        // the cross icon
         Item {
             anchors.centerIn: parent
             width: 6
@@ -56,7 +56,7 @@ Row {
         }
     }
 
-    // 最小化按钮 (黄色)
+    // minimise (yellow)
     Rectangle {
         width: 12
         height: 12
@@ -65,7 +65,7 @@ Row {
         border.width: 0.5
         border.color: "#DEA123"
 
-        // 横线图标
+        // the dash icon
         Rectangle {
             width: 8
             height: 1.5
@@ -83,7 +83,7 @@ Row {
         }
     }
 
-    // 最大化按钮 (绿色) - 始终显示
+    // maximise (green) - always shown
     Rectangle {
         width: 12
         height: 12
@@ -93,27 +93,27 @@ Row {
         border.color: "#14AE28"
         opacity: root.showMaximize ? 1.0 : 0.5
 
-        // 全屏图标（两个对角三角形）
+        // the fullscreen icon (two opposing triangles)
         Item {
             anchors.centerIn: parent
             width: 8
             height: 8
             visible: root.hovered && root.showMaximize
 
-            // 左上三角
+            // top-left triangle
             Canvas {
                 anchors.fill: parent
                 onPaint: {
                     var ctx = getContext("2d")
                     ctx.fillStyle = "#006500"
-                    // 左上三角
+                    // top-left triangle
                     ctx.beginPath()
                     ctx.moveTo(1, 1)
                     ctx.lineTo(1, 4)
                     ctx.lineTo(4, 1)
                     ctx.closePath()
                     ctx.fill()
-                    // 右下三角
+                    // bottom-right triangle
                     ctx.beginPath()
                     ctx.moveTo(7, 7)
                     ctx.lineTo(7, 4)
