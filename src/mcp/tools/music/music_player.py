@@ -1,10 +1,10 @@
-"""音乐播放会话（公开入口）.
+"""The music playback session (the public entry point).
 
-组合：
-- PlaybackEngine — 解码队列 / 启停暂停跳转
-- MusicEventBridge — EventBus 绑定与状态/歌词发射
+Composed of:
+- PlaybackEngine - the decode queue, and start/stop/pause/seek
+- MusicEventBridge - the EventBus wiring, and emitting state and lyrics
 
-状态字段在 engine；本类只保留生产常用属性（is_playing / paused / current_song）。
+The state lives on the engine; this class keeps only the attributes that are used everywhere (is_playing / paused / current_song).
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ class MusicPlayer:
         )
         self._bus = MusicEventBridge(self._engine, self)
 
-        logger.debug("MusicPlayer 实例已创建")
+        logger.debug("MusicPlayer instance created")
 
     # ----- PlaybackEngine hooks -----
 
@@ -73,7 +73,7 @@ class MusicPlayer:
     ) -> None:
         await self._bus.emit_state_change(state, song_name, position)
 
-    # ----- 生产常用状态（扁平访问）-----
+    # ----- the commonly used state, flattened for convenience -----
 
     @property
     def cache_dir(self) -> Path:
@@ -105,14 +105,14 @@ class MusicPlayer:
         self._config = load_music_config()
         self._downloader.set_config(self._config)
         logger.debug(
-            "MusicPlayer 配置已加载: "
-            f"搜索={self._config['SEARCH_URL']}, "
-            f"直链={self._config['URL_API']}, "
-            f"平台={self._config['DEFAULT_SOURCE']}"
+            "MusicPlayer configuration loaded: "
+            f"search={self._config['SEARCH_URL']}, "
+            f"direct link={self._config['URL_API']}, "
+            f"platform={self._config['DEFAULT_SOURCE']}"
         )
         return self._config
 
-    # ----- 生命周期 / 播放委托 -----
+    # ----- lifecycle, and the playback methods delegated to the engine -----
 
     def set_event_bus(self, event_bus, plugin_ctx=None) -> None:
         self._bus.set_event_bus(event_bus, plugin_ctx)
@@ -142,7 +142,7 @@ class MusicPlayer:
     async def get_progress(self):
         return await self._engine.get_progress()
 
-    # ----- 搜歌 / 本地库 -----
+    # ----- searching, and the local library -----
 
     async def get_local_playlist(self, force_refresh: bool = False) -> dict:
         self.prepare_for_io()
@@ -158,7 +158,7 @@ class MusicPlayer:
             self.prepare_for_io()
             resolved = self._library.resolve(file_id)
             if resolved is None:
-                return {"status": "error", "message": f"本地文件不存在: {file_id}"}
+                return {"status": "error", "message": f"No such local file: {file_id}"}
 
             file_path, metadata = resolved
             eng.current_song = metadata.display_name()
@@ -170,23 +170,23 @@ class MusicPlayer:
             duration = await MusicDecoder.get_duration(file_path)
             if duration > 0:
                 eng.total_duration = duration
-                logger.info(f"从音频文件获取准确时长: {duration:.2f}秒")
+                logger.info(f"exact duration read from the audio file: {duration:.2f}s")
             elif eng.total_duration == 0:
-                logger.warning("无法获取音频时长")
+                logger.warning("could not determine the audio duration")
 
             success = await eng.start_playback(file_path)
             if success:
                 return {
                     "status": "success",
-                    "message": f"正在播放: {eng.current_song}",
+                    "message": f"Now playing: {eng.current_song}",
                     "song": eng.current_song,
                     "duration": self._format_time(eng.total_duration),
                     "total_seconds": eng.total_duration,
                 }
-            return {"status": "error", "message": "播放失败"}
+            return {"status": "error", "message": "Playback failed"}
         except Exception as e:
-            logger.error(f"播放本地音乐失败: {e}", exc_info=True)
-            return {"status": "error", "message": f"播放失败: {str(e)}"}
+            logger.error(f"failed to play the local track: {e}", exc_info=True)
+            return {"status": "error", "message": f"Playback failed: {str(e)}"}
 
     async def search_and_play(self, song_name: str) -> dict:
         eng = self._engine
@@ -194,7 +194,7 @@ class MusicPlayer:
             self.prepare_for_io()
             hit = await search_song(song_name, self.config)
             if hit is None:
-                return {"status": "error", "message": f"未找到歌曲: {song_name}"}
+                return {"status": "error", "message": f"No track found for: {song_name}"}
 
             eng.current_song = hit.display_name
             eng.song_id = hit.song_id
@@ -206,25 +206,25 @@ class MusicPlayer:
             if success:
                 return {
                     "status": "success",
-                    "message": f"正在播放: {eng.current_song}",
+                    "message": f"Now playing: {eng.current_song}",
                     "song": eng.current_song,
                     "duration": self._format_time(eng.total_duration),
                     "total_seconds": eng.total_duration,
                 }
 
-            detail = self._downloader.last_error or "未知原因"
-            return {"status": "error", "message": f"播放失败: {detail}"}
+            detail = self._downloader.last_error or "an unknown reason"
+            return {"status": "error", "message": f"Playback failed: {detail}"}
         except Exception as e:
-            logger.error(f"搜索播放失败: {e}", exc_info=True)
-            return {"status": "error", "message": f"操作失败: {str(e)}"}
+            logger.error(f"search-and-play failed: {e}", exc_info=True)
+            return {"status": "error", "message": f"That did not work: {str(e)}"}
 
     async def get_lyrics(self) -> dict:
         if not self.lyrics:
-            return {"status": "info", "message": "当前歌曲没有歌词", "lyrics": []}
+            return {"status": "info", "message": "This track has no lyrics", "lyrics": []}
         lines = [f"[{self._format_time(t)}] {text}" for t, text in self.lyrics]
         return {
             "status": "success",
-            "message": f"获取到 {len(self.lyrics)} 行歌词",
+            "message": f"Got {len(self.lyrics)} lines of lyrics",
             "lyrics": lines,
         }
 
@@ -233,31 +233,31 @@ class MusicPlayer:
         position = await eng.get_position()
         progress = await eng.get_progress()
         if not eng.is_playing:
-            playing_state = "未播放"
+            playing_state = "not playing"
         elif eng.paused and eng.pause_source == "manual":
-            playing_state = "已暂停"
+            playing_state = "paused"
         elif eng.is_playing:
-            playing_state = "播放中"
+            playing_state = "playing"
         else:
-            playing_state = "未知"
+            playing_state = "unknown"
 
         return {
             "status": "success",
             "message": (
-                f"当前歌曲: {eng.current_song}\n"
-                f"播放状态: {playing_state}\n"
-                f"暂停来源: {eng.pause_source or '无'} (tts=说话时临时暂停)\n"
-                f"总时长秒: {int(eng.total_duration)}\n"
-                f"当前位置秒: {int(position)}\n"
-                f"播放时长: {self._format_time(eng.total_duration)}\n"
-                f"当前位置: {self._format_time(position)}\n"
-                f"播放进度: {progress}%\n"
-                f"歌词可用: {'是' if len(self.lyrics) > 0 else '否'}\n"
-                f"提示: 跳转百分之N请调用 seek(percent=N)，不要用歌词推算"
+                f"Track: {eng.current_song}\n"
+                f"State: {playing_state}\n"
+                f"Paused by: {eng.pause_source or 'nothing'} (tts = paused briefly while speaking)\n"
+                f"Total seconds: {int(eng.total_duration)}\n"
+                f"Position in seconds: {int(position)}\n"
+                f"Length: {self._format_time(eng.total_duration)}\n"
+                f"Position: {self._format_time(position)}\n"
+                f"Progress: {progress}%\n"
+                f"Lyrics available: {'yes' if len(self.lyrics) > 0 else 'no'}\n"
+                f"Note: to jump to N percent call seek(percent=N); do not work it out from the lyrics"
             ),
         }
 
-    # ----- 歌词 -----
+    # ----- lyrics -----
 
     async def _tick_lyrics(self) -> None:
         if not self.lyrics:
@@ -278,7 +278,7 @@ class MusicPlayer:
         eng.current_lyric_index = idx
         display = format_lyric_display(text, position, eng.total_duration)
         await self._bus.emit_lyrics_update(display, self.lyrics[idx][0])
-        logger.debug(f"显示歌词: {text}")
+        logger.debug(f"showing lyrics: {text}")
 
     async def _fetch_lyrics(self, song_id: str):
         eng = self._engine
@@ -290,7 +290,7 @@ class MusicPlayer:
         if eng.total_duration == 0 and self.lyrics:
             last_time, _ = self.lyrics[-1]
             eng.total_duration = last_time + 5.0
-            logger.info(f"从歌词提取歌曲时长: {eng.total_duration}秒")
+            logger.info(f"track duration taken from the lyrics: {eng.total_duration}s")
 
     def _format_time(self, seconds: float) -> str:
         minutes = int(seconds) // 60
@@ -303,4 +303,4 @@ class MusicPlayer:
             if cache is not None and getattr(cache, "_ready", False):
                 cache.clean_temp()
         except Exception as e:
-            logger.debug(f"__del__ 清理临时缓存失败: {e}")
+            logger.debug(f"__del__ failed to clear the temporary cache: {e}")
