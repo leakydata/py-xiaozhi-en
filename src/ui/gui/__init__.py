@@ -1,4 +1,4 @@
-"""GUI 模块：PySide6/QML 图形界面."""
+"""The GUI front end, built on PySide6 and QML."""
 
 from src.ui.gui.activation import GuiActivation
 from src.ui.gui.manager import GuiViewManager

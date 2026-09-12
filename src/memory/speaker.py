@@ -49,7 +49,7 @@ def note_message(message: Any) -> None:
         # started sending identity, rather than it silently changing behaviour.
         if field not in _reported:
             _reported.add(field)
-            logger.info(f"服务端提供说话人标识: {field}={name!r}")
+            logger.info(f"the server sent a speaker identity: {field}={name!r}")
         set_current(name)
         return
 
@@ -59,7 +59,7 @@ def set_current(name: Optional[str]) -> None:
     with _lock:
         if name != _current:
             _current = name
-            logger.debug(f"当前说话人: {name!r}")
+            logger.debug(f"current speaker: {name!r}")
 
 
 def get_current() -> Optional[str]:

@@ -1,4 +1,4 @@
-"""GPIO UI 模块（Linux/树莓派按键）."""
+"""The GPIO front end, for buttons on Linux and the Raspberry Pi."""
 
 from src.ui.gpio.manager import GpioViewManager
 

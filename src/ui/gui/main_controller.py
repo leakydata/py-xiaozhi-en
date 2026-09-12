@@ -1,11 +1,11 @@
-"""主界面 ViewPort 写路径：状态 / 对话 / 音乐 / 表情."""
+"""The main window's ViewPort write path: status, chat, music and emotion."""
 
 from src.ui.gui.services import EmotionService
 from src.ui.gui.models import MainModel
 
 
 class MainWindowController:
-    """把 ViewPort 的 set_* 落到 MainModel + EmotionService."""
+    """Lands the ViewPort's set_* calls on MainModel and EmotionService."""
 
     def __init__(
         self,

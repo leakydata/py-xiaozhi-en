@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""UI 服务层."""
+"""The UI service layer."""
 
 from .emotion_service import EmotionService
 from .tray_service import TrayService

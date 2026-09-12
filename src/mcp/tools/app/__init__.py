@@ -1,6 +1,6 @@
-"""应用管理工具.
+"""The application tools.
 
-- register_app_tools: 向 McpServer 显式注册
+- register_app_tools: registers them explicitly with McpServer
 """
 
 from .register import register_app_tools

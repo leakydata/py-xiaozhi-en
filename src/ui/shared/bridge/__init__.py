@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Python-QML 桥接层."""
+"""The Python-to-QML bridge."""
 
 from .event_bridge import EventBridge
 

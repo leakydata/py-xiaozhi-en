@@ -1,4 +1,4 @@
-"""MCP 工具启用：黑名单 MCP_TOOLS.DISABLED，分组列表供设置 UI."""
+"""Enabling MCP tools: the MCP_TOOLS.DISABLED list, grouped for the settings UI."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from src.mcp.tool_catalog import full_catalog_rows, normalize_disabled
 
 
 class SettingsMcpToolsMixin:
-    """依赖宿主提供 _get_value / _set_value / settingsChanged."""
+    """Relies on the host providing _get_value, _set_value and settingsChanged."""
 
     def _get_mcpToolsDisabledJson(self) -> str:
         raw = self._get_value("MCP_TOOLS.DISABLED", []) or []
@@ -26,7 +26,7 @@ class SettingsMcpToolsMixin:
         return normalize_disabled(self._get_value("MCP_TOOLS.DISABLED", []) or [])
 
     def _try_list_runtime_tools(self) -> list[str]:
-        """尽力获取进程内已注册 MCP 工具名（可能为空）."""
+        """Best effort at the MCP tool names registered in this process; may come back empty."""
         import gc
 
         try:

@@ -1,4 +1,4 @@
-"""MCP 外挂插件：宿主 API 与加载器."""
+"""External MCP plugins: the host API and the loader."""
 
 from .host import McpHost
 from .loader import PluginLoader, default_plugins_dir
