@@ -4,7 +4,7 @@ from enum import Enum
 
 class ListeningMode(str, Enum):
     """
-    监听模式.
+    Listening mode.
     """
 
     REALTIME = "realtime"
@@ -14,7 +14,7 @@ class ListeningMode(str, Enum):
 
 class AbortReason(str, Enum):
     """
-    中止原因.
+    Why it was aborted.
     """
 
     NONE = "none"
@@ -24,7 +24,7 @@ class AbortReason(str, Enum):
 
 class DeviceState(str, Enum):
     """
-    设备状态.
+    Device state.
     """
 
     IDLE = "idle"
@@ -34,7 +34,7 @@ class DeviceState(str, Enum):
 
 class EventType:
     """
-    事件类型.
+    Event type.
     """
 
     SCHEDULE_EVENT = "schedule_event"
@@ -43,63 +43,61 @@ class EventType:
 
 
 def get_frame_duration() -> int:
-    """获取设备的帧长度.
+    """Get the frame length for this device.
 
-    优先从已初始化的配置读取，无配置时根据设备架构自动检测。
-    不在 import constants 时读配置。
+    Read from the loaded configuration when there is one; otherwise detect it from the machine's architecture.
+    The configuration is not read at import time.
 
-    返回:
-        int: 帧长度(毫秒)，支持 20/40/60
+    Returns:
+        int: the frame length in milliseconds; 20, 40 or 60
     """
     try:
         from src.utils.config_manager import get_config
 
-        configured = get_config().get_config(
-            "AUDIO_DEVICES.frame_duration"
-        )
+        configured = get_config().get_config("AUDIO_DEVICES.frame_duration")
         if configured in [20, 40, 60]:
             return configured
 
-        # 无配置时自动检测（保持向后兼容）
+        # detect it when there is no configuration (kept for backwards compatibility)
         machine = platform.machine().lower()
         arm_archs = ["arm", "aarch64", "armv7l", "armv6l"]
         is_arm_device = any(arch in machine for arch in arm_archs)
 
         if is_arm_device:
-            # ARM设备（如树莓派）使用较大帧长以减少CPU负载
+            # ARM machines (a Raspberry Pi, say) use a longer frame to cut CPU load
             return 60
         else:
-            # 其他设备（Windows/macOS/Linux x86）都有足够性能，使用低延迟
+            # everything else (Windows, macOS, Linux x86) has the headroom for low latency
             return 20
 
     except Exception:
-        # 如果获取失败，返回默认值20ms（适合大多数现代设备）
+        # on failure fall back to 20ms, which suits most modern machines
         return 20
 
 
 class AudioConfig:
     """
-    音频配置类 — 协议层参数，与设备层（DeviceConfig）独立。
+    The audio configuration - the protocol-level parameters, separate from the device level (DeviceConfig).
 
-    默认值在类体中声明；通过 reload() 从 ConfigManager 动态加载。
-    不再在 import 时强制 reload，避免 constants 模块副作用。
+    The defaults are declared in the class body; reload() pulls the live values from ConfigManager.
+    There is no reload at import time any more, so importing constants has no side effects.
     """
 
-    # 服务端协议固定值（不随配置变化）
-    INPUT_SAMPLE_RATE = 16000  # 协议要求：输入 16kHz
-    CHANNELS = 1  # 协议要求：单声道
+    # fixed by the server protocol (configuration does not change these)
+    INPUT_SAMPLE_RATE = 16000  # the protocol requires 16kHz input
+    CHANNELS = 1  # the protocol requires mono
 
-    # 以下为动态值，reload() 时从配置重新读取
+    # the values below are dynamic; reload() re-reads them from the configuration
     OUTPUT_SAMPLE_RATE: int = 24000
     FRAME_DURATION: int = 20
     INPUT_FRAME_SIZE: int = 320
 
     @classmethod
     def reload(cls):
-        """从 ConfigManager 重新加载协议音频参数，支持运行时热重载。
+        """Re-read the protocol audio parameters from ConfigManager, so they can be changed while running.
 
-        Settings UI 修改 opus_output_sample_rate / frame_duration 后，
-        调用此方法使新值在下次 initialize/reload_devices 时生效。
+        After the Settings UI changes opus_output_sample_rate or frame_duration,
+        call this so the new values take effect on the next initialize or reload_devices.
         """
         try:
             from src.utils.config_manager import get_config
@@ -109,7 +107,7 @@ class AudioConfig:
                 "AUDIO_DEVICES.opus_output_sample_rate", 24000
             )
         except Exception:
-            # 配置不可用时保留当前/默认值
+            # keep the current or default values when the configuration is unavailable
             pass
         cls.FRAME_DURATION = get_frame_duration()
         cls.INPUT_FRAME_SIZE = int(cls.INPUT_SAMPLE_RATE * (cls.FRAME_DURATION / 1000))
