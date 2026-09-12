@@ -1,6 +1,6 @@
-"""外挂 MCP 宿主 API（稳定契约）.
+"""The host API external MCP plugins see (a stable contract).
 
-插件仅通过 McpHost 注册工具与按白名单取能力，禁止依赖全局单例。
+A plugin registers its tools and picks up allow-listed capabilities through McpHost alone; reaching for a global singleton is not allowed.
 """
 
 from __future__ import annotations
@@ -13,12 +13,12 @@ from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
 
 logger = get_logger()
 
-# 默认允许的 host.get 名称（music_player 等需配置显式加入）
+# the host.get names allowed by default (music_player and the like must be added in the config)
 DEFAULT_ALLOW_GET = frozenset({"config_readonly", "logger"})
 
 
 class McpHost:
-    """绑定到一次装配过程的宿主门面."""
+    """The host facade, bound to one assembly pass."""
 
     def __init__(
         self,
@@ -30,7 +30,9 @@ class McpHost:
     ) -> None:
         self._add_tool = add_tool
         self._capabilities = dict(capabilities or {})
-        self._allow_get = frozenset(allow_get) if allow_get is not None else DEFAULT_ALLOW_GET
+        self._allow_get = (
+            frozenset(allow_get) if allow_get is not None else DEFAULT_ALLOW_GET
+        )
         self._plugin_id = plugin_id or "unknown"
         self._registered_names: list[str] = []
 
@@ -43,7 +45,7 @@ class McpHost:
         return list(self._registered_names)
 
     def bind_plugin(self, plugin_id: str) -> "McpHost":
-        """返回绑定到指定 plugin_id 的视图（共享 add_tool / capabilities）."""
+        """A view bound to one plugin_id, sharing add_tool and the capabilities."""
         child = McpHost(
             self._add_tool,
             capabilities=self._capabilities,
@@ -53,18 +55,16 @@ class McpHost:
         return child
 
     def add_tool(self, tool: McpTool) -> None:
-        """注册工具；记录名称供卸载/诊断."""
+        """Register a tool, keeping its name for unloading and diagnostics."""
         self._add_tool(tool)
         self._registered_names.append(tool.name)
-        logger.info(
-            "[MCP插件:%s] 注册工具: %s", self._plugin_id, tool.name
-        )
+        logger.info("[MCP plugin:%s] registered tool: %s", self._plugin_id, tool.name)
 
     def get(self, name: str) -> Any:
-        """按白名单返回宿主能力；未授权或未提供则 None."""
+        """Return an allow-listed host capability; None when it is not permitted or not provided."""
         if name not in self._allow_get:
             logger.warning(
-                "[MCP插件:%s] host.get(%r) 不在白名单 %s",
+                "[MCP plugin:%s] host.get(%r) is not in the allow list %s",
                 self._plugin_id,
                 name,
                 sorted(self._allow_get),
@@ -80,7 +80,7 @@ class McpHost:
         description: str,
         props: Sequence[Property | dict[str, Any]] | None = None,
     ):
-        """装饰器：将函数注册为 McpTool（不写全局 registry）."""
+        """Decorator: register a function as an McpTool (nothing touches a global registry)."""
 
         def decorator(func: Callable):
             prop_list = _to_property_list(props)
@@ -101,13 +101,15 @@ def _to_property_list(
             converted.append(p)
             continue
         if not isinstance(p, dict):
-            raise TypeError(f"props 项须为 Property 或 dict，得到 {type(p)}")
+            raise TypeError(
+                f"each props entry must be a Property or a dict, got {type(p)}"
+            )
         converted.append(_dict_to_property(p))
     return PropertyList(converted)
 
 
 def _dict_to_property(data: dict[str, Any]) -> Property:
-    """支持简化 dict：{name, type: str|int|bool|string|integer|boolean, ...}."""
+    """Accepts the shorthand dict: {name, type: str|int|bool|string|integer|boolean, ...}."""
     name = data["name"]
     raw_type = data.get("type", "string")
     type_map = {
@@ -126,7 +128,7 @@ def _dict_to_property(data: dict[str, Any]) -> Property:
     else:
         ptype = type_map.get(str(raw_type).lower())
         if ptype is None:
-            raise ValueError(f"未知属性类型: {raw_type}")
+            raise ValueError(f"unknown property type: {raw_type}")
     return Property(
         name,
         ptype,
