@@ -18,44 +18,44 @@ from src.utils.config_manager import get_config
 
 logger = get_logger()
 
-# TTS 存在时音乐的混音增益（闪避），及其保持时长（20ms 块数）
+# TTS the mix gain applied to music while ducking, and how long it is held (in 20ms blocks)
 _MUSIC_DUCK_GAIN = 0.35
 _DUCK_HOLD_CHUNKS = 10
-# 音乐写入端水位背压目标（秒）：越小暂停/插话越跟手，越大抗抖动越强
+# target watermark for write-side backpressure on music, in seconds: smaller is more responsive to pause/barge-in, larger is more robust to jitter
 _MUSIC_BACKLOG_TARGET_S = 0.30
-# TTS / 音乐 FIFO 容量（秒），超限丢最旧
+# TTS / music FIFO capacity in seconds; the oldest data is dropped past this
 _TTS_FIFO_MAX_S = 10.0
 _MUSIC_FIFO_MAX_S = 2.0
 
 
 class AudioListener(Protocol):
-    """音频监听器协议"""
+    """audio listener protocol"""
 
     def on_audio_data(self, audio_data: np.ndarray) -> None:
-        """接收音频数据
+        """receive audio data
 
         Args:
-            audio_data: float32 音频数据
+            audio_data: float32 audio data
         """
         ...
 
 
 class AudioCodec:
-    """音频编解码器 - 协调器模式
+    """Audio codec - coordinator pattern
 
-    组合各个组件，协调数据流
+    Composes the individual components and coordinates the data flow
 
-    数据流：
-    - 输入：设备(float32) → 下混+重采样(float32) → Opus编码(float32→bytes) → 网络
-    - 输出：网络 → Opus解码(bytes→float32) → 重采样+上混(float32) → 设备(float32)
+    data flow:
+    - input: device (float32) -> downmix + resample (float32) -> Opus encode (float32 -> bytes) -> network
+    - output: network -> Opus decode (bytes -> float32) -> resample + upmix (float32) -> device (float32)
     """
 
     def __init__(self):
-        """初始化音频编解码器"""
-        # 刷新协议配置（支持 Settings UI 修改后生效）
+        """initialise the audio codec"""
+        # refresh the protocol config, so changes made in the Settings UI take effect
         AudioConfig.reload()
 
-        # 组件（依赖注入）
+        # components (dependency injection)
         self.device_manager = AudioDeviceManager(get_config())
         self.opus_codec = OpusCodec(
             input_sample_rate=AudioConfig.INPUT_SAMPLE_RATE,
@@ -65,7 +65,7 @@ class AudioCodec:
         self.converter = AudioConverter()
         self.stream_manager = None
 
-        # TTS 与音乐分流：各自 FIFO，输出回调里混音（互不排队阻塞）
+        # TTS kept separate from music: each has its own FIFO and they are mixed in the output callback, so neither blocks the other
         self._tts_fifo = PcmFifo(
             int(AudioConfig.OUTPUT_SAMPLE_RATE * _TTS_FIFO_MAX_S)
         )
@@ -75,38 +75,38 @@ class AudioCodec:
         self._mix_chunk = int(AudioConfig.OUTPUT_SAMPLE_RATE * 0.02)  # 20ms
         self._duck_hold = 0
 
-        # 监听器（线程安全）
+        # listeners (thread-safe)
         self._encoded_callback: Callable | None = None
         self._audio_listeners: list[AudioListener] = []
         self._listeners_lock = threading.Lock()
 
-        # 设备配置（初始化后填充）
+        # device config (filled in after initialisation)
         self.device_config: DeviceConfig | None = None
 
-        # AEC（Self far：播放回调最终 PCM 作参考），initialize 时按配置创建
+        # AEC(Self far: using the final PCM from the playback callback as the reference), created from config during initialize
         self._aec = None
 
-        # 状态标记
+        # state flags
         self._is_closing = False
         self._closed = False
         self._server_opus_logged = False
         self._last_output_status_log = 0.0
 
     async def initialize(self):
-        """初始化所有组件
+        """initialise every component
 
-        流程：
-        1. 加载/检测设备
-        2. 刷新协议配置 + 初始化 Opus
-        3. 配置格式转换管线
-        4. 创建音频流
-        5. 启动音频流
+        Flow:
+        1. load or detect devices
+        2. refresh the protocol config and initialise Opus
+        3. configure the format conversion pipeline
+        4. create the audio streams
+        5. start the audio streams
         """
         try:
-            # 1. 加载/检测设备
+            # 1. load or detect devices
             self.device_config = self.device_manager.load_or_detect_devices()
 
-            # 2. 刷新协议配置并初始化 Opus
+            # 2. refresh the protocol config and initialise Opus
             AudioConfig.reload()
             self.opus_codec.close()
             self.opus_codec = OpusCodec(
@@ -116,60 +116,60 @@ class AudioCodec:
             )
             self.opus_codec.initialize()
 
-            # 3. 配置格式转换管线
+            # 3. configure the format conversion pipeline
             self._configure_pipeline()
 
-            # 4. 按配置创建 AEC（Self far），失败自动旁路
+            # 4. create the AEC from config (self far); bypass automatically on failure
             self._setup_aec()
 
-            # 5. 创建音频流
+            # 5. create the audio streams
             self.stream_manager = AudioStreamManager(self.device_config)
             self.stream_manager.create_streams(
                 input_callback=self._input_callback,
                 output_callback=self._output_callback,
             )
 
-            # 6. 启动音频流
+            # 6. start the audio streams
             self.stream_manager.start()
 
-            logger.info("AudioCodec 初始化完成")
+            logger.info("AudioCodec initialised")
 
         except Exception as e:
-            logger.error(f"初始化音频设备失败: {e}", exc_info=True)
+            logger.error(f"Failed to initialise the audio devices: {e}", exc_info=True)
             await self.close()
             raise
 
     def _input_callback(self, indata, frames, time_info, status):
-        """输入回调：设备 → 编码 → 发送
+        """input callback: device -> encode -> send
 
-        数据流：多声道/高采样率 → 下混 → 重采样 → Opus编码 → 网络
+        data flow: multi-channel / high rate -> downmix -> resample -> Opus encode -> network
 
         Args:
-            indata: float32 音频数据，shape (frames, channels)
-            frames: 帧数
-            time_info: 时间信息
-            status: 状态标志
+            indata: float32 audio data, shape (frames, channels)
+            frames: frame count
+            time_info: timing information
+            status: status flags
         """
         if status and "overflow" not in str(status).lower():
-            logger.warning(f"输入流状态: {status}")
+            logger.warning(f"input stream status: {status}")
 
         if self._is_closing:
             return
 
         try:
-            # 1. 格式转换（下混 + 重采样）
-            # 保留 indata 的 (frames, channels) 形状，让 downmix_to_mono 正确下混
+            # 1. format conversion (downmix + resample)
+            # keep indata's (frames, channels) shape so downmix_to_mono mixes correctly
             audio_converted = self.converter.convert_input(
                 indata, AudioConfig.INPUT_FRAME_SIZE
             )
             if audio_converted is None:
-                return  # 数据不足，等待下一帧
+                return  # not enough data, wait for the next frame
 
-            # 1.5 AEC：以播放回调抽取的 far 参考消回声（旁路时原样返回）
+            # 1.5 AEC: cancel echo using the far reference taken from the playback callback (returned unchanged when bypassed)
             if self._aec is not None and self._aec.active:
                 audio_converted = self._aec.process_near(audio_converted)
 
-            # 2. Opus 编码（float32 输入）
+            # 2. Opus encode (float32 input)
             if self._encoded_callback:
                 try:
                     opus_data = self.opus_codec.encode(
@@ -177,43 +177,43 @@ class AudioCodec:
                     )
                     self._encoded_callback(opus_data)
                 except Exception as e:
-                    logger.warning(f"编码失败: {e}", exc_info=True)
+                    logger.warning(f"Encoding failed: {e}", exc_info=True)
 
-            # 2.5 UI 电平（口型/音量环），非阻塞
+            # 2.5 UI levels (mouth shape / volume ring), non-blocking
             audio_levels.feed_input(audio_converted)
 
-            # 3. 通知监听器（线程安全）
+            # 3. notify listeners (thread-safe)
             with self._listeners_lock:
                 for listener in self._audio_listeners:
                     try:
                         listener.on_audio_data(audio_converted.copy())
                     except Exception as e:
-                        logger.warning(f"监听器处理失败: {e}", exc_info=True)
+                        logger.warning(f"Listener failed: {e}", exc_info=True)
 
         except Exception as e:
-            logger.error(f"输入回调错误: {e}", exc_info=True)
+            logger.error(f"input callback error: {e}", exc_info=True)
 
     def _output_callback(self, outdata, frames, time_info, status):
-        """输出回调：解码 → 转换 → 播放
+        """output callback: decode -> convert -> play
 
-        数据流：队列 → 重采样 → 上混 → 设备
+        data flow: queue -> resample -> upmix -> device
 
-        循环从队列取 chunk 喂给 convert_output，直到 resampler
-        内部缓冲区凑够 frames 或队列耗尽。解决采样率非整除
-        （如 16kHz→44100Hz）或服务器帧时长不匹配时的卡顿问题。
+        loop pulling chunks from the queue into convert_output, until the resampler's
+        until the internal buffer has enough frames or the queue runs dry. This fixes the stutter when the sample rate does not divide evenly
+        (e.g. 16kHz -> 44100Hz) or when the server frame length does not match.
 
         Args:
-            outdata: float32 输出缓冲区，shape (frames, channels)
-            frames: 帧数
-            time_info: 时间信息
-            status: 状态标志
+            outdata: float32 output buffer, shape (frames, channels)
+            frames: frame count
+            time_info: timing information
+            status: status flags
         """
         if status:
-            # 限流：回调内写日志（文件 IO）本身会加剧欠载，2 秒最多一条
+            # rate-limited: logging from a callback is file I/O and makes underruns worse, so at most one line every 2 seconds
             now = time.monotonic()
             if now - self._last_output_status_log > 2.0:
                 self._last_output_status_log = now
-                logger.warning(f"输出流状态: {status}")
+                logger.warning(f"output stream status: {status}")
 
         try:
             audio_converted = None
@@ -234,23 +234,23 @@ class AudioCodec:
             else:
                 outdata[:] = audio_converted[:frames]
 
-            # AEC far：设备实际写出的最终 PCM（TTS+音乐混合，含静音保持连续）
+            # AEC far: the final PCM actually written to the device (TTS + music mixed, with silence keeping it continuous)
             if self._aec is not None and self._aec.active:
                 self._aec.feed_far(outdata)
 
-            # UI 电平：取设备实际写出的 PCM，口型与听到的声音同步
+            # UI levels: take the PCM actually written to the device, so the mouth shape matches what is heard
             audio_levels.feed_output(outdata)
 
         except Exception as e:
-            logger.error(f"输出回调错误: {e}", exc_info=True)
+            logger.error(f"output callback error: {e}", exc_info=True)
             outdata.fill(0.0)
 
     def _configure_pipeline(self):
-        """配置格式转换管线（设备 ↔ 协议）。
+        """Configure the format conversion pipeline (device <-> protocol).
 
-        根据设备原生参数和协议要求参数，设置输入/输出转换链。
-        输入：设备(f32, device_rate, device_ch) → 协议(f32, 16kHz, 1ch)
-        输出：协议(f32, opus_out_rate, 1ch) → 设备(f32, device_rate, device_ch)
+        Build the input and output conversion chains from the device's native parameters and what the protocol requires.
+        input: device (f32, device_rate, device_ch) -> protocol (f32, 16kHz, 1ch)
+        output: protocol (f32, opus_out_rate, 1ch) -> device (f32, device_rate, device_ch)
         """
         self.converter.setup_input_converter(
             from_rate=self.device_config.input_sample_rate,
@@ -265,8 +265,8 @@ class AudioCodec:
             to_channels=self.device_config.output_channels,
         )
 
-        # 协议输出采样率可能随配置热重载变化，FIFO/混音块随之重建
-        # （此时音频流已停止，无并发读取）
+        # the protocol output rate can change on a config hot-reload, so the FIFO and mix blocks are rebuilt with it
+        # (the streams are stopped here, so there is no concurrent reader)
         self._tts_fifo = PcmFifo(
             int(AudioConfig.OUTPUT_SAMPLE_RATE * _TTS_FIFO_MAX_S)
         )
@@ -277,12 +277,12 @@ class AudioCodec:
         self._duck_hold = 0
 
     def _pull_mixed(self, n: int) -> np.ndarray | None:
-        """输出回调线程：从 TTS/音乐 FIFO 各取 n 样本并混音.
+        """Output callback thread: take n samples from each of the TTS and music FIFOs and mix them.
 
-        规则：
-        - 两路都空 → None（上层进入静音/欠载路径）
-        - TTS 在场时音乐按 _MUSIC_DUCK_GAIN 闪避，并在 TTS
-          帧间隙保持若干块（避免闪避增益抖动）
+        Rules:
+        - both empty -> None (the caller takes the silence/underrun path)
+        - TTS when present, music ducks by _MUSIC_DUCK_GAIN, and during TTS
+          held for several blocks across the frame gap, so the duck gain does not chatter
         """
         tts = self._tts_fifo.pull(n)
         music = self._music_fifo.pull(n)
@@ -304,10 +304,10 @@ class AudioCodec:
         return np.clip(tts + music * _MUSIC_DUCK_GAIN, -1.0, 1.0)
 
     def _setup_aec(self):
-        """按 AEC_OPTIONS.ENABLED 创建/重建 AEC 引擎（Self far）。
+        """Create or rebuild the AEC engine per AEC_OPTIONS.ENABLED (self far reference).
 
-        设备热重载后 far 采样率可能变化，须随 device_config 重建；
-        创建失败不抛出，引擎自身旁路（active=False）。
+        the far sample rate can change after a device hot reload, so it must be rebuilt with device_config;
+        A failure here does not raise; the engine bypasses itself (active=False).
         """
         if self._aec is not None:
             self._aec.close()
@@ -316,7 +316,7 @@ class AudioCodec:
         try:
             config = get_config()
             if not bool(config.get_config("AEC_OPTIONS.ENABLED", False)):
-                logger.info("AEC 未启用（AEC_OPTIONS.ENABLED=false）")
+                logger.info("AEC not enabled (AEC_OPTIONS.ENABLED=false)")
                 return
 
             from src.audio_processing.aec_engine import AecEngine
@@ -325,65 +325,65 @@ class AudioCodec:
             self._aec = AecEngine(
                 near_rate=AudioConfig.INPUT_SAMPLE_RATE,
                 far_rate=self.device_config.output_sample_rate,
-                # FRAME_DELAY 以协议帧为单位，换算毫秒后叠加基础输出延迟
+                # FRAME_DELAY measured in protocol frames, converted to milliseconds and added to the base output latency
                 delay_ms=40 + int(frame_delay) * AudioConfig.FRAME_DURATION,
                 enable_preprocess=bool(
                     config.get_config("AEC_OPTIONS.ENABLE_PREPROCESS", True)
                 ),
             )
         except Exception as e:
-            logger.warning(f"创建 AEC 引擎失败，已旁路: {e}", exc_info=True)
+            logger.warning(f"Failed to create the AEC engine, bypassed: {e}", exc_info=True)
             self._aec = None
 
-    # === 对外接口（保持兼容） ===
+    # === public interface (kept for compatibility) ===
 
     @property
     def aec_active(self) -> bool:
-        """AEC 引擎是否在位且工作中（音乐并行策略等依赖此判断）."""
+        """AEC Whether the engine is present and running (the parallel-music strategy depends on this)."""
         aec = self._aec
         return bool(aec is not None and aec.active)
 
     def set_encoded_callback(self, callback: Callable[[bytes], None]):
-        """设置编码回调
+        """set the encode callback
 
         Args:
-            callback: 回调函数，接收 Opus 编码数据
+            callback: callback receiving Opus-encoded data
         """
         self._encoded_callback = callback
         if callback:
-            logger.info("已设置编码音频回调")
+            logger.info("encoded-audio callback set")
         else:
-            logger.info("已清除编码音频回调")
+            logger.info("encoded-audio callback cleared")
 
     def add_audio_listener(self, listener: AudioListener):
-        """添加音频监听器（线程安全）
+        """add an audio listener (thread-safe)
 
         Args:
-            listener: 实现 AudioListener 协议的监听器对象
+            listener: a listener implementing the AudioListener protocol
         """
         with self._listeners_lock:
             if listener not in self._audio_listeners:
                 self._audio_listeners.append(listener)
-                logger.info(f"已添加音频监听器: {listener.__class__.__name__}")
+                logger.info(f"Audio listener added: {listener.__class__.__name__}")
 
     def remove_audio_listener(self, listener: AudioListener):
-        """移除音频监听器（线程安全）
+        """Remove an audio listener (thread-safe)
 
         Args:
-            listener: 要移除的监听器对象
+            listener: the listener object to remove
         """
         with self._listeners_lock:
             if listener in self._audio_listeners:
                 self._audio_listeners.remove(listener)
-                logger.info(f"已移除音频监听器: {listener.__class__.__name__}")
+                logger.info(f"Audio listener removed: {listener.__class__.__name__}")
 
     async def write_audio(self, opus_data: bytes):
-        """解码并播放音频（Opus → 扬声器）
+        """decode and play audio (Opus -> speaker)
 
-        自动从 Opus TOC 字节检测帧时长，无需依赖客户端配置。
+        The frame length is detected from the Opus TOC byte, so no client-side config is needed.
 
         Args:
-            opus_data: Opus 编码数据
+            opus_data: Opus-encoded data
         """
         try:
             toc_info = parse_opus_toc(opus_data)
@@ -393,9 +393,9 @@ class AudioCodec:
             if not self._server_opus_logged:
                 self._server_opus_logged = True
                 logger.info(
-                    f"服务端 Opus 参数: "
+                    f"server Opus parameters: "
                     f"{toc_info['mode']} {toc_info['bandwidth_hz']} | "
-                    f"帧时长 {toc_info['duration_ms']}ms "
+                    f"frame length {toc_info['duration_ms']}ms "
                     f"({toc_info['frame_ms']}ms×{toc_info['num_frames']})"
                 )
 
@@ -407,14 +407,14 @@ class AudioCodec:
             self._tts_fifo.push(audio_float32)
 
         except Exception as e:
-            logger.warning(f"音频写入失败: {e}", exc_info=True)
+            logger.warning(f"Audio write failed: {e}", exc_info=True)
 
     async def write_pcm_direct(self, pcm_float32: np.ndarray):
-        """写入音乐 PCM（float32，供 MusicPlayer 使用），带水位背压.
+        """Write music PCM (float32, used by MusicPlayer) with watermark backpressure.
 
-        写完后若音乐缓冲超过目标水位则等待回放消耗——这是音乐链路
-        唯一的节拍来源（解码器时钟在暂停后会失准，不能作为依据）。
-        背压上限 2 秒兜底退出，FIFO 容量丢最旧保证不会无限膨胀。
+        after writing, wait for playback to drain if the music buffer is above the target watermark - this is the music path
+        the only timing source (the decoder clock drifts after a pause and cannot be relied on).
+        Backpressure gives up after 2 seconds as a backstop, and the FIFO drops the oldest data so it cannot grow without bound.
         """
         self._music_fifo.push(pcm_float32)
 
@@ -425,27 +425,27 @@ class AudioCodec:
             await asyncio.sleep(0.02)
 
     async def clear_audio_queue(self):
-        """清空 TTS 播放队列（打断/中止时用；音乐队列不受影响）."""
+        """Clear the TTS playback queue (used on interrupt/abort; the music queue is untouched)."""
         self._server_opus_logged = False
         self.converter.clear_output_buffer()
         count = self._tts_fifo.clear()
         if count > 0:
-            logger.info(f"清空 TTS 队列，丢弃 {count} 样本")
+            logger.info(f"cleared the TTS queue, discarding {count} samples")
 
     async def clear_music_queue(self):
-        """清空音乐播放队列（停止/跳转时用；TTS 队列不受影响）."""
+        """Clear the music playback queue (used on stop/seek; the TTS queue is untouched)."""
         count = self._music_fifo.clear()
         if count > 0:
-            logger.info(f"清空音乐队列，丢弃 {count} 样本")
+            logger.info(f"cleared the music queue, discarding {count} samples")
 
     async def reinitialize_stream(self, is_input: bool = True):
-        """重建音频流（支持热插拔）
+        """rebuild the audio streams (supports hot-plug)
 
         Args:
-            is_input: True=输入流, False=输出流
+            is_input: True=input stream, False = output stream
 
         Returns:
-            bool: 是否成功
+            bool: whether it succeeded
         """
         if not self.stream_manager:
             return False
@@ -460,54 +460,54 @@ class AudioCodec:
             )
 
     def stop_streams_for_enumeration(self) -> None:
-        """停掉本编解码器占用的 sounddevice 流，供热插拔枚举前调用.
+        """Stop the sounddevice streams this codec holds, before re-enumerating for hot-plug.
 
-        调用后必须再 ``reload_devices()`` 或自行 ``create_streams``，否则无采集/播放。
+        After calling this you must either ``reload_devices()`` or ``create_streams`` yourself, or there is no capture or playback.
         """
         if self.stream_manager:
             self.stream_manager.stop()
-            logger.info("AudioCodec: 已停止音频流（供设备枚举）")
+            logger.info("AudioCodec: audio streams stopped (for device enumeration)")
 
     async def reload_devices(self, *, reenumerate: bool = True):
-        """热重载音频设备配置
+        """Hot-reload the audio device configuration
 
-        流程：
-        1. 停止当前音频流
-        2. （可选）重初始化 PortAudio 并重新枚举（利于后连蓝牙出现）
-        3. 重新加载设备配置 + 协议配置
-        4. 重建格式转换器 + Opus 编解码器
-        5. 重新创建并启动音频流
+        Flow:
+        1. stop the current audio streams
+        2. (optionally reinitialise PortAudio and re-enumerate, which helps a Bluetooth device connected later show up
+        3. reload the device config and the protocol config
+        4. rebuild the format converters and the Opus codec
+        5. recreate and start the audio streams
 
         Args:
-            reenumerate: 是否在停流后强制刷新 PortAudio 设备表
+            reenumerate: whether to force a PortAudio device-table refresh after stopping the streams
 
         Returns:
-            bool: 是否成功
+            bool: whether it succeeded
         """
-        logger.info("AudioCodec: 开始热重载音频设备...")
+        logger.info("AudioCodec: starting audio device hot reload...")
 
         try:
-            # 1. 停止当前流（必须在 PortAudio reinit 之前）
+            # 1. stop the current streams (required before a PortAudio reinit)
             if self.stream_manager:
                 self.stream_manager.stop()
-                logger.debug("AudioCodec: 已停止当前音频流")
+                logger.debug("AudioCodec: current audio streams stopped")
 
-            # 2. 热插拔：重建 PortAudio 上下文后再按名称匹配
+            # 2. hot-plug: rebuild the PortAudio context, then match by name
             if reenumerate:
                 from src.utils.audio_utils import refresh_portaudio_devices
 
                 refresh_portaudio_devices(reinitialize=True)
 
-            # 3. 重新加载设备配置
+            # 3. reload the device config
             self.device_manager.config.reload_config()
             self.device_config = self.device_manager.load_or_detect_devices()
             logger.info(
-                "AudioCodec: 新设备配置 - 输入ID: "
-                f"{self.device_config.input_device_id}, 输出ID: "
+                "AudioCodec: new device config - input ID: "
+                f"{self.device_config.input_device_id}, output ID: "
                 f"{self.device_config.output_device_id}"
             )
 
-            # 4. 刷新协议配置并重建 Opus 编解码器
+            # 4. refresh the protocol config and rebuild the Opus codec
             AudioConfig.reload()
             self.opus_codec.close()
             self.opus_codec = OpusCodec(
@@ -517,102 +517,102 @@ class AudioCodec:
             )
             self.opus_codec.initialize()
 
-            # 5. 重建格式转换器
+            # 5. rebuild the format converters
             self.converter.clear_buffers()
             self._configure_pipeline()
 
-            # 5.5 重建 AEC（far 采样率跟随新输出设备，滤波器状态清零）
+            # 5.5 rebuild the AEC (far rate follows the new output device, filter state cleared)
             self._setup_aec()
 
-            # 6. 重新创建音频流
+            # 6. recreate the audio streams
             self.stream_manager = AudioStreamManager(self.device_config)
             self.stream_manager.create_streams(
                 input_callback=self._input_callback,
                 output_callback=self._output_callback,
             )
 
-            # 7. 启动音频流
+            # 7. start the audio streams
             self.stream_manager.start()
 
-            logger.info("AudioCodec: 音频设备热重载完成")
+            logger.info("AudioCodec: audio device hot reload complete")
             return True
 
         except Exception as e:
-            logger.error(f"AudioCodec: 热重载音频设备失败: {e}", exc_info=True)
+            logger.error(f"AudioCodec: audio device hot reload failed: {e}", exc_info=True)
             return False
 
     async def close(self):
-        """关闭音频编解码器"""
+        """close the audio codec"""
         self._is_closing = True
 
         try:
-            # 1. 停止音频流
+            # 1. stop the audio streams
             if self.stream_manager:
                 self.stream_manager.stop()
 
-            # 2. 清空队列
+            # 2. clear the queues
             await self.clear_audio_queue()
             await self.clear_music_queue()
 
-            # 2.5 释放 AEC（须在流停止后）
+            # 2.5 release the AEC (must happen after the streams stop)
             if self._aec is not None:
                 self._aec.close()
                 self._aec = None
 
-            # 3. 释放转换器（含 soxr 重采样器）
+            # 3. release the converters (including the soxr resampler)
             self.converter.close()
 
-            # 4. 释放 Opus
+            # 4. release Opus
             self.opus_codec.close()
 
-            # 5. 清理监听器
+            # 5. clear listeners
             with self._listeners_lock:
                 self._audio_listeners.clear()
 
-            logger.info("AudioCodec 已关闭")
+            logger.info("AudioCodec closed")
             self._closed = True
 
         except Exception as e:
-            logger.error(f"关闭音频编解码器失败: {e}", exc_info=True)
+            logger.error(f"Failed to close the audio codec: {e}", exc_info=True)
         finally:
             self._is_closing = False
 
     def __del__(self):
-        """析构函数 - 执行同步清理"""
-        # 如果已正确关闭或正在关闭，跳过
+        """destructor - synchronous cleanup"""
+        # skip if already closed or closing
         if getattr(self, "_closed", False) or getattr(self, "_is_closing", False):
             return
 
-        logger.warning("AudioCodec 未正确关闭，执行紧急清理（建议使用 async close()）")
+        logger.warning("AudioCodec was not closed properly; running emergency cleanup (prefer async close())")
 
         try:
-            # 1. 停止音频流（同步）
+            # 1. stop the audio streams (synchronous)
             if self.stream_manager:
                 self.stream_manager.stop()
 
-            # 2. 清空队列（同步版本）
+            # 2. clear the queues (synchronous version)
             count = self._tts_fifo.clear() + self._music_fifo.clear()
             if count > 0:
-                logger.debug(f"析构函数清空了 {count} 样本音频")
+                logger.debug(f"destructor discarded {count} audio samples")
 
-            # 3. 释放转换器（同步，含 soxr 重采样器）
+            # 3. release the converters (synchronous, including the soxr resampler)
             if self.converter:
                 self.converter.close()
 
-            # 4. 释放 Opus（同步）
+            # 4. release Opus (synchronous)
             if self.opus_codec:
                 self.opus_codec.close()
 
-            # 5. 清理监听器（同步）
+            # 5. clear listeners (synchronous)
             try:
                 with self._listeners_lock:
                     self._audio_listeners.clear()
             except Exception as e:
                 logger.warning(
-                    f"清理音频监听器失败（锁可能已损坏）: {e}", exc_info=True
+                    f"Failed to clear audio listeners (the lock may be broken): {e}", exc_info=True
                 )
 
-            logger.debug("AudioCodec 析构清理完成")
+            logger.debug("AudioCodec destructor cleanup complete")
 
         except Exception as e:
-            logger.error(f"析构函数清理失败: {e}", exc_info=True)
+            logger.error(f"destructor cleanup failed: {e}", exc_info=True)
