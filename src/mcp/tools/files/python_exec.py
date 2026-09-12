@@ -61,6 +61,16 @@ def _argv(workspace: Path, network: bool) -> list[str]:
         "--ro-bind-try", "/lib64", "/lib64",
         "--ro-bind-try", "/etc/ssl", "/etc/ssl",
         "--ro-bind-try", "/etc/ca-certificates", "/etc/ca-certificates",
+        # Without these, numpy fails with a misleading "do not import numpy from
+        # its source directory": libblas.so.3 is an update-alternatives symlink
+        # that hops through /etc/alternatives, and the loader needs ld.so.cache.
+        "--ro-bind-try", "/etc/alternatives", "/etc/alternatives",
+        "--ro-bind-try", "/etc/ld.so.cache", "/etc/ld.so.cache",
+        "--ro-bind-try", "/etc/ld.so.conf", "/etc/ld.so.conf",
+        "--ro-bind-try", "/etc/ld.so.conf.d", "/etc/ld.so.conf.d",
+        # Debian ships matplotlib's rc file in /etc, not with the package
+        "--ro-bind-try", "/etc/matplotlibrc", "/etc/matplotlibrc",
+        "--ro-bind-try", "/etc/fonts", "/etc/fonts",
         "--proc", "/proc",
         "--dev", "/dev",
         "--tmpfs", "/tmp",
@@ -69,6 +79,11 @@ def _argv(workspace: Path, network: bool) -> list[str]:
         "--chdir", str(workspace),
         "--die-with-parent",
         "--new-session",
+        # HOME and the matplotlib cache must be writable or those libraries
+        # refuse to import; /tmp is the sandbox's own tmpfs and vanishes after.
+        "--setenv", "HOME", "/tmp",
+        "--setenv", "MPLCONFIGDIR", "/tmp/mpl",
+        "--setenv", "XDG_CACHE_HOME", "/tmp/cache",
     ]
     if network:
         args += ["--ro-bind-try", "/etc/resolv.conf", "/etc/resolv.conf",
