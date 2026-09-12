@@ -1,4 +1,4 @@
-"""摄像头 MCP 工具注册与工厂."""
+"""Registering the camera MCP tool, and the factory behind it."""
 
 import asyncio
 import json
@@ -16,7 +16,7 @@ logger = get_logger()
 
 def create_camera():
     """
-    按配置创建一个摄像头实现并返回.
+    Build the camera implementation the configuration asks for.
     """
     config = get_config()
 
@@ -49,24 +49,25 @@ def register_camera_tools(add_tool: Callable[[McpTool], None], camera) -> None:
         McpTool(
             "take_photo",
             (
-                "【拍照识图】当用户提到：拍照、拍张照、照张相、看一下、看看、帮我看、这是什么、识别、"
-                "识图、看图、图片、照片、帮我瞧瞧 时调用本工具。\n"
-                "功能：拍照并分析图片内容，回答用户关于图片的问题。\n"
-                "使用场景：\n"
-                "1. 用户要求拍照看东西 (例如: '帮我看看这是什么', '拍个照', '看看前面是什么')\n"
-                "2. 物体/场景识别 ('这是什么东西', '帮我认一下', '识别一下')\n"
-                "3. 文字识别OCR ('读一下上面的字', '提取文字', '这上面写的什么')\n"
-                "4. 图片问答 ('图里有几个人', '这个是什么颜色', '上面有什么内容')\n\n"
-                "参数说明：\n"
-                "- question: 字符串类型，用户想了解的关于图片的问题\n\n"
-                "使用提示：当用户说'看'、'看看'、'这是什么'等模糊表达时，优先使用本工具进行拍照识别。\n"
-                "English: Take a photo and explain it. Use this tool after the user asks you to see something.\n"
-                "Args: `question` - The question that you want to ask about the photo.\n"
-                "Return: A JSON object that provides the photo information.\n"
-                "Examples: '帮我看看这是什么', '拍个照', '看看前面', 'take a photo', 'what is this'."
+                "[Take a photo and describe it] Use this whenever the user asks you to "
+                "look at something, take a photo, identify what something is, read what a "
+                "label says, or answer a question about what is in front of the camera.\n"
+                "It captures a still from the camera and analyses it.\n"
+                "What it is good for:\n"
+                "1. Looking at something on request ('what is this?', 'take a photo', "
+                "'have a look at what is in front of me')\n"
+                "2. Identifying an object or a scene ('what am I holding?', 'what is that')\n"
+                "3. Reading text off a thing (OCR) ('read the label', 'what does this say')\n"
+                "4. Answering a question about the picture ('how many people are there?', "
+                "'what colour is it?')\n\n"
+                "Argument:\n"
+                "- question: what the user wants to know about the picture\n\n"
+                "Note: when the user says something vague like 'look' or 'what is this', "
+                "reach for this tool rather than guessing.\n"
+                "Returns: a JSON object describing the photo."
             ),
             PropertyList([Property("question", PropertyType.STRING)]),
             take_photo,
         )
     )
-    logger.info("已注册 take_photo（容器注入 camera）")
+    logger.info("registered take_photo (camera injected by the container)")

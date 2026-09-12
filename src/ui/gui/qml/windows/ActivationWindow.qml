@@ -1,4 +1,4 @@
-// 设备激活窗口
+// The device activation window
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
@@ -15,10 +15,10 @@ AppWindow {
     title: "Device Activation"
     visible: true
 
-    // 信号
+    // signals
     signal activationCompleted(bool success)
 
-    // 使用平台自适应标题栏
+    // the platform-adaptive title bar
     TitleBar {
         id: titleBar
         anchors.top: parent.top
@@ -36,7 +36,7 @@ AppWindow {
         anchors.margins: Theme.spacingXl
         spacing: Theme.spacingLg
 
-        // 状态指示器 - 独立放在内容区顶部
+        // the status indicator, on its own at the top of the content area
         RowLayout {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignRight
@@ -48,7 +48,7 @@ AppWindow {
                 radius: Theme.radiusSm
                 color: activationModel ? activationModel.statusColor : Theme.textPlaceholder
 
-                // 激活中时闪烁动画
+                // it pulses while activation is in progress
                 SequentialAnimation on opacity {
                     running: activationModel ? activationModel.isActivating : false
                     loops: Animation.Infinite
@@ -65,7 +65,7 @@ AppWindow {
             }
         }
 
-        // 设备信息卡片
+        // the device information card
         XCard {
             Layout.fillWidth: true
             Layout.preferredHeight: 90
@@ -89,7 +89,7 @@ AppWindow {
                     columnSpacing: Theme.spacingXxl
                     rowSpacing: Theme.spacingXs
 
-                    // 序列号
+                    // serial number
                     Text {
                         text: "Serial Number"
                         font.family: Theme.fontFamily
@@ -123,7 +123,7 @@ AppWindow {
             }
         }
 
-        // 激活码卡片
+        // the activation code card
         XCard {
             Layout.fillWidth: true
             Layout.preferredHeight: 70
@@ -141,7 +141,7 @@ AppWindow {
                     color: Theme.textSecondary
                 }
 
-                // 验证码显示框
+                // the verification code box
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 40
@@ -161,7 +161,7 @@ AppWindow {
                     }
                 }
 
-                // 复制按钮
+                // copy button
                 XButton {
                     text: "Copy"
                     enabled: activationModel ? activationModel.activationCode !== "------" : false
@@ -175,7 +175,7 @@ AppWindow {
             }
         }
 
-        // 操作按钮
+        // the action buttons
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -193,7 +193,7 @@ AppWindow {
             }
         }
 
-        // 提示信息
+        // the hint text
         Text {
             Layout.fillWidth: true
             text: (activationModel && activationModel.isActivated)
@@ -209,7 +209,7 @@ AppWindow {
         Item { Layout.fillHeight: true }
     }
 
-    // 复制成功提示
+    // the copied-to-clipboard confirmation
     Rectangle {
         id: copyToast
         anchors.bottom: parent.bottom

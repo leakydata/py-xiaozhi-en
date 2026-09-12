@@ -1,4 +1,4 @@
-"""GUI ViewManager：组合 QmlAppHost / 主界面 / 设置控制器，实现 ViewPort."""
+"""The GUI ViewManager: composes QmlAppHost, the main window and the settings controller into a ViewPort."""
 
 from PySide6.QtCore import QObject, Slot
 
@@ -16,9 +16,9 @@ logger = get_logger()
 
 
 class GuiViewManager(QObject):
-    """GUI 界面入口（ViewPort + 设置辅助）.
+    """The GUI entry point (a ViewPort, plus the settings helpers).
 
-    设备激活在容器启动前由 GuiActivation 独立窗口完成，主界面不再挂激活 Model/API。
+    Device activation happens in the separate GuiActivation window before the container starts, so the main window no longer carries an activation model or API.
     """
 
     def __init__(self, event_bus: EventBus, task_manager: TaskManager | None = None):
@@ -42,7 +42,7 @@ class GuiViewManager(QObject):
 
         self._event_bus.on(Events.UI_TOGGLE_WINDOW, self._on_toggle_window)
         self._event_bus.on(Events.DEVICE_STATE_CHANGED, self._on_device_state_changed)
-        logger.debug("GuiViewManager: 已订阅窗口切换事件")
+        logger.debug("GuiViewManager: subscribed to the window toggle event")
 
     async def _on_device_state_changed(self, payload=None) -> None:
         """Feed idle/listening/speaking to the avatar.
@@ -54,14 +54,14 @@ class GuiViewManager(QObject):
             value = getattr(state, "value", state)
             self._main.set_device_state(str(value))
         except Exception as e:
-            logger.warning(f"GuiViewManager: 设备状态更新失败: {e}")
+            logger.warning(f"GuiViewManager: failed to update the device state: {e}")
 
     async def start(self, mode: str = "gui"):
         if mode == "cli":
-            logger.info("GuiViewManager: CLI 模式，跳过 GUI 初始化")
+            logger.info("GuiViewManager: CLI mode, skipping the GUI setup")
             return
 
-        logger.info("GuiViewManager: 启动 GUI...")
+        logger.info("GuiViewManager: starting the GUI...")
         self._running = True
 
         self._host.create_engine()
@@ -75,19 +75,19 @@ class GuiViewManager(QObject):
             }
         )
         self._host.load_main()
-        # 冷启动只显示、不抢前台，避免 macOS 把其它全屏 App 的 Space 挤掉
+        # on a cold start just show it without taking focus, so macOS does not shove another fullscreen app off its Space
         self._host.show_root(activate=False)
         self._setup_tray()
         self._main.set_neutral_emotion()
-        logger.info("GuiViewManager: GUI 启动完成")
+        logger.info("GuiViewManager: GUI started")
 
     async def close(self):
-        logger.info("GuiViewManager: 正在关闭...")
+        logger.info("GuiViewManager: shutting down...")
         self._running = False
         if self._tray_service:
             self._tray_service.hide()
         self._host.shutdown()
-        logger.info("GuiViewManager: 已关闭")
+        logger.info("GuiViewManager: closed")
 
     def _setup_tray(self) -> None:
         root = self._host.root_window()
@@ -105,7 +105,7 @@ class GuiViewManager(QObject):
         )
 
     async def _on_toggle_window(self, data=None):
-        logger.debug("GuiViewManager: 收到窗口切换事件")
+        logger.debug("GuiViewManager: window toggle event received")
         self.toggle_window()
 
     # ----- ViewPort -----
@@ -135,7 +135,7 @@ class GuiViewManager(QObject):
     def is_auto_mode(self) -> bool:
         return self._main.is_auto_mode()
 
-    # ----- 设置 / 窗口 -----
+    # ----- settings and window -----
 
     @property
     def main_model(self):
@@ -157,6 +157,8 @@ class GuiViewManager(QObject):
 
     def open_settings(self):
         if not self._host.engine:
-            logger.warning("GuiViewManager: 引擎未初始化，无法打开设置")
+            logger.warning(
+                "GuiViewManager: the engine is not initialised, cannot open the settings"
+            )
             return
         self._settings.open_settings()
