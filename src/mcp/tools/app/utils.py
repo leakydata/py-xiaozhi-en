@@ -1,6 +1,6 @@
-"""应用程序管理通用工具.
+"""Shared helpers for application management.
 
-提供统一的应用程序匹配、查找、缓存和名称清理功能。
+One place for matching, looking up, caching and cleaning application names.
 """
 
 import platform
@@ -12,30 +12,30 @@ from src.logging import get_logger
 
 logger = get_logger()
 
-# 全局应用缓存
+# global application cache
 _cached_applications: list[dict[str, Any]] | None = None
 _cache_timestamp: float = 0
-_cache_duration = 300  # 缓存5分钟
+_cache_duration = 300  # cache for 5 minutes
 
 
 def clean_app_name(name: str) -> str:
-    """清理应用程序名称，移除版本号和特殊字符.
+    """Clean an application name, stripping version numbers and special characters.
 
     Args:
-        name: 原始名称
+        name: the raw name
 
     Returns:
-        str: 清理后的名称
+        str: the cleaned name
     """
     if not name:
         return ""
 
-    # 移除常见的版本号模式
+    # strip the common version-number patterns
     name = re.sub(r"\s+v?\d+[\.\d]*", "", name)
     name = re.sub(r"\s*\(\d+\)", "", name)
     name = re.sub(r"\s*\[.*?\]", "", name)
 
-    # 移除多余的空格
+    # collapse the extra whitespace
     name = " ".join(name.split())
 
     return name.strip()
@@ -43,10 +43,11 @@ def clean_app_name(name: str) -> str:
 
 class AppMatcher:
     """
-    统一的应用程序匹配器.
+    The single application matcher.
     """
 
-    # 特殊应用名称映射 - 按长度排序，避免短名称优先匹配
+    # special application-name aliases - kept sorted by length so a short name does not win first
+    # The Chinese entries are real app display names used for matching, not translatable text.
     SPECIAL_MAPPINGS = {
         "qq音乐": ["qqmusic", "qq音乐", "qq music"],
         "qqmusic": ["qqmusic", "qq音乐", "qq music"],
@@ -93,7 +94,8 @@ class AppMatcher:
         "iterm": ["iterm", "iterm2"],
     }
 
-    # 进程分组映射（用于关闭时分组）
+    # process grouping (used when closing a group of processes)
+    # As above, the Chinese keys are the app names as they appear on the system.
     PROCESS_GROUPS = {
         "chrome": "chrome",
         "googlechrome": "chrome",
@@ -139,15 +141,15 @@ class AppMatcher:
     @classmethod
     def normalize_name(cls, name: str) -> str:
         """
-        标准化应用程序名称.
+        Normalise an application name.
         """
         if not name:
             return ""
 
-        # 移除.exe后缀
+        # strip the .exe suffix
         name = name.lower().replace(".exe", "")
 
-        # 移除版本号和特殊字符
+        # strip version numbers and special characters
         name = re.sub(r"\s+v?\d+[\.\d]*", "", name)
         name = re.sub(r"\s*\(\d+\)", "", name)
         name = re.sub(r"\s*\[.*?\]", "", name)
@@ -158,15 +160,15 @@ class AppMatcher:
     @classmethod
     def get_process_group(cls, process_name: str) -> str:
         """
-        获取进程所属的分组.
+        Get the group a process belongs to.
         """
         normalized = cls.normalize_name(process_name)
 
-        # 检查直接映射
+        # check the direct mapping
         if normalized in cls.PROCESS_GROUPS:
             return cls.PROCESS_GROUPS[normalized]
 
-        # 检查包含关系
+        # check for a substring relationship
         for key, group in cls.PROCESS_GROUPS.items():
             if key in normalized or normalized in key:
                 return group
@@ -175,14 +177,14 @@ class AppMatcher:
 
     @classmethod
     def match_application(cls, target_name: str, app_info: dict[str, Any]) -> int:
-        """匹配应用程序，返回匹配度分数.
+        """Match an application and return a match score.
 
         Args:
-            target_name: 目标应用名称
-            app_info: 应用程序信息
+            target_name: the application name being looked for
+            app_info: the application record
 
         Returns:
-            int: 匹配度分数 (0-100)，0表示不匹配
+            int: the match score (0-100); 0 means no match
         """
         if not target_name or not app_info:
             return 0
@@ -193,25 +195,25 @@ class AppMatcher:
         window_title = app_info.get("window_title", "").lower()
         exe_path = app_info.get("command", "").lower()
 
-        # 1. 精确匹配 (100分)
+        # 1. exact match (100 points)
         if target_lower == app_name or target_lower == display_name:
             return 100
 
-        # 2. 特殊映射匹配 (95-98分) - 优先匹配更具体的关键词
+        # 2. alias match (95-98 points) - a more specific keyword wins
         best_special_score = 0
 
         for key in cls.SPECIAL_MAPPINGS:
             if key in target_lower or target_lower == key:
-                # 检查是否有匹配的别名
+                # look for a matching alias
                 for alias in cls.SPECIAL_MAPPINGS[key]:
                     if alias.lower() in app_name or alias.lower() in display_name:
-                        # 计算匹配度：更具体的匹配得分更高
+                        # score it: the more specific the match, the higher the score
                         if target_lower == key:
-                            score = 98  # 精确匹配特殊映射键
+                            score = 98  # exact match on the alias key
                         elif len(key) > len(target_lower) * 0.8:
-                            score = 97  # 长度相近的匹配
+                            score = 97  # a match of similar length
                         else:
-                            score = 95  # 一般特殊映射匹配
+                            score = 95  # an ordinary alias match
 
                         if score > best_special_score:
                             best_special_score = score
@@ -219,7 +221,7 @@ class AppMatcher:
         if best_special_score > 0:
             return best_special_score
 
-        # 3. 标准化名称匹配 (90分)
+        # 3. normalised-name match (90 points)
         normalized_target = cls.normalize_name(target_name)
         normalized_app = cls.normalize_name(app_info.get("name", ""))
         normalized_display = cls.normalize_name(app_info.get("display_name", ""))
@@ -230,26 +232,26 @@ class AppMatcher:
         ):
             return 90
 
-        # 4. 包含匹配 (70-80分)
+        # 4. substring match (70-80 points)
         if target_lower in app_name:
             return 80
         if target_lower in display_name:
             return 75
         if app_name and app_name in target_lower:
-            # 避免短名称误匹配长名称
+            # stop a short name from matching a much longer one by accident
             if len(app_name) < len(target_lower) * 0.5:
-                return 50  # 降低分数
+                return 50  # lower the score
             return 70
 
-        # 5. 窗口标题匹配 (60分)
+        # 5. window-title match (60 points)
         if window_title and target_lower in window_title:
             return 60
 
-        # 6. 路径匹配 (50分)
+        # 6. path match (50 points)
         if exe_path and target_lower in exe_path:
             return 50
 
-        # 7. 模糊匹配 (30分)
+        # 7. fuzzy match (30 points)
         if cls._fuzzy_match(target_lower, app_name) or cls._fuzzy_match(
             target_lower, display_name
         ):
@@ -260,49 +262,49 @@ class AppMatcher:
     @classmethod
     def _fuzzy_match(cls, target: str, candidate: str) -> bool:
         """
-        模糊匹配.
+        Fuzzy match.
         """
         if not target or not candidate:
             return False
 
-        # 移除所有非字母数字字符进行比较
-        target_clean = re.sub(r"[^a-zA-Z0-9一-鿿]", "", target)
-        candidate_clean = re.sub(r"[^a-zA-Z0-9一-鿿]", "", candidate)
+        # strip every non-alphanumeric character before comparing
+        target_clean = re.sub(r"[^a-zA-Z0-9\u4e00-\u9fff]", "", target)
+        candidate_clean = re.sub(r"[^a-zA-Z0-9\u4e00-\u9fff]", "", candidate)
 
         return target_clean in candidate_clean or candidate_clean in target_clean
 
 
 async def get_cached_applications(force_refresh: bool = False) -> list[dict[str, Any]]:
-    """获取缓存的应用程序列表.
+    """Get the cached application list.
 
     Args:
-        force_refresh: 是否强制刷新缓存
+        force_refresh: whether to force a cache refresh
 
     Returns:
-        应用程序列表
+        the application list
     """
     global _cached_applications, _cache_timestamp
 
     current_time = time.time()
 
-    # 检查缓存是否有效
+    # check whether the cache is still valid
     if (
         not force_refresh
         and _cached_applications is not None
         and (current_time - _cache_timestamp) < _cache_duration
     ):
         logger.debug(
-            f"[AppUtils] 使用缓存的应用程序列表，缓存时间: {int(current_time - _cache_timestamp)}秒前"
+            f"[AppUtils] using the cached application list, cached {int(current_time - _cache_timestamp)}s ago"
         )
         return _cached_applications
 
-    # 重新扫描应用程序
+    # rescan the applications
     try:
         import json
 
         from .scanner import scan_installed_applications
 
-        logger.info("[AppUtils] 刷新应用程序缓存")
+        logger.info("[AppUtils] refreshing the application cache")
         result_json = await scan_installed_applications(
             {"force_refresh": force_refresh}
         )
@@ -312,48 +314,48 @@ async def get_cached_applications(force_refresh: bool = False) -> list[dict[str,
             _cached_applications = result.get("applications", [])
             _cache_timestamp = current_time
             logger.info(
-                f"[AppUtils] 应用程序缓存已刷新，找到 {len(_cached_applications)} 个应用"
+                f"[AppUtils] application cache refreshed, {len(_cached_applications)} applications found"
             )
             return _cached_applications
         else:
             logger.warning(
-                f"[AppUtils] 应用程序扫描失败: {result.get('message', '未知错误')}"
+                f"[AppUtils] application scan failed: {result.get('message', 'unknown error')}"
             )
             return _cached_applications or []
 
     except Exception as e:
-        logger.error(f"[AppUtils] 刷新应用程序缓存失败: {e}", exc_info=True)
+        logger.error(f"[AppUtils] failed to refresh the application cache: {e}", exc_info=True)
         return _cached_applications or []
 
 
 async def find_best_matching_app(
     app_name: str, app_type: str = "any"
 ) -> dict[str, Any] | None:
-    """查找最佳匹配的应用程序.
+    """Find the best-matching application.
 
     Args:
-        app_name: 应用程序名称
-        app_type: 应用程序类型过滤 ("installed", "running", "any")
+        app_name: the application name
+        app_type: which applications to consider ("installed", "running", "any")
 
     Returns:
-        最佳匹配的应用程序信息
+        the best-matching application record
     """
     try:
         if app_type == "running":
-            # 获取正在运行的应用程序
+            # get the running applications
             import asyncio
 
             from .process_manager import list_running_applications as list_running_sync
 
             applications = await asyncio.to_thread(list_running_sync)
         else:
-            # 获取已安装的应用程序
+            # get the installed applications
             applications = await get_cached_applications()
 
         if not applications:
             return None
 
-        # 计算所有应用的匹配度
+        # score every application
         matches = []
         for app in applications:
             score = AppMatcher.match_application(app_name, app)
@@ -363,31 +365,31 @@ async def find_best_matching_app(
         if not matches:
             return None
 
-        # 按分数排序，返回最佳匹配
+        # sort by score and return the best match
         matches.sort(key=lambda x: x[0], reverse=True)
         best_score, best_app = matches[0]
 
         logger.info(
-            f"[AppUtils] 找到最佳匹配: {best_app.get('display_name', best_app.get('name', ''))} (分数: {best_score})"
+            f"[AppUtils] best match: {best_app.get('display_name', best_app.get('name', ''))} (score: {best_score})"
         )
         return best_app
 
     except Exception as e:
-        logger.error(f"[AppUtils] 查找匹配应用失败: {e}", exc_info=True)
+        logger.error(f"[AppUtils] failed to find a matching application: {e}", exc_info=True)
         return None
 
 
 def clear_app_cache():
-    """清空应用程序缓存."""
+    """Clear the application cache."""
     global _cached_applications, _cache_timestamp
 
     _cached_applications = None
     _cache_timestamp = 0
-    logger.info("[AppUtils] 应用程序缓存已清空")
+    logger.info("[AppUtils] application cache cleared")
 
 
 def get_system_scanner():
-    """根据当前系统获取对应的扫描器模块."""
+    """Get the scanner module for the current platform."""
     system = platform.system()
 
     if system == "Darwin":
@@ -403,13 +405,13 @@ def get_system_scanner():
 
         return scanner_linux
     else:
-        logger.warning(f"[AppUtils] 不支持的系统: {system}")
+        logger.warning(f"[AppUtils] unsupported platform: {system}")
         return None
 
 
 def get_cache_info() -> dict[str, Any]:
     """
-    获取缓存信息.
+    Get information about the cache.
     """
 
     current_time = time.time()
