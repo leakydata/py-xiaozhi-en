@@ -1,7 +1,7 @@
-"""跨平台进程管理（基于 psutil）.
+"""Cross-platform process management, built on psutil.
 
-用 psutil 替代所有平台特定的 subprocess 进程列表和终止逻辑，
-消除命令注入风险。
+psutil replaces every platform-specific subprocess call for listing and killing
+processes, which removes the command-injection risk those carried.
 """
 
 import sys
@@ -14,7 +14,7 @@ from .utils import AppMatcher
 
 logger = get_logger()
 
-# Electron/Chromium 子进程后缀，这些是主应用的内部子进程
+# Electron/Chromium child-process suffixes - these are internal children of the main app
 _HELPER_SUFFIXES = (
     " helper",
     " helper (gpu)",
@@ -23,7 +23,7 @@ _HELPER_SUFFIXES = (
     "_crashpad_handler",
 )
 
-# macOS 系统路径前缀，这些路径下的进程都是系统守护进程
+# macOS system path prefixes; anything under these is a system daemon
 _MACOS_SYSTEM_PREFIXES = (
     "/usr/libexec/",
     "/usr/sbin/",
@@ -31,7 +31,7 @@ _MACOS_SYSTEM_PREFIXES = (
     "/Library/Apple/",
 )
 
-# Windows 系统进程名（小写，不含 .exe）
+# Windows system process names (lowercase, without .exe)
 _WINDOWS_SYSTEM_NAMES: set[str] = {
     "dwm",
     "winlogon",
@@ -60,30 +60,30 @@ _WINDOWS_SYSTEM_NAMES: set[str] = {
 
 
 def _is_user_application(name: str, exe: str) -> bool:
-    """判断进程是否为用户可见的应用程序."""
+    """Whether this process is an application the user can see."""
     name_lower = name.lower()
     exe_lower = exe.lower()
 
-    # Electron/Chromium 子进程（Helper、Renderer、GPU）排除
+    # exclude the Electron/Chromium children (Helper, Renderer, GPU)
     if any(name_lower.endswith(suffix) for suffix in _HELPER_SUFFIXES):
         return False
 
     if sys.platform == "darwin":
-        # macOS: 只保留 /Applications/ 下的 .app 主进程
+        # macOS: keep only the main .app process under /Applications/
         if "/Applications/" in exe and ".app/" in exe:
-            # 排除 .app 内部的子 .app（如 Framework/Helpers/）
+            # exclude the nested .apps inside one (Framework/Helpers/ and the like)
             app_path = exe[: exe.index(".app/") + 5]
             remaining = exe[len(app_path) :]
             if ".app/" in remaining:
                 return False
             return True
-        # 非 /Applications 但也不是系统路径的（如 ~/Library/Application Support 下的工具）
+        # outside /Applications but not a system path either (tools under ~/Library/Application Support, say)
         if any(exe_lower.startswith(p) for p in _MACOS_SYSTEM_PREFIXES):
             return False
-        # /Library/Application Support 下的用户工具（如安全软件、VPN）
+        # user tools under /Library/Application Support (security software, VPNs)
         if "/Library/Application Support/" in exe and ".app" not in exe:
             return False
-        # 其他已知系统进程路径
+        # the other known system process paths
         if exe_lower.startswith("/system/") or exe_lower.startswith("/library/"):
             return False
         return False
@@ -91,7 +91,7 @@ def _is_user_application(name: str, exe: str) -> bool:
     elif sys.platform == "win32":
         if name_lower.replace(".exe", "") in _WINDOWS_SYSTEM_NAMES:
             return False
-        # Windows 系统目录进程排除
+        # exclude the processes in the Windows system directories
         if "\\windows\\system32\\" in exe_lower:
             return False
         if "\\windows\\syswow64\\" in exe_lower:
@@ -99,7 +99,7 @@ def _is_user_application(name: str, exe: str) -> bool:
         return True
 
     else:
-        # Linux: 排除系统守护进程
+        # Linux: exclude the system daemons
         if exe_lower.startswith(("/usr/libexec/", "/usr/sbin/")):
             return False
         if exe_lower.startswith("/usr/bin/") and name_lower in {
@@ -115,12 +115,12 @@ def _is_user_application(name: str, exe: str) -> bool:
 
 
 def list_running_applications(filter_name: str = "") -> list[dict]:
-    """列出运行中的用户应用程序.
+    """List the running user applications.
 
-    只返回用户可见的桌面应用，不包含系统守护进程、Electron 子进程等。
+    Only the desktop applications the user can see - no system daemons, no Electron children.
 
     Args:
-        filter_name: 可选的名称过滤关键词，传入时放宽过滤（用于 kill 匹配）
+        filter_name: an optional name filter; passing one relaxes the filtering (used when matching for a kill)
     """
     apps: list[dict] = []
     filter_lower = filter_name.lower() if filter_name else ""
@@ -134,7 +134,7 @@ def list_running_applications(filter_name: str = "") -> list[dict]:
             if not name or pid <= 4:
                 continue
 
-            # 有过滤词时放宽条件（用于 kill 匹配场景，需要匹配子进程）
+            # relax the conditions when filtering (a kill needs to match the child processes too)
             if filter_lower:
                 name_lower = name.lower()
                 exe_lower = exe.lower()
@@ -157,7 +157,7 @@ def list_running_applications(filter_name: str = "") -> list[dict]:
                     }
                 )
             else:
-                # 无过滤词：严格只返回用户应用
+                # without a filter: strictly user applications only
                 if not _is_user_application(name, exe):
                     continue
                 apps.append(
@@ -174,7 +174,7 @@ def list_running_applications(filter_name: str = "") -> list[dict]:
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
 
-    # 按名称排序去重
+    # sort by name and de-duplicate
     seen_pids: set[int] = set()
     unique_apps: list[dict] = []
     for app in sorted(apps, key=lambda x: x["name"].lower()):
@@ -186,14 +186,14 @@ def list_running_applications(filter_name: str = "") -> list[dict]:
 
 
 def kill_process(pid: int, force: bool = False) -> bool:
-    """终止指定 PID 的进程.
+    """Kill the process with this PID.
 
     Args:
-        pid: 进程 ID
-        force: True 使用 SIGKILL/TerminateProcess，False 使用 SIGTERM
+        pid: the process ID
+        force: True uses SIGKILL/TerminateProcess, False uses SIGTERM
 
     Returns:
-        是否成功终止
+        whether it was killed
     """
     try:
         proc = psutil.Process(pid)
@@ -204,27 +204,31 @@ def kill_process(pid: int, force: bool = False) -> bool:
             try:
                 proc.wait(timeout=5)
             except psutil.TimeoutExpired:
-                logger.warning(f"[ProcessManager] 进程 {pid} 未在超时内退出，强制终止")
+                logger.warning(
+                    f"[ProcessManager] process {pid} did not exit within the timeout, killing it"
+                )
                 proc.kill()
         return True
     except psutil.NoSuchProcess:
-        logger.warning(f"[ProcessManager] 进程不存在: {pid}")
+        logger.warning(f"[ProcessManager] no such process: {pid}")
         return False
     except psutil.AccessDenied as e:
-        logger.warning(f"[ProcessManager] 无权终止进程 {pid}: {e}", exc_info=True)
+        logger.warning(
+            f"[ProcessManager] not permitted to kill process {pid}: {e}", exc_info=True
+        )
         return False
 
 
 def find_matching_processes(app_name: str) -> list[dict]:
-    """查找与应用名匹配的运行中进程.
+    """Find the running processes matching an application name.
 
-    使用 AppMatcher 进行智能匹配（包含特殊映射、模糊匹配等）。
+    AppMatcher does the matching, aliases and fuzzy matching included.
 
     Args:
-        app_name: 目标应用名称
+        app_name: the application name to look for
 
     Returns:
-        匹配的进程信息列表，按匹配度降序排列
+        the matching process records, best match first
     """
     all_apps = list_running_applications()
     matched: list[tuple[int, dict]] = []
@@ -239,29 +243,29 @@ def find_matching_processes(app_name: str) -> list[dict]:
 
 
 def kill_application_by_name(app_name: str, force: bool = False) -> bool:
-    """按名称终止应用（匹配所有相关进程）.
+    """Kill an application by name, taking every related process with it.
 
     Args:
-        app_name: 应用名称
-        force: 是否强制终止
+        app_name: the application name
+        force: whether to kill rather than terminate
 
     Returns:
-        是否至少终止了一个进程
+        whether at least one process was killed
     """
     matched = find_matching_processes(app_name)
     if not matched:
-        logger.info(f"[ProcessManager] 未找到匹配的运行进程: {app_name}")
+        logger.info(f"[ProcessManager] no running process matched: {app_name}")
         return False
 
-    logger.info(f"[ProcessManager] 找到 {len(matched)} 个匹配进程: {app_name}")
+    logger.info(f"[ProcessManager] {len(matched)} processes matched: {app_name}")
 
-    # 按进程组分组，尝试先终止子进程再终止父进程
+    # grouped by process group, so the children go before the parent
     success_count = 0
     for app in matched:
         pid = app["pid"]
         try:
             proc = psutil.Process(pid)
-            # 先终止子进程
+            # children first
             children = proc.children(recursive=True)
             for child in children:
                 try:
@@ -272,16 +276,19 @@ def kill_application_by_name(app_name: str, force: bool = False) -> bool:
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
 
-            # 终止主进程
+            # then the main process
             if kill_process(pid, force):
                 success_count += 1
-                logger.info(f"[ProcessManager] 已终止进程: {app['name']} (PID={pid})")
+                logger.info(f"[ProcessManager] killed: {app['name']} (PID={pid})")
         except psutil.NoSuchProcess:
-            logger.debug(f"[ProcessManager] 进程已退出: PID={pid}")
+            logger.debug(f"[ProcessManager] process already gone: PID={pid}")
         except psutil.AccessDenied as e:
-            logger.warning(f"[ProcessManager] 无权操作进程 PID={pid}: {e}", exc_info=True)
+            logger.warning(
+                f"[ProcessManager] not permitted to act on process PID={pid}: {e}",
+                exc_info=True,
+            )
 
     logger.info(
-        f"[ProcessManager] 终止操作完成，成功 {success_count}/{len(matched)} 个进程"
+        f"[ProcessManager] kill complete, {success_count}/{len(matched)} processes"
     )
     return success_count > 0
