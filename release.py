@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""发版脚本：从 system.py 读取版本号，自动更新 + 生成 build.json + git tag。
+"""Release script: reads the version from system.py, bumps it, writes build.json and tags the release.
 
-用法：python release.py [--dry-run]
+Usage: python release.py [--dry-run]
 """
 
 import json
@@ -16,11 +16,11 @@ BUILD_JSON = Path("build.json")
 VERSION_RE = re.compile(r'(APP_VERSION\s*=\s*")([^"]+)(")')
 
 VERSION_TYPES = [
-    ("patch", "bug 修复", "1.0.0 → 1.0.1"),
-    ("minor", "新功能", "1.0.0 → 1.1.0"),
-    ("major", "重大变更", "1.0.0 → 2.0.0"),
-    ("prepatch", "测试版", "1.0.0 → 1.0.1-beta.0"),
-    ("prerelease", "继续测试", "1.0.1-beta.0 → 1.0.1-beta.1"),
+    ("patch", "a bug fix", "1.0.0 -> 1.0.1"),
+    ("minor", "a new feature", "1.0.0 -> 1.1.0"),
+    ("major", "a breaking change", "1.0.0 -> 2.0.0"),
+    ("prepatch", "start a beta", "1.0.0 -> 1.0.1-beta.0"),
+    ("prerelease", "another beta", "1.0.1-beta.0 -> 1.0.1-beta.1"),
 ]
 
 BUILD_TEMPLATE = {
@@ -47,9 +47,9 @@ BUILD_TEMPLATE = {
             "bundle_identifier": "",
             "minimum_system_version": "10.13",
             "category": "public.app-category.productivity",
-            "microphone_usage_description": "此应用需要访问麦克风以实现录音功能",
-            "speech_recognition_usage_description": "此应用需要使用语音识别功能以理解语音指令",
-            "camera_usage_description": "此应用需要访问摄像头以实现拍照或视频功能",
+            "microphone_usage_description": "This app needs the microphone so it can hear you.",
+            "speech_recognition_usage_description": "This app uses speech recognition to understand what you say.",
+            "camera_usage_description": "This app needs the camera to take photos and video.",
             "copyright": "© 2024 Company. All rights reserved.",
             "dmg": {
                 "volname": "",
@@ -81,7 +81,7 @@ BUILD_TEMPLATE = {
 
 
 def read_system_constants() -> dict:
-    """从 system.py 读取 APP_NAME / APP_DISPLAY_NAME / APP_VERSION。"""
+    """Read APP_NAME, APP_DISPLAY_NAME and APP_VERSION out of system.py."""
     content = SYSTEM_PY.read_text(encoding="utf-8")
     values = {}
     for key in ("APP_NAME", "APP_DISPLAY_NAME", "APP_VERSION"):
@@ -92,10 +92,10 @@ def read_system_constants() -> dict:
 
 
 def parse_version(v: str) -> tuple:
-    """解析 semver：major.minor.patch[-pre.N]"""
+    """Parse a semver string: major.minor.patch[-pre.N]"""
     m = re.match(r"(\d+)\.(\d+)\.(\d+)(?:-(\w+)\.(\d+))?", v)
     if not m:
-        raise ValueError(f"无法解析版本号: {v}")
+        raise ValueError(f"could not parse the version: {v}")
     major, minor, patch = int(m.group(1)), int(m.group(2)), int(m.group(3))
     pre_tag = m.group(4)
     pre_num = int(m.group(5)) if m.group(5) is not None else None
@@ -103,7 +103,7 @@ def parse_version(v: str) -> tuple:
 
 
 def bump_version(current: str, bump_type: str) -> str:
-    """计算新版本号。"""
+    """Work out the new version number."""
     major, minor, patch, pre_tag, pre_num = parse_version(current)
 
     if bump_type == "patch":
@@ -119,18 +119,18 @@ def bump_version(current: str, bump_type: str) -> str:
             return f"{major}.{minor}.{patch}-{pre_tag}.{pre_num + 1}"
         return f"{major}.{minor}.{patch + 1}-beta.0"
     else:
-        raise ValueError(f"未知版本类型: {bump_type}")
+        raise ValueError(f"unknown bump type: {bump_type}")
 
 
 def update_system_py(new_version: str) -> None:
-    """更新 system.py 的 APP_VERSION。"""
+    """Write the new APP_VERSION into system.py."""
     content = SYSTEM_PY.read_text(encoding="utf-8")
     new_content = VERSION_RE.sub(rf"\g<1>{new_version}\g<3>", content)
     SYSTEM_PY.write_text(new_content, encoding="utf-8")
 
 
 def generate_build_json(constants: dict) -> None:
-    """从 system.py 常量生成 build.json。"""
+    """Generate build.json from the constants in system.py."""
     cfg = json.loads(json.dumps(BUILD_TEMPLATE))
 
     name = constants["APP_NAME"]
@@ -141,7 +141,7 @@ def generate_build_json(constants: dict) -> None:
     cfg["display_name"] = display_name
     cfg["version"] = version
     cfg["platforms"]["macos"]["bundle_identifier"] = f"com.{name}.app"
-    cfg["platforms"]["macos"]["dmg"]["volname"] = f"{display_name} 安装器"
+    cfg["platforms"]["macos"]["dmg"]["volname"] = f"{display_name} Installer"
     cfg["platforms"]["linux"]["deb"]["package"] = name
 
     BUILD_JSON.write_text(
@@ -150,7 +150,7 @@ def generate_build_json(constants: dict) -> None:
 
 
 def run_git(new_version: str) -> None:
-    """git commit + tag + push。"""
+    """git commit + tag + push."""
     subprocess.run(["git", "add", str(SYSTEM_PY), str(BUILD_JSON)], check=True)
     subprocess.run(
         ["git", "commit", "-m", f"chore: release v{new_version}"], check=True
@@ -167,46 +167,46 @@ def main():
     constants = read_system_constants()
     current = constants.get("APP_VERSION")
     if not current:
-        print("❌ 无法从 system.py 读取 APP_VERSION")
+        print("Could not read APP_VERSION from system.py")
         sys.exit(1)
 
-    print(f"\n当前版本: {current}")
-    print("\n选择版本更新类型：\n")
+    print(f"\nCurrent version: {current}")
+    print("\nWhat kind of release is this?\n")
     for i, (_, label, desc) in enumerate(VERSION_TYPES, 1):
         print(f"  {i}. {label} — {desc}")
 
     try:
-        choice = input("\n请输入选项 (1-5): ").strip()
+        choice = input("\nChoose 1-5: ").strip()
         index = int(choice) - 1
         if not (0 <= index < len(VERSION_TYPES)):
             raise ValueError
     except (ValueError, EOFError):
-        print("❌ 无效的选项")
+        print("That is not one of the options")
         sys.exit(1)
 
     bump_type = VERSION_TYPES[index][0]
     new_version = bump_version(current, bump_type)
 
-    print(f"\n版本变更: {current} → {new_version}")
+    print(f"\nVersion: {current} -> {new_version}")
 
     if dry_run:
-        print("\n[dry-run] 将执行以下操作:")
-        print(f"  1. 更新 {SYSTEM_PY}: APP_VERSION = \"{new_version}\"")
-        print(f"  2. 生成 {BUILD_JSON}")
+        print("\n[dry-run] This would:")
+        print(f'  1. set APP_VERSION = "{new_version}" in {SYSTEM_PY}')
+        print(f"  2. write {BUILD_JSON}")
         print(f"  3. git commit + tag v{new_version} + push")
-        print("\n[dry-run] 未实际执行任何操作。")
+        print("\n[dry-run] Nothing was changed.")
         return
 
     update_system_py(new_version)
     constants["APP_VERSION"] = new_version
     generate_build_json(constants)
 
-    print(f"\n✅ 已更新 {SYSTEM_PY}")
-    print(f"✅ 已生成 {BUILD_JSON}")
+    print(f"\nUpdated {SYSTEM_PY}")
+    print(f"Wrote {BUILD_JSON}")
 
     run_git(new_version)
 
-    print(f"\n✅ 版本 v{new_version} 发布成功！GitHub Actions 将自动开始构建。")
+    print(f"\nReleased v{new_version}. GitHub Actions will start the build.")
 
 
 if __name__ == "__main__":
