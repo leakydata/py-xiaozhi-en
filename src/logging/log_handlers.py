@@ -1,8 +1,8 @@
-"""日志处理器模块.
+"""Log handlers.
 
-提供：
-- 双重轮转文件处理器（时间 + 大小）
-- 异步日志处理器
+Provides:
+- a file handler that rotates on both time and size
+- an asynchronous handler
 """
 
 import atexit
@@ -17,9 +17,9 @@ from typing import Union
 
 
 class TimeSizeRotatingFileHandler(BaseRotatingHandler):
-    """双重轮转文件处理器.
+    """A file handler that rotates two ways.
 
-    同时支持按时间和按大小轮转，先触发任一条件即执行轮转。
+    It rotates on time and on size; whichever comes first triggers it.
     """
 
     def __init__(
@@ -40,20 +40,20 @@ class TimeSizeRotatingFileHandler(BaseRotatingHandler):
         self.backup_count = backup_count
         self.compress = compress
 
-        # 时间轮转计算
+        # work out the time rollover
         self._compute_rollover_time()
 
-        # 初始化父类
+        # initialise the base class
         super().__init__(self.baseFilename, "a", encoding=encoding, delay=delay)
 
     def _compute_rollover_time(self) -> None:
         """
-        计算下次轮转时间.
+        Work out when the next rollover is due.
         """
         current_time = int(time.time())
 
         if self.when == "MIDNIGHT":
-            # 计算到午夜的秒数
+            # seconds until midnight
             t = time.localtime(current_time)
             current_hour = t.tm_hour
             current_minute = t.tm_min
@@ -77,18 +77,18 @@ class TimeSizeRotatingFileHandler(BaseRotatingHandler):
 
     def shouldRollover(self, record: logging.LogRecord) -> bool:
         """
-        检查是否需要轮转.
+        Whether a rollover is due.
         """
-        # 检查时间
+        # check the time
         if time.time() >= self.rollover_at:
             return True
 
-        # 检查大小
+        # check the size
         if self.max_bytes > 0:
             if self.stream is None:
                 self.stream = self._open()
             try:
-                self.stream.seek(0, 2)  # 移动到文件末尾
+                self.stream.seek(0, 2)  # seek to the end of the file
                 if self.stream.tell() + len(self.format(record)) >= self.max_bytes:
                     return True
             except (OSError, ValueError):
@@ -98,26 +98,26 @@ class TimeSizeRotatingFileHandler(BaseRotatingHandler):
 
     def doRollover(self) -> None:
         """
-        执行轮转.
+        Do the rollover.
         """
         if self.stream:
             self.stream.close()
             self.stream = None
 
-        # 生成轮转文件名
+        # build the rotated file name
         current_time = time.time()
         time_suffix = time.strftime(self.suffix, time.localtime(current_time))
 
-        # 检查是否是大小触发的轮转（同一天可能多次）
+        # was this triggered by size? (it can happen more than once a day)
         base_path = Path(self.baseFilename)
         base_name = base_path.stem
         base_ext = base_path.suffix
         parent = base_path.parent
 
-        # 构建轮转文件名
+        # assemble the rotated file name
         rotated_name = f"{base_name}.{time_suffix}"
 
-        # 如果同名文件已存在，添加序号
+        # if that name is taken, add a counter
         counter = 0
         while True:
             if counter == 0:
@@ -132,7 +132,7 @@ class TimeSizeRotatingFileHandler(BaseRotatingHandler):
                 break
             counter += 1
 
-        # 执行轮转
+        # rotate
         source_path = Path(self.baseFilename)
         if source_path.exists():
             if self.compress:
@@ -141,19 +141,19 @@ class TimeSizeRotatingFileHandler(BaseRotatingHandler):
             else:
                 shutil.move(str(source_path), str(dfn))
 
-        # 清理旧文件
+        # clean up the old files
         self._cleanup_old_files(parent, base_name)
 
-        # 重新计算下次轮转时间
+        # work out the next rollover time
         self._compute_rollover_time()
 
-        # 重新打开文件
+        # reopen the file
         if not self.delay:
             self.stream = self._open()
 
     def _compress_file(self, source: Path, dest: Path) -> None:
         """
-        压缩文件.
+        Compress a file.
         """
         with open(source, "rb") as f_in:
             with gzip.open(dest, "wb") as f_out:
@@ -161,12 +161,12 @@ class TimeSizeRotatingFileHandler(BaseRotatingHandler):
 
     def _cleanup_old_files(self, directory: Path, base_name: str) -> None:
         """
-        清理超出保留数量的旧文件.
+        Delete the old files beyond the number kept.
         """
         if self.backup_count <= 0:
             return
 
-        # 查找所有轮转文件
+        # find every rotated file
         pattern = f"{base_name}.*"
         log_files = []
 
@@ -174,10 +174,10 @@ class TimeSizeRotatingFileHandler(BaseRotatingHandler):
             if f.name != Path(self.baseFilename).name:
                 log_files.append(f)
 
-        # 按修改时间排序
+        # sort by modification time
         log_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
-        # 删除超出的文件
+        # delete the ones past the limit
         for old_file in log_files[self.backup_count :]:
             try:
                 old_file.unlink()
@@ -186,9 +186,9 @@ class TimeSizeRotatingFileHandler(BaseRotatingHandler):
 
 
 class AsyncHandler(QueueHandler):
-    """异步日志处理器.
+    """An asynchronous log handler.
 
-    使用队列将日志写入操作移到后台线程，避免阻塞主线程。
+    A queue moves the writing onto a background thread, so the main thread is not blocked.
     """
 
     def __init__(
@@ -197,11 +197,11 @@ class AsyncHandler(QueueHandler):
         queue_size: int = 10000,
         respect_handler_level: bool = True,
     ) -> None:
-        # 创建队列
+        # create the queue
         self._log_queue: queue.Queue = queue.Queue(maxsize=queue_size)
         super().__init__(self._log_queue)
 
-        # 创建监听器
+        # create the listener
         self._listener = QueueListener(
             self._log_queue,
             *handlers,
@@ -209,26 +209,26 @@ class AsyncHandler(QueueHandler):
         )
         self._listener.start()
 
-        # 注册退出时的清理
+        # register the cleanup for exit
         atexit.register(self.close)
 
     def close(self) -> None:
         """
-        关闭处理器.
+        Close the handler.
         """
         try:
             self._listener.stop()
         except Exception as e:
-            logging.getLogger(__name__).debug(f"停止日志监听器失败: {e}")
+            logging.getLogger(__name__).debug(f"failed to stop the log listener: {e}")
         super().close()
 
     def emit(self, record: logging.LogRecord) -> None:
         """
-        发送日志记录到队列.
+        Put a log record on the queue.
         """
         try:
             self.enqueue(record)
         except queue.Full:
-            logging.getLogger(__name__).debug("日志队列已满，丢弃一条日志")
-
-
+            logging.getLogger(__name__).debug(
+                "the log queue is full, dropping a record"
+            )
