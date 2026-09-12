@@ -114,6 +114,20 @@ async def recent_actions_payload(args: dict[str, Any]) -> str:
         return _err(e)
 
 
+async def what_can_you_do_payload(args: dict[str, Any]) -> str:
+    """The same briefing sent at initialize, in case the host ignored it."""
+    try:
+        from src.mcp import briefing
+        from src.mcp.mcp_server import McpServer
+
+        server = (McpServer.get_instance() if hasattr(McpServer, "get_instance")
+                  else None)
+        tools = getattr(server, "tools", []) if server else []
+        return json.dumps({"briefing": briefing.build(tools)}, ensure_ascii=False)
+    except Exception as e:
+        return _err(e)
+
+
 async def run_command_payload(args: dict[str, Any]) -> str:
     try:
         res = await shell.run(str(args.get("command", "")), store.root())
@@ -221,6 +235,18 @@ def register_file_tools(add_tool: Callable[[McpTool], None]) -> None:
             run_command_payload,
         ),
     ]
+
+    tools.append(McpTool(
+        "what_can_you_do",
+        (
+            "Get your own startup briefing: everything you can do, your workspace "
+            "location, and any standing instructions the user wrote. Call this if "
+            "you are unsure what tools you have, or when the user asks what you "
+            "are capable of. Takes no arguments."
+        ),
+        PropertyList([]),
+        what_can_you_do_payload,
+    ))
 
     tools.append(McpTool(
         "recent_actions",

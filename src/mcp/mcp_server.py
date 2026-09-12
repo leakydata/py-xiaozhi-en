@@ -234,14 +234,10 @@ class McpServer:
     async def _handle_initialize(
         self, request_id: int, params: dict[str, Any]
     ):
-        """
-        处理初始化请求.
-        """
-        # 解析capabilities
+        """Handle the initialize handshake."""
         capabilities = params.get("capabilities", {})
         await self._parse_capabilities(capabilities)
 
-        # 返回服务器信息
         result = {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {}},
@@ -250,6 +246,22 @@ class McpServer:
                 "version": SystemConstants.APP_VERSION,
             },
         }
+
+        # Startup context. The spec allows `instructions` here for the host to
+        # fold into its system prompt - it arrives once, silently, and is not a
+        # conversational turn, so the assistant does not answer it aloud.
+        try:
+            from src.mcp import briefing
+
+            text = briefing.build(self.tools)
+            if text:
+                result["instructions"] = text
+                logger.info(
+                    f"[MCP] sent startup briefing ({len(text)} chars, "
+                    f"{len(self.tools)} tools)"
+                )
+        except Exception as e:
+            logger.warning(f"[MCP] could not build the startup briefing: {e}")
 
         await self._reply_result(request_id, result)
 
