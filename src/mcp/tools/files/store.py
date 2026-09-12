@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Optional
 
 from src.logging import get_logger
-from src.utils.resource_finder import get_user_data_dir
 
 logger = get_logger()
 
@@ -37,7 +36,14 @@ def root() -> Path:
         configured = (get_config().get_config("FILES.ROOT", "") or "").strip()
     except Exception:
         pass
-    base = Path(configured).expanduser() if configured else get_user_data_dir() / "workspace"
+    if configured:
+        base = Path(configured).expanduser()
+    else:
+        # Somewhere the user can actually find. A hidden path under
+        # ~/.local/share is fine for a database and useless for files a person
+        # is meant to open.
+        docs = Path.home() / "Documents"
+        base = (docs if docs.is_dir() else Path.home()) / "XiaoZhi"
     base.mkdir(parents=True, exist_ok=True)
     return base.resolve()
 

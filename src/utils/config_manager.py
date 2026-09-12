@@ -87,7 +87,7 @@ class ConfigManager:
             "MODEL": "",
         },
         # Workspace the assistant may read and write. Every file tool is
-        # confined to this folder; blank = {user data}/workspace
+        # confined to this folder; blank = ~/Documents/XiaoZhi
         "FILES": {
             "ROOT": "",
         },
