@@ -58,6 +58,8 @@ class McpPlugin(Plugin):
         except Exception as e:
             logger.error(f"MCP tool registration failed: {e}", exc_info=True)
 
+        await self._connect_mcp_clients(ctx)
+
         try:
             self._music_player.set_event_bus(ctx.event_bus, ctx)
             logger.info("MusicPlayer EventBus injected")
@@ -65,6 +67,62 @@ class McpPlugin(Plugin):
             logger.warning(
                 f"failed to set the MusicPlayer EventBus: {e}", exc_info=True
             )
+
+    async def _connect_mcp_clients(self, ctx: "PluginContext") -> None:
+        """Dial the other MCP servers, without letting them delay startup.
+
+        Their tools have to be registered before the backend asks for the tool
+        list, so this is awaited - but only up to a budget. A server that hangs
+        would otherwise hold the whole assistant in setup. If the budget runs
+        out the work carries on in the background, and whatever lands late asks
+        the protocol to reconnect so the backend re-reads the list.
+        """
+        import asyncio
+
+        try:
+            from src.utils.config_manager import get_config
+
+            config = get_config()
+            if not config.get_config("MCP_CLIENT.ENABLED", True):
+                return
+            budget = float(config.get_config("MCP_CLIENT.STARTUP_TIMEOUT", 25))
+        except Exception:
+            budget = 25.0
+
+        task = asyncio.ensure_future(self._server.connect_mcp_clients())
+        try:
+            count = await asyncio.wait_for(asyncio.shield(task), timeout=budget)
+            if count:
+                logger.info(f"MCP client: {count} tools from other servers")
+        except asyncio.TimeoutError:
+            logger.warning(
+                f"MCP client: still connecting after {budget:.0f}s - carrying on, "
+                "and their tools will appear once they land"
+            )
+            task.add_done_callback(lambda t: self._on_late_tools(t, ctx))
+        except Exception as e:
+            logger.warning(f"MCP client: could not connect: {e}", exc_info=True)
+
+    def _on_late_tools(self, task, ctx: "PluginContext") -> None:
+        """A server that finished after the budget: re-list the tools."""
+        try:
+            count = task.result()
+        except Exception as e:
+            logger.warning(f"MCP client: connecting failed in the end: {e}")
+            return
+        if not count:
+            return
+        logger.info(f"MCP client: {count} tools arrived late, asking for a re-list")
+        try:
+            import asyncio
+
+            from src.core.event_bus import Events
+
+            # This runs on the loop thread as a done callback, so the emit has
+            # to be scheduled rather than awaited.
+            asyncio.ensure_future(ctx.event_bus.emit(Events.PROTOCOL_RECONNECT_REQUEST))
+        except Exception as e:
+            logger.debug(f"could not request a protocol reconnect: {e}")
 
     async def on_incoming_json(self, message: Any) -> None:
         if not isinstance(message, dict):
@@ -89,6 +147,13 @@ class McpPlugin(Plugin):
                 logger.debug(
                     f"failed to stop or detach the music player: {e}", exc_info=True
                 )
+
+            try:
+                # Ends the stdio child processes. Without this every restart
+                # would leave another server running.
+                await self._server.close_mcp_clients()
+            except Exception as e:
+                logger.debug(f"closing the MCP clients failed: {e}", exc_info=True)
 
             try:
                 self._server.detach()

@@ -123,7 +123,19 @@ def _workspace_extra() -> str:
     return ""
 
 
-def build(tools: Iterable["McpTool"]) -> str:
+def _mcp_server_instructions(clients) -> list[str]:
+    """What each connected MCP server said about itself, trimmed to fit."""
+    if clients is None:
+        return []
+    try:
+        notes = clients.instructions()
+    except Exception as e:
+        logger.debug(f"briefing: could not read the server instructions ({e})")
+        return []
+    return [" ".join(note.split())[:600] for note in notes]
+
+
+def build(tools: Iterable["McpTool"], clients=None) -> str:
     names = {t.name for t in tools}
     lines: list[str] = [
         "You are a voice assistant running on the user's own computer, with "
@@ -141,6 +153,24 @@ def build(tools: Iterable["McpTool"]) -> str:
         listed.update(present)
         lines.append(f"- {heading}: {', '.join(present)}")
 
+    # Tools proxied from other MCP servers are prefixed with the server name.
+    # Group them under that name rather than dumping them into "Also
+    # available": which archive a tool reaches is exactly what the model needs
+    # to know to pick the right one.
+    remote: dict[str, list[str]] = {}
+    for name in sorted(names):
+        if name in listed or "." not in name:
+            continue
+        server = name.split(".", 1)[0]
+        # Only treat it as a server prefix if several tools share it; a local
+        # name like self.audio_speaker.set_volume is not a server.
+        remote.setdefault(server, []).append(name)
+    for server, group in sorted(remote.items()):
+        if len(group) < 2:
+            continue
+        listed.update(group)
+        lines.append(f"- From {server}: {', '.join(group)}")
+
     extras = sorted(n for n in names if n not in listed)
     if extras:
         lines.append(f"- Also available: {', '.join(extras)}")
@@ -157,6 +187,14 @@ def build(tools: Iterable["McpTool"]) -> str:
         pass
 
     lines += ["", _HABITS]
+
+    # Each connected MCP server may describe itself during the handshake. That
+    # is the server telling the model what it holds and when to reach for it,
+    # which is better guidance than anything guessed from tool names.
+    server_notes = _mcp_server_instructions(clients)
+    if server_notes:
+        lines += ["", "About the connected data sources:"]
+        lines += [f"- {note}" for note in server_notes]
 
     extra = _workspace_extra()
     if extra:

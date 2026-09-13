@@ -154,7 +154,10 @@ async def what_can_you_do_payload(args: dict[str, Any]) -> str:
             McpServer.get_instance() if hasattr(McpServer, "get_instance") else None
         )
         tools = getattr(server, "tools", []) if server else []
-        return json.dumps({"briefing": briefing.build(tools)}, ensure_ascii=False)
+        return json.dumps(
+            {"briefing": briefing.build(tools, getattr(server, "clients", None))},
+            ensure_ascii=False,
+        )
     except Exception as e:
         return _err(e)
 

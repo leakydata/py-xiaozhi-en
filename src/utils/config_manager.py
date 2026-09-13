@@ -190,6 +190,22 @@ class ConfigManager:
         "MCP_TOOLS": {
             "DISABLED": [],  # e.g. ["music_player.stop", "self.application.launch"]
         },
+        # Other MCP servers to connect OUT to, whose tools become the
+        # assistant's own. SERVERS entries use the same shape as a .mcp.json
+        # entry - either a command (stdio) or a url (streamable HTTP) - so a
+        # server configured elsewhere can be pasted straight in. CONFIG_FILES
+        # points at existing .mcp.json files instead, to avoid describing the
+        # same server twice.
+        "MCP_CLIENT": {
+            "ENABLED": True,
+            "SERVERS": {},
+            "CONFIG_FILES": [],
+            "DISABLED": [],
+            # How long to wait at startup before carrying on without them. A
+            # server that is slow or wedged must not hold the assistant up;
+            # anything that lands late is picked up on the next reconnect.
+            "STARTUP_TIMEOUT": 25,
+        },
         "AUDIO_DEVICES": {
             "input_device_id": None,
             "input_device_name": None,

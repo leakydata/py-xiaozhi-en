@@ -27,6 +27,8 @@ class McpServer:
         self._camera = None
         # external plugins: tool_name -> plugin_id
         self._plugin_tool_owner: dict[str, str] = {}
+        # outbound connections to other MCP servers, whose tools we re-expose
+        self._clients = None
 
     def set_send_callback(self, callback: Callable | None):
         """
@@ -45,6 +47,38 @@ class McpServer:
         """On container shutdown, drop the runtime dependencies but keep the tool list, so the process can start again."""
         self._send_callback = None
         self._camera = None
+
+    @property
+    def clients(self):
+        """The outbound MCP client manager, once any server has been dialled."""
+        return self._clients
+
+    async def connect_mcp_clients(self, servers: dict | None = None) -> int:
+        """Dial the configured MCP servers and expose their tools as our own.
+
+        This is the client half of MCP. Anything discovered is registered
+        alongside the local tools, so the model sees one flat list and does not
+        have to know which process a tool actually runs in.
+
+        Failure is contained per server: one that is not running, or not
+        installed, costs a warning and nothing else.
+        """
+        from src.mcp.client import McpClientManager
+
+        if servers is None:
+            servers = _configured_mcp_servers()
+        if not servers:
+            return 0
+
+        if self._clients is None:
+            self._clients = McpClientManager()
+        return await self._clients.connect_all(servers, self.add_tool)
+
+    async def close_mcp_clients(self) -> None:
+        """Shut every outbound connection down, ending the child processes."""
+        clients, self._clients = self._clients, None
+        if clients is not None:
+            await clients.close()
 
     def add_tool(self, tool: McpTool | tuple[str, str, PropertyList, Callable]):
         """
@@ -146,6 +180,13 @@ class McpServer:
         register_claude_code_tools(self.add_tool)
         register_file_tools(self.add_tool)
         register_lab_tools(self.add_tool)
+
+        # Diagnostics for the outbound MCP connections. Registered even when no
+        # server is configured, so "is the archive reachable?" always has an
+        # answer rather than the tool itself being missing.
+        from src.mcp.client import register_mcp_client_tools
+
+        register_mcp_client_tools(self.add_tool, self)
 
         # external: plugin packages from the user directory (each with its own lib/), failures isolated
         try:
@@ -249,7 +290,7 @@ class McpServer:
         try:
             from src.mcp import briefing
 
-            text = briefing.build(self.tools)
+            text = briefing.build(self.tools, self._clients)
             if text:
                 result["instructions"] = text
                 logger.info(
@@ -421,3 +462,54 @@ class McpServer:
 
         if self._send_callback:
             await self._send_callback(json.dumps(payload))
+
+
+def _configured_mcp_servers() -> dict[str, dict]:
+    """Which MCP servers to dial, and where each one lives.
+
+    Two sources, merged in this order:
+
+    1. ``MCP_CLIENT.SERVERS`` in the app's own config.
+    2. Any file listed in ``MCP_CLIENT.CONFIG_FILES`` - ``.mcp.json`` and the
+       like. These use the format every other MCP host already uses, so a
+       server configured once can be shared rather than described twice, and
+       editing it in one place keeps both honest.
+
+    The app's own entries win on a name clash, since those were set here
+    deliberately.
+    """
+    import json as _json
+    from pathlib import Path
+
+    servers: dict[str, dict] = {}
+    try:
+        from src.utils.config_manager import get_config
+
+        config = get_config()
+    except Exception:
+        return servers
+
+    for raw in config.get_config("MCP_CLIENT.CONFIG_FILES", []) or []:
+        path = Path(str(raw)).expanduser()
+        try:
+            if not path.is_file():
+                logger.debug(f"MCP client: no such config file: {path}")
+                continue
+            data = _json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            logger.warning(f"MCP client: could not read {path}: {e}")
+            continue
+        found = data.get("mcpServers") if isinstance(data, dict) else None
+        if isinstance(found, dict):
+            for name, spec in found.items():
+                if isinstance(spec, dict):
+                    servers[name] = spec
+
+    own = config.get_config("MCP_CLIENT.SERVERS", {}) or {}
+    if isinstance(own, dict):
+        for name, spec in own.items():
+            if isinstance(spec, dict):
+                servers[name] = spec
+
+    disabled = set(config.get_config("MCP_CLIENT.DISABLED", []) or [])
+    return {n: s for n, s in servers.items() if n not in disabled}
