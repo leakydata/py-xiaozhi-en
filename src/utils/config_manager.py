@@ -205,6 +205,11 @@ class ConfigManager:
             # server that is slow or wedged must not hold the assistant up;
             # anything that lands late is picked up on the next reconnect.
             "STARTUP_TIMEOUT": 25,
+            # Cap on a single tool result. A remote server can return far more
+            # than the backend will accept in one message - 50KB closed the
+            # connection outright - so oversized results are trimmed with a
+            # note telling the model to narrow its query.
+            "MAX_RESULT_CHARS": 8000,
         },
         "AUDIO_DEVICES": {
             "input_device_id": None,

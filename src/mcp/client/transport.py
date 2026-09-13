@@ -27,6 +27,14 @@ logger = get_logger()
 #: because a cold local server may be loading a model on the first call.
 DEFAULT_TIMEOUT = 60.0
 
+#: asyncio's stream reader defaults to a 64KB line buffer, and raises rather
+#: than growing when a line exceeds it. One JSON-RPC message per line means a
+#: server returning a large result trips that - a fortnight of Looki journals
+#: is 50KB, and a long transcript more - and the call fails with an obscure
+#: "chunk is longer than limit". Oversized results are trimmed after they
+#: arrive; this only has to be large enough to receive them in the first place.
+STREAM_LIMIT = 32 * 1024 * 1024
+
 
 class TransportError(RuntimeError):
     """The server could not be reached, or broke the framing."""
@@ -132,6 +140,7 @@ class StdioTransport(Transport):
                 stderr=asyncio.subprocess.PIPE,
                 cwd=self.cwd,
                 env=environment,
+                limit=STREAM_LIMIT,
             )
         except FileNotFoundError as e:
             raise TransportError(f"cannot run {self.command!r}: {e}") from e
@@ -184,6 +193,14 @@ class StdioTransport(Transport):
                     )
                 except asyncio.TimeoutError:
                     raise TransportError(f"no reply within {timeout:.0f}s") from None
+                except ValueError as e:
+                    # asyncio raises this when one line exceeds the buffer.
+                    # The stream is no longer in a known state, so the session
+                    # has to reconnect rather than try to resynchronise.
+                    raise TransportError(
+                        f"the reply was too large to read ({e}). Ask the tool "
+                        "for less data."
+                    ) from e
                 if not line:
                     raise TransportError("the server closed its output")
                 text = line.decode("utf-8", "replace").strip()

@@ -208,3 +208,47 @@ def test_explicit_env_in_config_still_wins(monkeypatch):
     env = _child_environment({"VIRTUAL_ENV": "/deliberate", "TOKEN": "abc"})
     assert env["VIRTUAL_ENV"] == "/deliberate"
     assert env["TOKEN"] == "abc"
+
+
+# -- oversized results ------------------------------------------------------
+
+
+def test_oversized_result_is_capped_with_actionable_advice():
+    """A 50KB result closed the backend connection outright.
+
+    Truncating silently would lose data with no explanation, so the note has to
+    tell the model both that it was cut and what to do differently.
+    """
+    from src.mcp.client.session import _cap
+
+    out = _cap("x" * 50_000, 8000, "looki_journals")
+    assert len(out) < 8400  # the body plus a short note
+    assert out.startswith("x" * 100)
+    assert "cut short" in out
+    assert "50000" in out and "8000" in out
+    assert "looki_journals" in out
+    assert "Ask for less" in out
+
+
+def test_result_within_the_cap_is_untouched():
+    from src.mcp.client.session import _cap
+
+    assert _cap("small", 8000, "t") == "small"
+
+
+def test_cap_of_zero_disables_trimming():
+    from src.mcp.client.session import _cap
+
+    big = "y" * 20_000
+    assert _cap(big, 0, "t") == big
+
+
+def test_stdio_stream_limit_is_well_above_asyncio_default():
+    """asyncio's 64KB readline limit raised on any larger reply.
+
+    Boswell's get_conversation and a fortnight of Looki journals both exceed
+    it, and the failure surfaced as an opaque ValueError rather than as data.
+    """
+    from src.mcp.client.transport import STREAM_LIMIT
+
+    assert STREAM_LIMIT > 64 * 1024

@@ -36,6 +36,14 @@ PROTOCOL_VERSION = "2024-11-05"
 
 CLIENT_INFO = {"name": "py-xiaozhi", "version": "1.0"}
 
+#: How much of a tool result to pass on. A local tool returns a sentence; a
+#: remote one can return the lot - a Looki journal query came back with 50KB of
+#: JSON, which the backend refused outright and dropped the connection. The
+#: model only has to summarise this for speech, so a generous few thousand
+#: characters is plenty, and being told it was truncated is more useful than
+#: silently losing the call.
+DEFAULT_MAX_RESULT_CHARS = 8000
+
 
 class McpServerSession:
     """A connection to one MCP server, made when first needed."""
@@ -44,6 +52,9 @@ class McpServerSession:
         self.name = name
         self.spec = spec
         self.timeout = float(spec.get("timeout", DEFAULT_TIMEOUT))
+        self.max_result_chars = int(
+            spec.get("max_result_chars", _configured_max_result_chars())
+        )
         self._transport: Transport | None = None
         self._next_id = 0
         self._connect_lock = asyncio.Lock()
@@ -190,7 +201,9 @@ class McpServerSession:
             err = reply["error"]
             message = err.get("message") if isinstance(err, dict) else str(err)
             return f"{self.name}.{tool} refused: {message}"
-        return _content_to_text(reply.get("result", {}))
+        return _cap(
+            _content_to_text(reply.get("result", {})), self.max_result_chars, tool
+        )
 
     async def _teardown(self) -> None:
         transport, self._transport = self._transport, None
@@ -203,6 +216,39 @@ class McpServerSession:
     async def close(self) -> None:
         await self._teardown()
         self._tools = []
+
+
+def _configured_max_result_chars() -> int:
+    """The cap from config, or the default if config is not up yet."""
+    try:
+        from src.utils.config_manager import get_config
+
+        return int(
+            get_config().get_config(
+                "MCP_CLIENT.MAX_RESULT_CHARS", DEFAULT_MAX_RESULT_CHARS
+            )
+        )
+    except Exception:
+        return DEFAULT_MAX_RESULT_CHARS
+
+
+def _cap(text: str, limit: int, tool: str) -> str:
+    """Trim an oversized result, and say so in a way the model can act on.
+
+    Sending the whole thing is not an option: the backend drops the connection
+    on a payload this large, which loses the answer and the conversation with
+    it. Truncating silently is worse than truncating loudly - if the model is
+    told it only got part of the data, and how to ask for less, it can narrow
+    the query itself instead of repeating the same call.
+    """
+    if limit <= 0 or len(text) <= limit:
+        return text
+    kept = text[:limit].rstrip()
+    return (
+        f"{kept}\n\n[cut short: {tool} returned {len(text)} characters and only "
+        f"the first {limit} are shown. Ask for less - a smaller limit, a single "
+        f"day, or a narrower search - rather than repeating this call.]"
+    )
 
 
 def _content_to_text(result: dict[str, Any]) -> str:
