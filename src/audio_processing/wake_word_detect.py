@@ -247,6 +247,15 @@ class WakeWordDetector:
         try:
             self._audio_queue.put_nowait(audio_data.copy())
         except asyncio.QueueFull:
+            self._dropped_frames += 1
+            now = time.time()
+            if now - self._last_drop_warning > 10:
+                self._last_drop_warning = now
+                logger.warning(
+                    f"wake word detection is behind: {self._dropped_frames} audio "
+                    "frames dropped. The keyword needs unbroken audio, so it may "
+                    "stop responding until this catches up."
+                )
             try:
                 self._audio_queue.get_nowait()
                 self._audio_queue.put_nowait(audio_data.copy())
@@ -463,6 +472,7 @@ class WakeWordDetector:
             return
 
         self._last_detection_time = current_time
+        logger.info(f"wake word detected: {result}")
 
         # pause detection briefly so the interrupt can finish, otherwise stale audio triggers a second detection
         self._paused = True

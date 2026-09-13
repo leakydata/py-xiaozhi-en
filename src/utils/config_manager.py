@@ -155,6 +155,17 @@ class ConfigManager:
                 "description": "Show/hide window",
             },
         },
+        # what to do when the connection to the server drops mid-use
+        "NETWORK_OPTIONS": {
+            # redial on our own after a drop. Without it the app sits idle
+            # until someone presses a button - and the wake word cannot help,
+            # because what the wake word needs is the connection that is gone.
+            "AUTO_RECONNECT": True,
+            # the backoff ceiling in seconds; attempts double from 2s up to it
+            "RECONNECT_MAX_DELAY": 60,
+            # 0 keeps trying for as long as the app is running
+            "RECONNECT_MAX_ATTEMPTS": 0,
+        },
         "AEC_OPTIONS": {
             "ENABLED": False,
             # AEC when active, TTS does not pause music - it ducks and plays in parallel (falling back to pausing if the engine is bypassed)

@@ -6,6 +6,7 @@ the application-level session logic - connect, listen, abort, the TTS loop.
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Optional
 
 from src.constants.constants import DeviceState, ListeningMode
@@ -38,6 +39,9 @@ class ConversationSession:
         self._aborted = False
         # for an MCP tool-config reconnect and the like: stay IDLE once the channel opens rather than listening automatically
         self._keep_idle_on_channel_open = False
+        #: The background redial started by a dropped connection. Only one runs
+        #: at a time, and anything that connects by hand cancels it.
+        self._reconnect_task: asyncio.Task | None = None
 
     # -------------------------
     # event subscriptions
@@ -59,6 +63,13 @@ class ConversationSession:
     # event handlers
     # -------------------------
     async def _on_audio_channel_opened(self, _=None) -> None:
+        # However the channel came back - redial, wake word or button - there
+        # is nothing left to reconnect to.
+        if self._reconnect_task is not None and not self._reconnect_task.done():
+            if self._reconnect_task is not asyncio.current_task():
+                self._reconnect_task.cancel()
+            self._reconnect_task = None
+
         if self._keep_idle_on_channel_open:
             self._keep_idle_on_channel_open = False
             self.state.set_keep_listening(False)
@@ -83,6 +94,96 @@ class ConversationSession:
                 f"failed to reset the device state after the network error: {e}",
                 exc_info=True,
             )
+        self._start_reconnect()
+
+    # -------------------------
+    # reconnecting after a drop
+    # -------------------------
+    def _reconnect_settings(self) -> tuple:
+        """How hard to try, from config."""
+        try:
+            from src.utils.config_manager import get_config
+
+            cfg = get_config()
+            return (
+                bool(cfg.get_config("NETWORK_OPTIONS.AUTO_RECONNECT", True)),
+                float(cfg.get_config("NETWORK_OPTIONS.RECONNECT_MAX_DELAY", 60)),
+                int(cfg.get_config("NETWORK_OPTIONS.RECONNECT_MAX_ATTEMPTS", 0)),
+            )
+        except Exception:
+            return True, 60.0, 0
+
+    def _start_reconnect(self) -> None:
+        """Redial in the background after the connection dropped.
+
+        Without this the app simply sits there: nothing else retries, so a
+        dropped websocket left it silent until someone pressed a button, and a
+        wake word could not bring it back either, because the thing the wake
+        word needs is the connection that is gone.
+        """
+        enabled, _, _ = self._reconnect_settings()
+        if not enabled:
+            logger.info("connection lost and automatic reconnect is off")
+            return
+        if self._reconnect_task is not None and not self._reconnect_task.done():
+            return
+        try:
+            self._reconnect_task = asyncio.ensure_future(self._reconnect_loop())
+        except RuntimeError:
+            # No running loop - nothing to schedule on, and nothing to be done.
+            logger.warning("cannot schedule a reconnect: no running event loop")
+
+    def cancel_reconnect(self) -> None:
+        """Stop redialing - something else has taken the connection in hand."""
+        task, self._reconnect_task = self._reconnect_task, None
+        if task is not None and not task.done():
+            task.cancel()
+
+    async def _reconnect_loop(self) -> None:
+        _, max_delay, max_attempts = self._reconnect_settings()
+        # First retry after a couple of seconds - long enough not to hammer a
+        # server that is restarting, short enough to be back before the user
+        # has finished wondering why it went quiet. Never above the ceiling.
+        delay, attempt = min(2.0, max_delay), 0
+        try:
+            while True:
+                attempt += 1
+                if max_attempts and attempt > max_attempts:
+                    logger.error(
+                        f"gave up reconnecting after {max_attempts} attempts; "
+                        "the wake word or the button will try again"
+                    )
+                    return
+                await asyncio.sleep(delay)
+
+                if self.protocol.is_audio_channel_opened():
+                    return
+
+                # Come back idle rather than listening: the drop interrupted
+                # whatever was being said, and opening a live microphone on a
+                # reconnect nobody asked for is not the right answer.
+                self._keep_idle_on_channel_open = True
+                try:
+                    ok = await self.connect_protocol()
+                except Exception as e:
+                    ok = False
+                    logger.debug(f"reconnect attempt {attempt} failed: {e}")
+                if ok:
+                    logger.info(f"reconnected after {attempt} attempt(s)")
+                    return
+                self._keep_idle_on_channel_open = False
+
+                logger.info(
+                    f"reconnect attempt {attempt} failed, trying again in "
+                    f"{min(delay * 2, max_delay):.0f}s"
+                )
+                delay = min(delay * 2, max_delay)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"the reconnect loop stopped: {e}", exc_info=True)
+        finally:
+            self._keep_idle_on_channel_open = False
 
     async def _on_device_state_changed(self, data: dict) -> None:
         new_state = data.get("new_state")
