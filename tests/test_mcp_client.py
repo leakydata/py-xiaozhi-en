@@ -170,3 +170,41 @@ async def test_proxy_forwards_under_the_remote_name():
     out = json.loads(await tool.call({"query": "kettle"}))
     assert out["content"][0]["text"] == "done"
     assert session.calls == [("search", {"query": "kettle"})]
+
+
+# -- child environment ------------------------------------------------------
+
+
+def test_child_environment_drops_our_virtualenv(monkeypatch):
+    """A child server must not inherit the host's Python environment.
+
+    py-xiaozhi runs under `uv run`, so VIRTUAL_ENV is set. A server launched as
+    `uv run ...` that inherited it resolved against py-xiaozhi's venv and died
+    on an import present in its own - which is exactly how Boswell failed while
+    passing every standalone test.
+    """
+    from src.mcp.client.transport import _child_environment
+
+    monkeypatch.setenv("VIRTUAL_ENV", "/home/u/app/.venv")
+    monkeypatch.setenv("PYTHONPATH", "/home/u/app")
+    monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", "/home/u/app/.venv")
+    monkeypatch.setenv("PATH", "/home/u/app/.venv/bin:/usr/bin:/bin")
+
+    env = _child_environment(None)
+
+    assert "VIRTUAL_ENV" not in env
+    assert "PYTHONPATH" not in env
+    assert "UV_PROJECT_ENVIRONMENT" not in env
+    # and the venv's bin is off PATH, so `python` is not shadowed either
+    assert "/home/u/app/.venv/bin" not in env["PATH"].split(":")
+    assert "/usr/bin" in env["PATH"].split(":")
+
+
+def test_explicit_env_in_config_still_wins(monkeypatch):
+    """Scrubbing must not override something the server's config asked for."""
+    from src.mcp.client.transport import _child_environment
+
+    monkeypatch.setenv("VIRTUAL_ENV", "/home/u/app/.venv")
+    env = _child_environment({"VIRTUAL_ENV": "/deliberate", "TOKEN": "abc"})
+    assert env["VIRTUAL_ENV"] == "/deliberate"
+    assert env["TOKEN"] == "abc"

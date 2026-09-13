@@ -32,6 +32,44 @@ class TransportError(RuntimeError):
     """The server could not be reached, or broke the framing."""
 
 
+#: Variables that tie a process to *our* Python environment. A child MCP server
+#: has its own, and inheriting these silently points it at ours instead.
+#: py-xiaozhi is normally started with `uv run`, so VIRTUAL_ENV is set; a server
+#: launched as `uv run ...` then resolves against py-xiaozhi's venv and dies on
+#: an import it would have found in its own. Clearing these makes a child start
+#: as it would from a fresh shell.
+_ENV_TO_DROP = (
+    "VIRTUAL_ENV",
+    "UV_PROJECT_ENVIRONMENT",
+    "PYTHONHOME",
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "PYTHONEXECUTABLE",
+)
+
+
+def _child_environment(overrides: dict[str, str] | None) -> dict[str, str]:
+    """The environment a child server should see."""
+    import os
+
+    env = dict(os.environ)
+    venv = env.get("VIRTUAL_ENV")
+    for name in _ENV_TO_DROP:
+        env.pop(name, None)
+
+    # Take the active venv's bin off PATH too, the way `deactivate` would.
+    # Leaving it there would keep shadowing `python` with ours.
+    if venv:
+        venv_bin = os.path.join(venv, "bin")
+        parts = [p for p in env.get("PATH", "").split(os.pathsep) if p != venv_bin]
+        env["PATH"] = os.pathsep.join(parts)
+
+    # An explicit env in the server's config is deliberate, so it wins.
+    if overrides:
+        env.update(overrides)
+    return env
+
+
 class Transport:
     """What a transport has to provide."""
 
@@ -83,11 +121,7 @@ class StdioTransport(Transport):
         return self._proc is not None and self._proc.returncode is None
 
     async def start(self) -> None:
-        import os
-
-        environment = None
-        if self.env:
-            environment = {**os.environ, **self.env}
+        environment = _child_environment(self.env)
 
         try:
             self._proc = await asyncio.create_subprocess_exec(
