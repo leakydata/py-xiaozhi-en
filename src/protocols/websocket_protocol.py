@@ -313,6 +313,7 @@ class WebsocketProtocol(Protocol):
                 )
             return
 
+        logger.info(f"-> server: {_describe_outgoing(message)}")
         try:
             await self.websocket.send(message)
         except websockets.ConnectionClosedOK as e:
@@ -409,3 +410,29 @@ class WebsocketProtocol(Protocol):
             logger.error(f"Failed to close the audio channel: {e}", exc_info=True)
         finally:
             self._is_closing = False
+
+
+def _describe_outgoing(message: str) -> str:
+    """One line saying what a text frame to the server was, without its contents.
+
+    The server has dropped the connection mid-reply with nothing in the log to
+    say what the app had just sent it. Text frames are rare - listen start and
+    stop, aborts, tool results - so naming each one costs little and turns
+    "closed while sending text" into something that can be traced.
+    """
+    try:
+        data = json.loads(message)
+    except (TypeError, ValueError):
+        return f"non-JSON text, {len(message)} bytes"
+    parts = [str(data.get("type", "?"))]
+    if data.get("state"):
+        parts.append(str(data["state"]))
+    if data.get("mode"):
+        parts.append(f"mode={data['mode']}")
+    payload = data.get("payload")
+    if isinstance(payload, dict):
+        if payload.get("method"):
+            parts.append(str(payload["method"]))
+        elif "id" in payload:
+            parts.append(f"reply to #{payload['id']}")
+    return f"{' '.join(parts)}, {len(message)} bytes"
