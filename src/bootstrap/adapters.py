@@ -77,6 +77,9 @@ class PluginCommandsAdapter:
     def set_client_endpointing(self, value: bool) -> None:
         self._container.state.client_endpointing = bool(value)
 
+    def mute_capture(self, seconds: float) -> None:
+        self._container.state.mute_capture(seconds)
+
     async def send_audio(self, data: bytes) -> None:
         await self._container.protocol.send_audio(data)
 

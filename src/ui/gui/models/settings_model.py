@@ -343,6 +343,12 @@ class SettingsModel(
         SettingsSystemOptionsMixin._set_turnTakingInterruptions,
         notify=settingsChanged,
     )
+    turnTakingBackchannels = Property(
+        bool,
+        SettingsSystemOptionsMixin._get_turnTakingBackchannels,
+        SettingsSystemOptionsMixin._set_turnTakingBackchannels,
+        notify=settingsChanged,
+    )
     turnTakingIncompleteS = Property(
         float,
         SettingsSystemOptionsMixin._get_turnTakingIncompleteS,

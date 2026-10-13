@@ -25,12 +25,15 @@ from __future__ import annotations
 
 import asyncio
 import threading
+import time
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from src.audio_processing.turn_judge import (
+    BackchannelSettings,
     TurnSettings,
+    backchannel_due,
     is_interruption,
     turn_over,
 )
@@ -63,6 +66,11 @@ class TurnTakingPlugin(Plugin):
         self._phase: DeviceState | None = None
         self._assistant_said: list[str] = []
         self._enabled = False
+        #: When the last "mm-hm" was played, and until when the microphone is
+        #: ignored because it is hearing that "mm-hm".
+        self._last_backchannel = 0.0
+        self._mute_until = 0.0
+        self._harvester = None
 
     # ------------------------------------------------------------ settings
 
@@ -164,6 +172,8 @@ class TurnTakingPlugin(Plugin):
 
     def on_audio_data(self, audio_data: np.ndarray) -> None:
         """Called from the audio thread with 16 kHz mono frames."""
+        if time.monotonic() < self._mute_until:
+            return  # our own "mm-hm" coming back; not part of the user's turn
         with self._buf_lock:
             self._buf.append(np.asarray(audio_data, dtype=np.float32).reshape(-1))
 
@@ -180,9 +190,100 @@ class TurnTakingPlugin(Plugin):
     async def on_incoming_json(self, message) -> None:
         if not isinstance(message, dict) or message.get("type") != "tts":
             return
-        if message.get("state") == "sentence_start" and message.get("text"):
+        state = message.get("state")
+        if state == "sentence_start" and message.get("text"):
             self._assistant_said.append(message["text"])
             del self._assistant_said[:-_ECHO_SENTENCES]
+        self._harvest(state, message.get("text"))
+
+    # ------------------------------------------------------------ learning the murmurs
+
+    def _codec(self):
+        return self._audio_plugin.codec if self._audio_plugin else None
+
+    def _harvest(self, state, text) -> None:
+        """Record the assistant saying its fillers, once asked to.
+
+        Independent of the rest of turn-taking: it only needs the assistant's
+        voice, so it works whether or not the speech models are loaded.
+        """
+        from src.audio_processing.backchannel import Harvester, get_store
+
+        codec = self._codec()
+        store = get_store()
+        if codec is None:
+            return
+        if self._harvester is None:
+            if store.armed and state in ("start", "sentence_start"):
+                codec.start_tts_capture()
+                self._harvester = Harvester()
+            else:
+                return
+        if state == "sentence_start" and text:
+            self._harvester.mark(codec.tts_captured_samples(), text)
+        elif state == "stop":
+            self._finish_harvest()
+
+    def _finish_harvest(self) -> None:
+        from src.audio_processing.backchannel import get_store
+        from src.constants.constants import AudioConfig
+
+        codec, harvester, self._harvester = self._codec(), self._harvester, None
+        pcm = codec.stop_tts_capture() if codec else None
+        if pcm is None or harvester is None:
+            return
+        rate = int(AudioConfig.OUTPUT_SAMPLE_RATE)
+        store = get_store()
+        learned = [
+            n
+            for n, seg in harvester.split(pcm, rate).items()
+            if store.save(n, seg, rate)
+        ]
+        if learned:
+            store.disarm()
+            logger.info(
+                f"backchannel: learned {', '.join(learned)} in the assistant's voice"
+            )
+        else:
+            logger.info(
+                "backchannel: that reply held no fillers on their own; still listening for them"
+            )
+
+    def _maybe_backchannel(self, tick) -> None:
+        if not self._cfg("BACKCHANNELS", False):
+            return
+        now = time.monotonic()
+        if not backchannel_due(
+            tick["text"],
+            tick.get("silence_words_s", tick["silence_s"]),
+            tick["speech_s"],
+            now - self._last_backchannel,
+            BackchannelSettings(
+                min_gap_s=float(self._cfg("BACKCHANNEL_MIN_GAP_S", 6.0))
+            ),
+            self._settings(),
+            speaking=tick["speaking"],
+        ):
+            return
+        from src.audio_processing.backchannel import get_store
+        from src.constants.constants import AudioConfig
+
+        codec = self._codec()
+        rate = int(AudioConfig.OUTPUT_SAMPLE_RATE)
+        clip = get_store().pick(rate) if codec else None
+        if clip is None:
+            return  # nothing learned yet
+        volume = float(self._cfg("BACKCHANNEL_VOLUME", 0.8))
+        codec.play_local(clip * volume)
+        self._last_backchannel = now
+        seconds = len(clip) / rate + 0.25  # plus the tail of the room's echo
+        self._mute_until = now + seconds
+        if not self.ctx.get_config().get_config("AEC_OPTIONS.ENABLED", False):
+            # No echo cancellation to take it out of the microphone, so hold
+            # the microphone back from the server for the length of the clip.
+            # It lands in a pause, so this costs silence, not words.
+            self.cmd.mute_capture(seconds)
+        logger.info(f"turn-taking: backchannel after {tick['text'][-40:]!r}")
 
     # ------------------------------------------------------------ the loop
 
@@ -228,6 +329,8 @@ class TurnTakingPlugin(Plugin):
             ):
                 logger.info(f"turn-taking: turn over after {tick['text'][-60:]!r}")
                 await self.cmd.end_user_turn()
+            elif tick:
+                self._maybe_backchannel(tick)
             return
 
         if state == DeviceState.SPEAKING:

@@ -172,6 +172,11 @@ class ConfigManager:
             "TICK_S": 0.3,
             # real words, not echoes or backchannels, needed to interrupt
             "BARGE_IN_WORDS": 2,
+            # "mm-hm", "yeah" in the user's pauses, in the assistant's own voice
+            # (learned once: ask it to "learn your listening sounds")
+            "BACKCHANNELS": False,
+            "BACKCHANNEL_MIN_GAP_S": 6.0,
+            "BACKCHANNEL_VOLUME": 0.8,
             # names the recogniser should favour
             "HOTWORDS": ["Boswell", "Xiaozhi", "Looki", "Omi"],
             "BOSWELL_SERVER_DIR": "~/Documents/electronics/boswell_server",

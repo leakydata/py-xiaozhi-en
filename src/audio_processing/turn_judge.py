@@ -93,6 +93,14 @@ class TurnSettings:
     #: Real words needed while the assistant is talking before it is treated
     #: as an interruption rather than a backchannel.
     barge_in_words: int = 2
+    #: Once someone has talked this long they are telling something, and a
+    #: full stop is more often a breath between sentences than the end of it:
+    #: a listener says "mm-hm" there and takes the turn on a question or a
+    #: longer pause. On the benchmark, 7 of 10 cut-offs were exactly this - a
+    #: finished sentence that Nathan went on from.
+    long_turn_s: float = 8.0
+    #: How long a finished statement is held once the turn is long.
+    long_complete_s: float = 1.3
 
 
 def words_of(text: str) -> list[str]:
@@ -126,10 +134,18 @@ def ending(text: str) -> str:
     return "neutral"
 
 
-def hold_for(text: str, settings: TurnSettings = TurnSettings()) -> float:
+def _is_question(text: str) -> bool:
+    return (text or "").rstrip().endswith("?")
+
+
+def hold_for(
+    text: str, settings: TurnSettings = TurnSettings(), speech_s: float = 0.0
+) -> float:
     """How long a silence after this transcript has to last to end the turn."""
     kind = ending(text)
     if kind == "complete":
+        if speech_s >= settings.long_turn_s and not _is_question(text):
+            return settings.long_complete_s
         return settings.complete_s
     if kind == "incomplete":
         return settings.incomplete_s
@@ -168,7 +184,7 @@ def turn_over(
     kind = ending(text)
     if kind == "incomplete" and vad_silence_s is not None:
         silence_s = min(silence_s, vad_silence_s)
-    return silence_s >= hold_for(text, settings)
+    return silence_s >= hold_for(text, settings, speech_s)
 
 
 def is_backchannel(text: str) -> bool:
@@ -194,3 +210,70 @@ def is_interruption(
     echo = set(words_of(assistant_text))
     own = [t for t in tokens if t not in BACKCHANNELS and t not in echo]
     return len(own) >= settings.barge_in_words
+
+
+# ---------------------------------------------------------------- backchannels
+
+
+@dataclass(frozen=True)
+class BackchannelSettings:
+    """When to murmur "mm-hm" so the user can tell they are being listened to.
+
+    From MicroTurn's dataset rules: only once the user has been talking a
+    while, never too often, and only at a clause break - the moments a good
+    listener nods. Their trained model placed fillers right about a third of
+    the time and, in one run, said "mm-hm" 950 times where 164 were called for,
+    so these lean sparse.
+    """
+
+    #: The user has to have been talking this long in the turn.
+    min_speech_s: float = 3.6
+    #: Never closer together than this.
+    min_gap_s: float = 6.0
+    #: The pause it lands in: long enough to be a pause, short enough that it
+    #: reads as a reaction rather than a late afterthought.
+    earliest_s: float = 0.45
+    latest_s: float = 1.0
+    #: And never this close to the moment the turn would end, so "mm-hm" is not
+    #: immediately followed by a full answer.
+    clear_of_end_s: float = 0.3
+
+
+def backchannel_due(
+    text: str,
+    silence_s: float,
+    speech_s: float,
+    since_last_s: float,
+    settings: BackchannelSettings = BackchannelSettings(),
+    turn: TurnSettings = TurnSettings(),
+    *,
+    speaking: bool = False,
+) -> bool:
+    """Is this pause a good moment for "mm-hm"?
+
+    At a clause break, an open-ended pause, or - once the user has been
+    talking a while - the end of a statement. A question always gets an
+    answer, not a murmur, as does a finished sentence in a short turn; a
+    phrase cut off on "my" or "the" is someone searching for a word, and a
+    listener waits quietly there.
+    """
+    if (
+        speaking
+        or speech_s < settings.min_speech_s
+        or since_last_s < settings.min_gap_s
+    ):
+        return False
+    if not (settings.earliest_s <= silence_s <= settings.latest_s):
+        return False
+    stripped = (text or "").rstrip()
+    clause_break = stripped.endswith((",", ";", ":"))
+    kind = ending(stripped)
+    # In a long telling, the end of a statement is where a listener nods.
+    statement_in_a_story = (
+        kind == "complete"
+        and speech_s >= turn.long_turn_s
+        and not _is_question(stripped)
+    )
+    if not (clause_break or kind == "neutral" or statement_in_a_story):
+        return False
+    return silence_s <= hold_for(stripped, turn, speech_s) - settings.clear_of_end_s

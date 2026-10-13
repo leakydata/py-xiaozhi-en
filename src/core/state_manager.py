@@ -4,6 +4,7 @@ Centralises device state and broadcasts changes over the event bus.
 """
 
 import asyncio
+import time
 from typing import TYPE_CHECKING
 
 from src.constants.constants import DeviceState, ListeningMode
@@ -65,6 +66,10 @@ class StateManager:
         #: device stays LISTENING - dropping to IDLE would end an auto session
         #: in the UI - but nothing more is sent until the reply starts.
         self._turn_ended: bool = False
+        #: Until when microphone audio is held back from the server: while the
+        #: assistant murmurs "mm-hm" with no echo cancellation to remove it,
+        #: so the server does not hear the assistant inside the user's turn.
+        self._capture_muted_until: float = 0.0
 
     # -------------------------
     # device state
@@ -188,6 +193,9 @@ class StateManager:
     def set_turn_ended(self, value: bool) -> None:
         self._turn_ended = value
 
+    def mute_capture(self, seconds: float) -> None:
+        self._capture_muted_until = time.monotonic() + max(seconds, 0.0)
+
     def should_capture_audio(self) -> bool:
         """Whether microphone audio should be captured.
 
@@ -196,7 +204,9 @@ class StateManager:
         2. speaking, but AEC is on and realtime mode keeps listening
         """
         if self._device_state == DeviceState.LISTENING and not self._aborted:
-            return not self._turn_ended
+            return (
+                not self._turn_ended and time.monotonic() >= self._capture_muted_until
+            )
 
         return (
             self._device_state == DeviceState.SPEAKING

@@ -88,6 +88,9 @@ class AudioCodec:
         self._is_closing = False
         self._closed = False
         self._server_opus_logged = False
+        #: While set, every decoded TTS frame is also kept here - used once to
+        #: record the assistant's own voice saying "mm-hm", "yeah" and so on.
+        self._tts_capture: list[np.ndarray] | None = None
         self._last_output_status_log = 0.0
 
     async def initialize(self):
@@ -403,9 +406,39 @@ class AudioCodec:
             audio_float32 = self.opus_codec.decode(opus_data, frame_size)
 
             self._tts_fifo.push(audio_float32)
+            if self._tts_capture is not None:
+                self._tts_capture.append(np.array(audio_float32, copy=True))
 
         except Exception as e:
             logger.warning(f"Audio write failed: {e}", exc_info=True)
+
+    def start_tts_capture(self) -> None:
+        """Start keeping a copy of the assistant's decoded speech."""
+        self._tts_capture = []
+
+    @property
+    def capturing_tts(self) -> bool:
+        return self._tts_capture is not None
+
+    def tts_captured_samples(self) -> int:
+        frames = self._tts_capture
+        return sum(len(f) for f in frames) if frames else 0
+
+    def stop_tts_capture(self) -> np.ndarray | None:
+        """Stop, and return what was kept (OUTPUT_SAMPLE_RATE, float32)."""
+        frames, self._tts_capture = self._tts_capture, None
+        if not frames:
+            return None
+        return np.concatenate(frames).reshape(-1).astype(np.float32)
+
+    def play_local(self, pcm_float32: np.ndarray) -> None:
+        """Play a short clip through the same path as the assistant's voice.
+
+        Going through the TTS mix means echo cancellation, when it is on, has
+        it in the far reference and removes it from the microphone like any
+        other speech of the assistant's.
+        """
+        self._tts_fifo.push(np.asarray(pcm_float32, dtype=np.float32))
 
     async def write_pcm_direct(self, pcm_float32: np.ndarray):
         """Write music PCM (float32, used by MusicPlayer) with watermark backpressure.

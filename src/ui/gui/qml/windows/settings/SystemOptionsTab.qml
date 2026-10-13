@@ -179,6 +179,20 @@ ScrollView {
                 }
 
                 Text {
+                    text: "Listening Sounds"
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.textSecondary
+                    Layout.preferredWidth: 100
+                    opacity: turnTakingSwitch.checked ? 1 : 0.45
+                }
+                XSwitch {
+                    enabled: turnTakingSwitch.checked
+                    opacity: turnTakingSwitch.checked ? 1 : 0.45
+                    checked: settingsModel ? settingsModel.turnTakingBackchannels : false
+                    onToggled: if (settingsModel) settingsModel.turnTakingBackchannels = checked
+                }
+
+                Text {
                     text: "Wait After Unfinished Phrase"
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
@@ -203,7 +217,7 @@ ScrollView {
 
             Text {
                 Layout.fillWidth: true
-                text: "Decides when you've finished from what you said, not just the pause: \"I'm looking for my...\" waits, a finished question gets answered in under a second. With interruptions on, talking over the assistant stops it, but \"yeah\" or \"mm-hm\" don't. Runs on the home server's speech models (Parakeet + pyannote), which take about 30 s to load after switching on; until then, and if they can't load, conversations work exactly as before. Takes effect when settings are saved."
+                text: "Decides when you've finished from what you said, not just the pause: \"I'm looking for my...\" waits, a finished question gets answered in under a second. With interruptions on, talking over the assistant stops it, but \"yeah\" or \"mm-hm\" don't. Runs on the home server's speech models (Parakeet + pyannote), which take about 30 s to load after switching on; until then, and if they can't load, conversations work exactly as before. Listening sounds: an occasional \"mm-hm\" or \"yeah\" in your pauses, in the assistant's own voice - say \"learn your listening sounds\" to it once to record them. Takes effect when settings are saved."
                 font.pixelSize: Theme.fontSizeXs
                 color: Theme.textSecondary
                 wrapMode: Text.WordWrap

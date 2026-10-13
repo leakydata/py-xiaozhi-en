@@ -148,6 +148,13 @@ class SettingsSystemOptionsMixin:
     def _set_turnTakingInterruptions(self, value: bool):
         self._set_value("TURN_TAKING.INTERRUPTIONS", bool(value))
 
+    # "mm-hm" / "yeah" in the user's pauses, in the assistant's own voice
+    def _get_turnTakingBackchannels(self) -> bool:
+        return bool(self._get_value("TURN_TAKING.BACKCHANNELS", False))
+
+    def _set_turnTakingBackchannels(self, value: bool):
+        self._set_value("TURN_TAKING.BACKCHANNELS", bool(value))
+
     # how long to wait after an unfinished phrase ("I'm looking for my...")
     def _get_turnTakingIncompleteS(self) -> float:
         try:

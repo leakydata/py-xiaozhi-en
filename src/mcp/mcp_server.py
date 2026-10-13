@@ -188,6 +188,11 @@ class McpServer:
 
         register_mcp_client_tools(self.add_tool, self)
 
+        # the assistant's own listening sounds, learned by voice
+        from src.mcp.tools.conversation import register_conversation_tools
+
+        register_conversation_tools(self.add_tool)
+
         # external: plugin packages from the user directory (each with its own lib/), failures isolated
         try:
             from src.mcp.plugins.loader import load_mcp_plugins_from_config
