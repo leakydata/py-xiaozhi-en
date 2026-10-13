@@ -28,7 +28,11 @@ def register_memory_tools(add_tool: Callable[[McpTool], None]) -> None:
             "remember",
             (
                 "Save something to long-term memory so it can be recalled in "
-                "later conversations. Use this whenever the user tells you "
+                "later conversations. This is your main memory: a database on "
+                "the user's own computer with no size limit, searched by "
+                "meaning with recall. Always use this one to store anything - "
+                "not the built-in 'memory' tool, which is a small store on the "
+                "website that is already full. Use this whenever the user tells you "
                 "something worth keeping: preferences, facts about their home, "
                 "vehicles or equipment, part numbers, people's names, where "
                 "things are kept. Do not use it for reminders with a time - use "
