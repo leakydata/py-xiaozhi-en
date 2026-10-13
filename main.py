@@ -182,6 +182,11 @@ if __name__ == "__main__":
             qt_app = QApplication.instance() or QApplication(sys.argv)
             qt_app.setQuitOnLastWindowClosed(False)
 
+            # Record why the process ends, however it ends (logs/exit.log).
+            from src.utils import exit_diagnostics
+
+            exit_diagnostics.install_qt_messages()
+
             loop = qasync.QEventLoop(qt_app)
             asyncio.set_event_loop(loop)
             logger.info("Created the PySide6 + qasync event loop")
@@ -189,11 +194,11 @@ if __name__ == "__main__":
             # SIGINT: ask the TaskManager to shut down
             shutdown_state = {"requested": False}
 
-            def handle_sigint(*_):
+            def handle_sigint(*_, name="SIGINT"):
                 if shutdown_state["requested"]:
                     return
                 shutdown_state["requested"] = True
-                logger.info("SIGINT received, exiting...")
+                logger.info(f"{name} received, exiting...")
 
                 # request a graceful shutdown through the TaskManager
                 try:
@@ -207,6 +212,12 @@ if __name__ == "__main__":
                     qt_app.quit()
 
             signal.signal(signal.SIGINT, handle_sigint)
+            # SIGTERM and SIGHUP (the terminal closing) used to end the app with
+            # nothing in the log; now they shut down the same way Ctrl+C does.
+            exit_path = exit_diagnostics.install(
+                on_signal=lambda name: handle_sigint(name=name)
+            )
+            logger.info(f"exit diagnostics: {exit_path}")
 
             try:
                 with loop:
