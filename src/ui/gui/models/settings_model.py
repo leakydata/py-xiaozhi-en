@@ -331,6 +331,24 @@ class SettingsModel(
         SettingsSystemOptionsMixin._set_mqttSubscribeTopic,
         notify=settingsChanged,
     )
+    turnTakingEnabled = Property(
+        bool,
+        SettingsSystemOptionsMixin._get_turnTakingEnabled,
+        SettingsSystemOptionsMixin._set_turnTakingEnabled,
+        notify=settingsChanged,
+    )
+    turnTakingInterruptions = Property(
+        bool,
+        SettingsSystemOptionsMixin._get_turnTakingInterruptions,
+        SettingsSystemOptionsMixin._set_turnTakingInterruptions,
+        notify=settingsChanged,
+    )
+    turnTakingIncompleteS = Property(
+        float,
+        SettingsSystemOptionsMixin._get_turnTakingIncompleteS,
+        SettingsSystemOptionsMixin._set_turnTakingIncompleteS,
+        notify=settingsChanged,
+    )
     aecEnabled = Property(
         bool,
         SettingsSystemOptionsMixin._get_aecEnabled,

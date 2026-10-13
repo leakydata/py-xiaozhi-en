@@ -134,6 +134,89 @@ ScrollView {
             color: Theme.divider
         }
 
+        // Natural conversation section
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: Theme.spacingMd
+
+            Text {
+                text: "Natural Conversation"
+                font.pixelSize: Theme.fontSizeMd
+                font.weight: Font.Medium
+                color: Theme.textSecondary
+            }
+
+            GridLayout {
+                Layout.fillWidth: true
+                columns: 2
+                rowSpacing: Theme.spacingMd
+                columnSpacing: Theme.spacingLg
+
+                Text {
+                    text: "Enable"
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.textSecondary
+                    Layout.preferredWidth: 100
+                }
+                XSwitch {
+                    id: turnTakingSwitch
+                    checked: settingsModel ? settingsModel.turnTakingEnabled : false
+                    onToggled: if (settingsModel) settingsModel.turnTakingEnabled = checked
+                }
+
+                Text {
+                    text: "Let Me Interrupt"
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.textSecondary
+                    Layout.preferredWidth: 100
+                    opacity: turnTakingSwitch.checked ? 1 : 0.45
+                }
+                XSwitch {
+                    enabled: turnTakingSwitch.checked
+                    opacity: turnTakingSwitch.checked ? 1 : 0.45
+                    checked: settingsModel ? settingsModel.turnTakingInterruptions : true
+                    onToggled: if (settingsModel) settingsModel.turnTakingInterruptions = checked
+                }
+
+                Text {
+                    text: "Wait After Unfinished Phrase"
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.textSecondary
+                    Layout.preferredWidth: 100
+                    opacity: turnTakingSwitch.checked ? 1 : 0.45
+                }
+                XSpinBox {
+                    // tenths of a second, shown as seconds
+                    Layout.preferredWidth: 120
+                    enabled: turnTakingSwitch.checked
+                    opacity: turnTakingSwitch.checked ? 1 : 0.45
+                    from: 10
+                    to: 80
+                    stepSize: 5
+                    value: settingsModel ? Math.round(settingsModel.turnTakingIncompleteS * 10) : 30
+                    textFromValue: function(v, locale) { return (v / 10).toFixed(1) + " s" }
+                    valueFromText: function(t, locale) { return Math.round(parseFloat(t) * 10) }
+                    onValueModified: if (settingsModel) settingsModel.turnTakingIncompleteS = value / 10
+                    font.pixelSize: Theme.fontSizeSm
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                text: "Decides when you've finished from what you said, not just the pause: \"I'm looking for my...\" waits, a finished question gets answered in under a second. With interruptions on, talking over the assistant stops it, but \"yeah\" or \"mm-hm\" don't. Runs on the home server's speech models (Parakeet + pyannote), which take about 30 s to load after switching on; until then, and if they can't load, conversations work exactly as before. Takes effect when settings are saved."
+                font.pixelSize: Theme.fontSizeXs
+                color: Theme.textSecondary
+                wrapMode: Text.WordWrap
+            }
+        }
+
+        // Divider
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Theme.divider
+        }
+
         // Echo cancellation section
         ColumnLayout {
             Layout.fillWidth: true

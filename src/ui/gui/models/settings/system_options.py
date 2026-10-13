@@ -135,6 +135,29 @@ class SettingsSystemOptionsMixin:
     def _set_mqttSubscribeTopic(self, value: str):
         self._set_value("SYSTEM_OPTIONS.NETWORK.MQTT_INFO.subscribe_topic", value)
 
+    # natural turn-taking: end turns from the words, and allow interruptions
+    def _get_turnTakingEnabled(self) -> bool:
+        return bool(self._get_value("TURN_TAKING.ENABLED", False))
+
+    def _set_turnTakingEnabled(self, value: bool):
+        self._set_value("TURN_TAKING.ENABLED", bool(value))
+
+    def _get_turnTakingInterruptions(self) -> bool:
+        return bool(self._get_value("TURN_TAKING.INTERRUPTIONS", True))
+
+    def _set_turnTakingInterruptions(self, value: bool):
+        self._set_value("TURN_TAKING.INTERRUPTIONS", bool(value))
+
+    # how long to wait after an unfinished phrase ("I'm looking for my...")
+    def _get_turnTakingIncompleteS(self) -> float:
+        try:
+            return float(self._get_value("TURN_TAKING.INCOMPLETE_S", 3.0))
+        except (TypeError, ValueError):
+            return 3.0
+
+    def _set_turnTakingIncompleteS(self, value: float):
+        self._set_value("TURN_TAKING.INCOMPLETE_S", round(float(value), 1))
+
     # whether AEC is on
     def _get_aecEnabled(self) -> bool:
         return self._get_value("AEC_OPTIONS.ENABLED", False)

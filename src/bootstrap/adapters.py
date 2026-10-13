@@ -44,6 +44,9 @@ class PluginContextAdapter:
     def is_keep_listening(self) -> bool:
         return self._container.state.keep_listening
 
+    def is_turn_ended(self) -> bool:
+        return self._container.state.turn_ended
+
     def get_config(self) -> ConfigManager:
         return self._container.config
 
@@ -67,6 +70,12 @@ class PluginCommandsAdapter:
 
     async def abort_speaking(self, reason: str) -> None:
         await self._container.session.abort_speaking(reason)
+
+    async def end_user_turn(self) -> None:
+        await self._container.session.end_user_turn()
+
+    def set_client_endpointing(self, value: bool) -> None:
+        self._container.state.client_endpointing = bool(value)
 
     async def send_audio(self, data: bytes) -> None:
         await self._container.protocol.send_audio(data)

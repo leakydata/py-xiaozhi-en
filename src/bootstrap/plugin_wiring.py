@@ -60,6 +60,7 @@ async def setup_plugins(
     from src.plugins.mcp import McpPlugin
     from src.plugins.reminders import RemindersPlugin
     from src.plugins.shortcuts import ShortcutsPlugin
+    from src.plugins.turn_taking import TurnTakingPlugin
     from src.plugins.ui import UIPlugin
     from src.plugins.wake_word import WakeWordPlugin
 
@@ -71,6 +72,7 @@ async def setup_plugins(
     ui_plugin = UIPlugin(mode=mode, task_manager=container.tasks)
     shortcuts_plugin = ShortcutsPlugin()
     reminders_plugin = RemindersPlugin()
+    turn_taking_plugin = TurnTakingPlugin()
     mcp_plugin = McpPlugin(
         server=container.mcp_server,
         music_player=container.music_player,
@@ -83,6 +85,7 @@ async def setup_plugins(
         ui_plugin,
         shortcuts_plugin,
         reminders_plugin,
+        turn_taking_plugin,
     )
 
     await container.plugins.setup_all(ctx, cmd)

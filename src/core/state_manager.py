@@ -57,6 +57,15 @@ class StateManager:
         # abort flag
         self._aborted: bool = False
 
+        #: Turn-taking decides locally when the user has finished, rather than
+        #: leaving it to the server. Set by the turn-taking plugin while its
+        #: models are loaded and the feature is switched on.
+        self.client_endpointing: bool = False
+        #: The user's turn was ended locally and the reply is awaited. The
+        #: device stays LISTENING - dropping to IDLE would end an auto session
+        #: in the UI - but nothing more is sent until the reply starts.
+        self._turn_ended: bool = False
+
     # -------------------------
     # device state
     # -------------------------
@@ -81,6 +90,7 @@ class StateManager:
 
             old_state = self._device_state
             self._device_state = state
+            self._turn_ended = False
             logger.info(f"device state: {old_state} -> {state}")
 
             # clear the abort flag
@@ -171,6 +181,13 @@ class StateManager:
     # -------------------------
     # derived state
     # -------------------------
+    @property
+    def turn_ended(self) -> bool:
+        return self._turn_ended
+
+    def set_turn_ended(self, value: bool) -> None:
+        self._turn_ended = value
+
     def should_capture_audio(self) -> bool:
         """Whether microphone audio should be captured.
 
@@ -179,10 +196,11 @@ class StateManager:
         2. speaking, but AEC is on and realtime mode keeps listening
         """
         if self._device_state == DeviceState.LISTENING and not self._aborted:
-            return True
+            return not self._turn_ended
 
         return (
             self._device_state == DeviceState.SPEAKING
+            and not self.client_endpointing
             and self._aec_enabled
             and self._keep_listening
             and self._listening_mode == ListeningMode.REALTIME

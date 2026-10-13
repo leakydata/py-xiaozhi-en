@@ -213,6 +213,7 @@ class ConversationSession:
         if (
             self.state.keep_listening
             and self.state.listening_mode == ListeningMode.REALTIME
+            and not getattr(self.state, "client_endpointing", False)
         ):
             await self.state.set_device_state(DeviceState.LISTENING)
         else:
@@ -236,7 +237,9 @@ class ConversationSession:
         # realtime is usually still listening, so there is no need to send it twice
         if self.state.listening_mode != ListeningMode.REALTIME:
             try:
-                await self.protocol.send_start_listening(self.state.listening_mode)
+                await self.protocol.send_start_listening(
+                    self._wire_mode(self.state.listening_mode)
+                )
             except Exception as e:
                 logger.warning(
                     f"failed to listen again after TTS: {e}",
@@ -305,6 +308,64 @@ class ConversationSession:
             self._keep_idle_on_channel_open = False
             logger.error(f"protocol reconnect failed: {e}", exc_info=True)
 
+    # -------------------------
+    # client-side turn-taking
+    # -------------------------
+    #: How long to wait for a reply after ending the user's turn before
+    #: listening again. The server says nothing at all when it heard nothing
+    #: worth answering, and without this the conversation would just stop.
+    REPLY_TIMEOUT_S = 10.0
+
+    def _wire_mode(self, mode: ListeningMode) -> ListeningMode:
+        """The mode to ask the server for.
+
+        While turn-taking is on, the client decides when the user has finished,
+        so an automatic conversation is opened as "manual" - the server then
+        waits for the client's "listen stop" instead of guessing from silence.
+        Everything else about the conversation (keep listening, re-listening
+        after a reply) carries on exactly as before.
+        """
+        # getattr: a state object from before this feature simply means "off".
+        if (
+            getattr(self.state, "client_endpointing", False)
+            and mode != ListeningMode.MANUAL
+        ):
+            return ListeningMode.MANUAL
+        return mode
+
+    async def end_user_turn(self) -> None:
+        """The client judged the user finished: tell the server to answer."""
+        if not self.state.is_listening() or self.state.turn_ended:
+            return
+        if not self.protocol.is_audio_channel_opened():
+            return
+        self.state.set_turn_ended(True)
+        self._turn_number = getattr(self, "_turn_number", 0) + 1
+        await self.protocol.send_stop_listening()
+        logger.info("turn-taking: user finished, asking for the reply")
+        asyncio.ensure_future(self._reply_watchdog(self._turn_number))
+
+    async def _reply_watchdog(self, turn: int) -> None:
+        await asyncio.sleep(self.REPLY_TIMEOUT_S)
+        # Still waiting on this same turn, still meant to be in a
+        # conversation: the server let it go unanswered, so hand the floor
+        # back. A later turn's wait is that turn's watchdog's business.
+        if (
+            turn == getattr(self, "_turn_number", 0)
+            and self.state.turn_ended
+            and self.state.is_listening()
+            and self.state.keep_listening
+            and self.protocol.is_audio_channel_opened()
+        ):
+            logger.info("turn-taking: no reply came, listening again")
+            self.state.set_turn_ended(False)
+            try:
+                await self.protocol.send_start_listening(
+                    self._wire_mode(self.state.listening_mode)
+                )
+            except Exception as e:
+                logger.warning(f"could not listen again: {e}")
+
     async def start_listening(self, mode: ListeningMode) -> None:
         ok = await self.connect_protocol()
         if not ok:
@@ -312,7 +373,7 @@ class ConversationSession:
 
         self.state.set_listening_mode(mode)
         self.state.set_keep_listening(mode != ListeningMode.MANUAL)
-        await self.protocol.send_start_listening(mode)
+        await self.protocol.send_start_listening(self._wire_mode(mode))
         await self.state.set_device_state(DeviceState.LISTENING)
 
     async def stop_listening(self) -> None:
@@ -352,7 +413,7 @@ class ConversationSession:
         self.state.set_listening_mode(mode)
         self.state.set_keep_listening(True)
 
-        await self.protocol.send_start_listening(mode)
+        await self.protocol.send_start_listening(self._wire_mode(mode))
         await self.state.set_device_state(DeviceState.LISTENING)
 
     async def abort_speaking(self, reason: str) -> None:
@@ -375,7 +436,7 @@ class ConversationSession:
                 if self.protocol.is_audio_channel_opened():
                     try:
                         await self.protocol.send_start_listening(
-                            self.state.listening_mode
+                            self._wire_mode(self.state.listening_mode)
                         )
                     except Exception as e:
                         logger.warning(

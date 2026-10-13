@@ -155,6 +155,29 @@ class ConfigManager:
                 "description": "Show/hide window",
             },
         },
+        # natural turn-taking: decide locally, from the words, when the user has
+        # finished, and let them interrupt. Off until it has been tried live.
+        # Uses the home server's own models (Parakeet v3 + pyannote) through a
+        # sidecar running in boswell_server's environment; see sidecars/.
+        "TURN_TAKING": {
+            "ENABLED": False,
+            # cut in while the assistant is talking ("yeah"/"mm-hm" never count)
+            "INTERRUPTIONS": True,
+            # seconds of silence before the turn ends, by how the words end:
+            # a complete sentence, no clear ending, or an unfinished phrase
+            "COMPLETE_S": 0.7,
+            "NEUTRAL_S": 1.2,
+            "INCOMPLETE_S": 3.0,
+            # how often to judge; one tick costs ~90 ms on the 4090
+            "TICK_S": 0.3,
+            # real words, not echoes or backchannels, needed to interrupt
+            "BARGE_IN_WORDS": 2,
+            # names the recogniser should favour
+            "HOTWORDS": ["Boswell", "Xiaozhi", "Looki", "Omi"],
+            "BOSWELL_SERVER_DIR": "~/Documents/electronics/boswell_server",
+            # blank: <BOSWELL_SERVER_DIR>/.venv/bin/python
+            "SIDECAR_PYTHON": "",
+        },
         # what to do when the connection to the server drops mid-use
         "NETWORK_OPTIONS": {
             # redial on our own after a drop. Without it the app sits idle
