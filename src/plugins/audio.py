@@ -29,6 +29,7 @@ class AudioPlugin(Plugin):
         self.codec: AudioCodec | None = None
         self._send_sem = asyncio.Semaphore(MAX_CONCURRENT_AUDIO_SENDS)
         self._in_silence_period = False
+        self._rt_guard_task: asyncio.Task | None = None
 
     async def setup(self, ctx: "PluginContext", cmd: "PluginCommands") -> None:
         await super().setup(ctx, cmd)
@@ -62,6 +63,36 @@ class AudioPlugin(Plugin):
         await super().start()
         if self.codec and not self.failed:
             await self._publish_audio_codec(self.codec)
+            if self._ctx.get_config().get_config(
+                "AUDIO_DEVICES.DEMOTE_REALTIME_THREADS", True
+            ):
+                self._rt_guard_task = asyncio.create_task(self._guard_realtime())
+
+    async def _guard_realtime(self) -> None:
+        """Keep PipeWire's audio threads out of the kernel's real-time watchdog.
+
+        See realtime_guard.py: a real-time thread that runs 200 ms without
+        blocking gets the whole app SIGKILLed, silently. rtkit promotes the
+        threads a moment after each stream opens, and streams reopen on device
+        changes, so this looks every couple of seconds.
+        """
+        from src.audio_codecs.realtime_guard import (
+            demote_realtime_audio_threads,
+            realtime_timeout_us,
+        )
+
+        while True:
+            try:
+                moved = demote_realtime_audio_threads()
+                if moved:
+                    limit = realtime_timeout_us()
+                    logger.info(
+                        f"audio: moved {', '.join(moved)} off real-time scheduling "
+                        f"(RLIMIT_RTTIME {limit} us would SIGKILL the app on overrun)"
+                    )
+            except Exception as e:
+                logger.debug(f"real-time guard: {e}")
+            await asyncio.sleep(2.0)
 
     async def _publish_audio_codec(self, codec) -> None:
         """Publish the AudioCodec instance, or None, to the subscribers (MusicPlayer among them)."""
@@ -213,6 +244,9 @@ class AudioPlugin(Plugin):
             logger.error(f"failed to send the music resume request: {e}", exc_info=True)
 
     def register_resources(self, pool) -> None:
+        task = self._rt_guard_task
+        if task is not None:
+            pool.register("audio.realtime_guard", task.cancel)
         codec = self.codec
         if codec:
 

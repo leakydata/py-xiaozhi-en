@@ -260,6 +260,9 @@ class ConfigManager:
             "input_channels": None,
             "output_channels": None,
             "opus_output_sample_rate": 24000,  # Opus decode rate: 24000 (official) or 16000 (third-party)
+            # move PipeWire's real-time audio threads to normal scheduling, so
+            # the kernel's 200 ms real-time watchdog cannot SIGKILL the app
+            "DEMOTE_REALTIME_THREADS": True,
             "frame_duration": 20,  # audio frame length in ms: 20 (low latency) / 40 (balanced) / 60 (low CPU)
         },
         "LOGGING": {
