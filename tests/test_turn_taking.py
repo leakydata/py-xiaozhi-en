@@ -323,8 +323,20 @@ async def test_plugin_waits_through_my_then_answers_hammer():
     assert p.cmd.ended == 1
 
 
+def _heard_in_the_room(monkeypatch):
+    """The echo gate having found sound the speakers cannot account for.
+
+    The gate is fed from the audio callbacks, which these tests do not run, so
+    its verdict is set directly.
+    """
+    from src.audio_processing.echo_gate import get_gate
+
+    monkeypatch.setattr(get_gate(), "recent_double_talk", lambda *a, **k: True)
+
+
 @pytest.mark.asyncio
-async def test_plugin_ignores_mm_hm_but_stops_for_real_words():
+async def test_plugin_ignores_mm_hm_but_stops_for_real_words(monkeypatch):
+    _heard_in_the_room(monkeypatch)
     p = _plugin(
         DeviceState.SPEAKING,
         [_tick("mm-hm", 0.0), _tick("mm-hm yeah", 0.0), _tick("wait, stop that", 0.0)],
@@ -333,6 +345,26 @@ async def test_plugin_ignores_mm_hm_but_stops_for_real_words():
     await p._step()
     await p._step()
     assert p.cmd.aborted == []
+    await p._step()
+    assert p.cmd.aborted == [AbortReason.USER_INTERRUPTION]
+
+
+@pytest.mark.asyncio
+async def test_plugin_holds_on_when_only_the_speakers_can_be_heard():
+    """Real words, but nothing in the room the reply does not account for: the
+    microphone is hearing the reply itself. This is what cut replies in half
+    over speakers - the words arrive mis-transcribed, so matching them against
+    what the assistant said cannot catch them."""
+    p = _plugin(DeviceState.SPEAKING, [_tick("I'm staying on the street.", 0.0)])
+    p._assistant_said = []  # this server sends no sentence_start to compare with
+    await p._step()
+    assert p.cmd.aborted == []
+
+
+@pytest.mark.asyncio
+async def test_the_guard_can_be_switched_off(monkeypatch):
+    p = _plugin(DeviceState.SPEAKING, [_tick("I'm staying on the street.", 0.0)])
+    p._ctx.config["TURN_TAKING.ECHO_GUARD"] = False
     await p._step()
     assert p.cmd.aborted == [AbortReason.USER_INTERRUPTION]
 

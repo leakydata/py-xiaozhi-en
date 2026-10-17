@@ -11,6 +11,7 @@ from src.audio_codecs.audio_buffer import PcmFifo
 from src.audio_codecs.audio_converter import AudioConverter
 from src.audio_codecs.opus_codec import OpusCodec, parse_opus_toc
 from src.audio_codecs.stream_manager import AudioStreamManager
+from src.audio_processing import echo_gate
 from src.constants.constants import AudioConfig
 from src.logging import get_logger
 from src.utils.audio_device import AudioDeviceManager, DeviceConfig
@@ -183,6 +184,11 @@ class AudioCodec:
             # 2.5 UI levels (mouth shape / volume ring), non-blocking
             audio_levels.feed_input(audio_converted)
 
+            # 2.6 Echo gate: the microphone after cancellation, so an
+            # interruption can be told from the reply coming back through the
+            # speakers. Non-blocking, see src/audio_processing/echo_gate.py.
+            echo_gate.feed_near(audio_converted)
+
             # 3. notify listeners (thread-safe)
             with self._listeners_lock:
                 for listener in self._audio_listeners:
@@ -241,6 +247,10 @@ class AudioCodec:
 
             # UI levels: take the PCM actually written to the device, so the mouth shape matches what is heard
             audio_levels.feed_output(outdata)
+
+            # Echo gate far reference: the same PCM, for predicting how much of
+            # it the microphone is about to hear back.
+            echo_gate.feed_far(outdata)
 
         except Exception as e:
             logger.error(f"output callback error: {e}", exc_info=True)

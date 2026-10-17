@@ -172,6 +172,14 @@ class ConfigManager:
             "TICK_S": 0.3,
             # real words, not echoes or backchannels, needed to interrupt
             "BARGE_IN_WORDS": 2,
+            # Over speakers the microphone hears the reply and the words come
+            # back transcribed, which reads as an interruption and cuts the
+            # reply off. So require a sound the playback cannot account for
+            # before cutting in; how far above the room's own echo it has to
+            # be, and how recently it has to have happened.
+            "ECHO_GUARD": True,
+            "ECHO_GUARD_MARGIN_DB": 9.0,
+            "ECHO_GUARD_WINDOW_S": 1.5,
             # "mm-hm", "yeah" in the user's pauses, in the assistant's own voice
             # (learned once: ask it to "learn your listening sounds")
             "BACKCHANNELS": False,

@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from src.audio_processing.echo_gate import get_gate
 from src.audio_processing.turn_judge import (
     BackchannelSettings,
     TurnSettings,
@@ -249,6 +250,21 @@ class TurnTakingPlugin(Plugin):
                 "backchannel: that reply held no fillers on their own; still listening for them"
             )
 
+    def _heard_over_the_reply(self) -> bool:
+        """Was there sound the speakers cannot account for?
+
+        With headphones there is no echo to speak of, so this is true whenever
+        the user makes a sound and costs nothing. Over speakers it is what
+        stops the reply from cutting itself off. Switchable, because a strange
+        room or a very quiet microphone could in principle keep it shut - in
+        which case interruptions stop working rather than misfiring.
+        """
+        if not self._cfg("ECHO_GUARD", True):
+            return True
+        gate = get_gate()
+        gate.margin = 10.0 ** (float(self._cfg("ECHO_GUARD_MARGIN_DB", 9.0)) / 20.0)
+        return gate.recent_double_talk(float(self._cfg("ECHO_GUARD_WINDOW_S", 1.5)))
+
     def _maybe_backchannel(self, tick) -> None:
         if not self._cfg("BACKCHANNELS", False):
             return
@@ -306,7 +322,11 @@ class TurnTakingPlugin(Plugin):
             self._take_audio()
             await self._sidecar.reset()
             if state == DeviceState.SPEAKING:
-                pass  # keep _assistant_said: sentence_start may precede this
+                # Keep _assistant_said: sentence_start may precede this. Clear
+                # the echo gate's verdict though - the user was talking right
+                # up to this moment, and that is not a cut-in on a reply that
+                # has only just started.
+                get_gate().reset()
             elif state == DeviceState.LISTENING:
                 self._assistant_said.clear()
 
@@ -341,5 +361,15 @@ class TurnTakingPlugin(Plugin):
             if tick and is_interruption(
                 tick["text"], " ".join(self._assistant_said), self._settings()
             ):
+                if not self._heard_over_the_reply():
+                    # Words, but no sound the speakers cannot account for:
+                    # this is the reply itself coming back through them.
+                    gate = get_gate()
+                    logger.debug(
+                        f"turn-taking: ignoring own echo {tick['text'][-60:]!r} "
+                        f"(room returns {gate.coupling:.0%} of the speakers, "
+                        f"noise floor {gate.noise_floor:.4f})"
+                    )
+                    return
                 logger.info(f"turn-taking: interrupted by {tick['text'][-60:]!r}")
                 await self.cmd.abort_speaking(AbortReason.USER_INTERRUPTION)
