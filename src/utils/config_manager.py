@@ -214,6 +214,14 @@ class ConfigManager:
             "MIN_CONFIDENCE": 0.35,
             # how far back the briefing's "lately" line looks
             "BRIEFING_MINUTES": 10,
+            # Speak up, unprompted, about a notable sound (a doorbell, the dog
+            # whimpering, an alarm) - but only once the room has been quiet.
+            # Off by default: it makes the assistant talk without being asked.
+            "SPEAK_UP": False,
+            # seconds with no conversation and no voice before she may speak up
+            "QUIET_AFTER_S": 120,
+            # least seconds between two of these
+            "MIN_GAP_S": 300,
         },
         "AEC_OPTIONS": {
             "ENABLED": False,

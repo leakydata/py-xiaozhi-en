@@ -74,6 +74,13 @@ class SettingsSystemOptionsMixin:
     def _set_ambientSoundsEnabled(self, value: bool):
         self._set_value("AMBIENT_SOUNDS.ENABLED", value)
 
+    # AMBIENT_SOUNDS.SPEAK_UP: say something about a notable sound once the room is quiet
+    def _get_ambientSpeakUp(self) -> bool:
+        return self._get_value("AMBIENT_SOUNDS.SPEAK_UP", False)
+
+    def _set_ambientSpeakUp(self, value: bool):
+        self._set_value("AMBIENT_SOUNDS.SPEAK_UP", value)
+
     # music settings
     def _get_musicSearchUrl(self) -> str:
         return self._get_value("MUSIC.SEARCH_URL", "")

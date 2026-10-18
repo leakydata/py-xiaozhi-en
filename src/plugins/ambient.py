@@ -7,6 +7,7 @@ settings without a restart.
 """
 
 import asyncio
+import time
 
 from src.audio_processing import ambient_sounds
 from src.audio_processing.echo_gate import get_gate
@@ -27,6 +28,9 @@ class AmbientSoundsPlugin(Plugin):
         super().__init__()
         self._sounds = None
         self._lock = asyncio.Lock()
+        self._task: asyncio.Task | None = None
+        self._last_talk = time.monotonic()
+        self._last_update = time.monotonic()
 
     def _cfg(self, key: str, default):
         return self._ctx.get_config().get_config(f"AMBIENT_SOUNDS.{key}", default)
@@ -40,6 +44,65 @@ class AmbientSoundsPlugin(Plugin):
 
     async def start(self) -> None:
         await self._sync()
+        self._task = self._cmd.spawn(self._speak_up_loop(), "ambient_speak_up")
+
+    async def on_incoming_json(self, message) -> None:
+        # Any conversation traffic means the room is not quiet.
+        if isinstance(message, dict) and message.get("type") in ("stt", "tts", "llm"):
+            self._last_talk = time.monotonic()
+
+    # ------------------------------------------------------------------
+    # speaking up about a notable sound, once the room has been quiet
+
+    async def _speak_up_loop(self) -> None:
+        await asyncio.sleep(20)
+        while True:
+            try:
+                await self._maybe_speak_up()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.error(f"ambient speak-up failed: {e}", exc_info=True)
+            await asyncio.sleep(10)
+
+    async def _maybe_speak_up(self) -> None:
+        sounds = self._sounds
+        if sounds is None or not self._cfg("SPEAK_UP", False):
+            return
+        now = time.monotonic()
+        if self._ctx.is_speaking():
+            self._last_talk = now
+            return
+        quiet_for = now - max(
+            self._last_talk, sounds.last_voice if sounds.last_voice else 0.0
+        )
+        if quiet_for < float(self._cfg("QUIET_AFTER_S", 120)):
+            return
+        if now - self._last_update < float(self._cfg("MIN_GAP_S", 300)):
+            return
+        events = sounds.notable_since(self._last_update)
+        if not events:
+            return
+
+        parts = [
+            f"{ambient_sounds.short_name(e.label)} "
+            f"({ambient_sounds.ago_text(int(now - e.last))})"
+            for e in events
+        ]
+        prompt = (
+            "Background update from the room sensors, not from Nathan: "
+            + ", ".join(parts)
+            + ". If this matters to him, say so in one short, natural sentence, "
+            "as if you noticed it yourself. Do not ask a question and do not "
+            "mention sensors."
+        )
+        self._last_update = now
+        if not await self._cmd.connect_protocol():
+            logger.warning("ambient: could not connect to speak up; will retry later")
+            self._last_update = now - float(self._cfg("MIN_GAP_S", 300)) + 30
+            return
+        logger.info(f"ambient: speaking up after {quiet_for:.0f}s of quiet: {parts}")
+        await self._cmd.send_wake_word_detected(prompt)
 
     async def _sync(self) -> None:
         """Make what is running match the setting."""
@@ -87,5 +150,8 @@ class AmbientSoundsPlugin(Plugin):
         await asyncio.to_thread(sounds.stop)
 
     async def stop(self) -> None:
+        task, self._task = self._task, None
+        if task and not task.done():
+            task.cancel()
         async with self._lock:
             await self._end()

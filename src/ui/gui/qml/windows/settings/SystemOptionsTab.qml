@@ -89,6 +89,7 @@ ScrollView {
                     Layout.preferredWidth: 140
                 }
                 XSwitch {
+                    id: ambientSwitch
                     checked: settingsModel ? settingsModel.ambientSoundsEnabled : true
                     onToggled: if (settingsModel) settingsModel.ambientSoundsEnabled = checked
                 }
@@ -99,6 +100,34 @@ ScrollView {
                     + "music, an alarm) and notes when someone is around even if they are not "
                     + "talking, so the assistant can be told. Runs on this computer; applies "
                     + "when you save."
+                font.pixelSize: Theme.fontSizeXs
+                color: Theme.textPlaceholder
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingLg
+                opacity: ambientSwitch.checked ? 1 : 0.45
+
+                Text {
+                    text: "Speak up"
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.textSecondary
+                    Layout.preferredWidth: 140
+                }
+                XSwitch {
+                    enabled: ambientSwitch.checked
+                    checked: settingsModel ? settingsModel.ambientSpeakUp : false
+                    onToggled: if (settingsModel) settingsModel.ambientSpeakUp = checked
+                }
+            }
+
+            Text {
+                text: "When the room has been quiet for a couple of minutes, she may mention a notable "
+                    + "sound on her own (a doorbell, the dog whimpering, an alarm, something breaking), "
+                    + "at most once every five minutes."
                 font.pixelSize: Theme.fontSizeXs
                 color: Theme.textPlaceholder
                 wrapMode: Text.WordWrap

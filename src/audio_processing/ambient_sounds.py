@@ -128,6 +128,28 @@ ACTIVITY = frozenset(
         "Microwave oven",
     }
 )
+#: Sounds worth interrupting a quiet room for: something at the door, a pet in
+#: distress, an alarm, something breaking. Deliberately short - the point of a
+#: spoken heads-up is that it is rare.
+NOTABLE = frozenset(
+    {
+        "Smoke detector, smoke alarm",
+        "Fire alarm",
+        "Doorbell",
+        "Knock",
+        "Bark",
+        "Howl",
+        "Whimper (dog)",
+        "Baby cry, infant cry",
+        "Glass",
+        "Shatter",
+        "Breaking",
+        "Crying, sobbing",
+        "Telephone bell ringing",
+    }
+)
+#: A notable sound has to be at least this sure to be spoken about.
+_NOTABLE_CONFIDENCE = 0.6
 #: Speech at least this likely counts as a voice.
 _VOICE_CONFIDENCE = 0.5
 
@@ -302,6 +324,22 @@ class AmbientSounds:
             "listening": self.enabled,
         }
 
+    @property
+    def last_voice(self) -> float | None:
+        """When a voice was last heard, on this object's clock."""
+        return self._last_voice
+
+    def notable_since(self, since: float) -> list[Event]:
+        """Confirmed sounds from the NOTABLE list heard after `since`."""
+        return [
+            e
+            for e in tuple(self._events)
+            if e.label in NOTABLE
+            and e.confirmed()
+            and e.peak >= _NOTABLE_CONFIDENCE
+            and e.last > since
+        ]
+
     def presence(self, now: float | None = None) -> dict:
         """When someone was last audibly around: a voice, or just doing things.
 
@@ -342,7 +380,7 @@ class AmbientSounds:
         who = data["presence"]
         around = ""
         if who["last_sign"]:
-            around = f" Last sign of someone around: {who['last_sign']}, {_ago(who['last_sign_seconds_ago'])}."
+            around = f" Last sign of someone around: {who['last_sign']}, {ago_text(who['last_sign_seconds_ago'])}."
         if not data["sounds"]:
             return (
                 f"Nothing but quiet or speech in the last {minutes:g} minutes.{around}"
@@ -352,7 +390,7 @@ class AmbientSounds:
             if s["going_on_now"]:
                 parts.append(f"{s['sound']} (happening now)")
             else:
-                parts.append(f"{s['sound']} ({_ago(s['last_seconds_ago'])})")
+                parts.append(f"{s['sound']} ({ago_text(s['last_seconds_ago'])})")
         return "Background sounds lately: " + ", ".join(parts) + "." + around
 
     # ----------------------------------------------------------- the worker
@@ -428,7 +466,7 @@ class AmbientSounds:
         self.ingest([(e.name, float(e.prob)) for e in results], now)
 
 
-def _ago(seconds: int) -> str:
+def ago_text(seconds: int) -> str:
     if seconds < 90:
         return f"{seconds} seconds ago"
     return f"{round(seconds / 60)} minutes ago"
