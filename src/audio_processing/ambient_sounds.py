@@ -261,18 +261,26 @@ class AmbientSounds:
         """Fold one window's labels into the event log."""
         for label, prob in detections:
             if label in VOICE and prob >= _VOICE_CONFIDENCE:
+                if self._last_voice is None or now - self._last_voice > _MERGE_GAP_S:
+                    logger.info("ambient: heard a voice")
                 self._last_voice = now
             if prob < self.min_confidence or label in IGNORED:
                 continue
             event = self._open.get(label)
             if event is not None and now - event.last <= _MERGE_GAP_S:
+                was_confirmed = event.confirmed()
                 event.last = now
                 event.hits += 1
                 event.peak = max(event.peak, prob)
             else:
+                was_confirmed = False
                 event = Event(label, now, now, 1, prob)
                 self._open[label] = event
                 self._events.append(event)
+            # One line when a sound is first counted, so `tail -f` on the log
+            # shows what the room is being heard as.
+            if event.confirmed() and not was_confirmed:
+                logger.info(f"ambient: heard {short_name(label)} ({event.peak:.2f})")
         cutoff = now - _KEEP_S
         while self._events and self._events[0].last < cutoff:
             old = self._events.popleft()
