@@ -138,6 +138,7 @@ class WakeWordDetector:
 
             lang = get_config().get_config("WAKE_WORD_OPTIONS.WAKE_WORD_LANG", "zh")
             keywords_path = get_user_keywords_path(lang)
+            self._sync_keywords_file(keywords_path, lang)
 
             required_files = [
                 encoder_path,
@@ -184,6 +185,44 @@ class WakeWordDetector:
         except Exception as e:
             logger.error(f"failed to load the model: {e}", exc_info=True)
             return False
+
+    @staticmethod
+    def _sync_keywords_file(keywords_path: Path, lang: str) -> None:
+        """Make the keywords file say the configured wake word.
+
+        The spotter listens for whatever is in the file, and the file was only
+        ever written by the settings page's Save button. Setting WAKE_WORD in
+        the config (or the default) left the old file in place, so the app
+        listened for a word nobody had chosen and the real one never fired.
+        """
+        try:
+            from src.audio_processing.keyword_converters import convert_wake_word
+
+            wake_word = (
+                get_config().get_config("WAKE_WORD_OPTIONS.WAKE_WORD", "") or ""
+            ).strip()
+            if not wake_word:
+                return
+            line, word_lang, _ = convert_wake_word(wake_word)
+            if word_lang != lang:
+                logger.warning(
+                    f"wake word '{wake_word}' is {word_lang} but the configured "
+                    f"model language is {lang}: leaving {keywords_path.name} alone"
+                )
+                return
+            current = ""
+            if keywords_path.exists():
+                current = keywords_path.read_text(encoding="utf-8").strip()
+            if current == line.strip():
+                return
+            keywords_path.parent.mkdir(parents=True, exist_ok=True)
+            keywords_path.write_text(line.strip() + "\n", encoding="utf-8")
+            logger.info(
+                f"keywords file was out of date; now listening for "
+                f"'{wake_word}' ({line.strip()})"
+            )
+        except Exception as e:
+            logger.warning(f"could not sync the wake word into the keywords file: {e}")
 
     @staticmethod
     def _ensure_ascii_path(file_path: Path, lang: str) -> Path:

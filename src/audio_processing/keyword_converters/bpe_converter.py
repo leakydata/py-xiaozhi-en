@@ -9,7 +9,6 @@ from .base import KeywordConverter
 
 
 class BpeConverter(KeywordConverter):
-
     def __init__(self, tokens_path: Optional[str] = None):
         self._tokens_path = tokens_path
         self._token_to_id: Optional[Dict[str, int]] = None
@@ -20,6 +19,7 @@ class BpeConverter(KeywordConverter):
 
         # Default path: models/en/tokens.txt
         from src.utils.resource_finder import get_app_root
+
         return get_app_root() / "models" / "en" / "tokens.txt"
 
     def _load_tokens(self):
@@ -67,7 +67,7 @@ class BpeConverter(KeywordConverter):
 
             max_len = min(20, len(text) - i)
             for length in range(max_len, 0, -1):
-                substr = text[i:i + length]
+                substr = text[i : i + length]
 
                 if substr in self._token_to_id:
                     tokens.append(substr)
@@ -99,4 +99,8 @@ class BpeConverter(KeywordConverter):
             all_tokens.extend(tokens)
 
         bpe_str = " ".join(all_tokens)
-        return f"{bpe_str} @{normalized}"
+        # The label is read as one whitespace-free token: a space in it makes
+        # sherpa try to look the second word up as a vocabulary token and
+        # reject the whole file, so a two-word wake word never loaded.
+        label = "_".join(words)
+        return f"{bpe_str} @{label}"
