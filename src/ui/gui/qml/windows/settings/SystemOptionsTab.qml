@@ -134,6 +134,34 @@ ScrollView {
                 Layout.fillWidth: true
             }
 
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingLg
+                opacity: ambientSwitch.checked ? 1 : 0.45
+
+                Text {
+                    text: "Check in"
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.textSecondary
+                    Layout.preferredWidth: 140
+                }
+                XSwitch {
+                    enabled: ambientSwitch.checked
+                    checked: settingsModel ? settingsModel.ambientCheckIn : false
+                    onToggled: if (settingsModel) settingsModel.ambientCheckIn = checked
+                }
+            }
+
+            Text {
+                text: "When the server ends a conversation but the room still sounds like you are "
+                    + "there (typing, footsteps, a voice), she reconnects and asks if you want to "
+                    + "keep talking instead of going idle. Only once until you answer."
+                font.pixelSize: Theme.fontSizeXs
+                color: Theme.textPlaceholder
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
             // Form fields
             GridLayout {
                 Layout.fillWidth: true

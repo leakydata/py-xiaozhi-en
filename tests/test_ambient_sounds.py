@@ -253,3 +253,33 @@ def test_describe_mentions_who_was_last_around():
     a, _ = sounds()
     a.ingest([("Typing", 0.8)], 1000.0)
     assert "Last sign of someone around: Typing" in a.describe(10, now=1010.0)
+
+
+# ---------------------------------------------------------------- on screen
+
+
+def test_the_screen_line_shows_what_is_going_on_now():
+    a, _ = sounds()
+    a.ingest([("Typing", 0.8), ("Dog", 0.9)], 1000.0)
+    line = a.now_line(now=1001.0)
+    assert line.startswith("Hearing:") and "Typing" in line and "Dog" in line
+
+
+def test_a_voice_is_shown_as_a_voice_never_as_words():
+    a, _ = sounds()
+    a.ingest([("Speech", 0.9)], 1000.0)
+    assert a.now_line(now=1001.0) == "Hearing: a voice"
+
+
+def test_a_sound_just_gone_is_shown_as_just_heard():
+    a, _ = sounds()
+    a.ingest([("Doorbell", 0.9)], 1000.0)
+    assert a.now_line(now=1020.0) == "Just heard: Doorbell"
+
+
+def test_the_screen_line_is_blank_when_nothing_or_when_off():
+    a, _ = sounds()
+    assert a.now_line(now=1000.0) == ""
+    a.ingest([("Typing", 0.8)], 1000.0)
+    a.enabled = False
+    assert a.now_line(now=1001.0) == ""

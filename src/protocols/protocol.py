@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 
 from src.constants.constants import AbortReason, ListeningMode
 from src.logging import get_logger
@@ -10,6 +11,8 @@ logger = get_logger()
 class Protocol:
     def __init__(self):
         self.session_id = ""
+        # when the server last ended a session cleanly (time.monotonic), else None
+        self.server_closed_at: float | None = None
         # callbacks start as None
         self._on_incoming_json = None
         self._on_incoming_audio = None
@@ -325,6 +328,9 @@ class Protocol:
                    does not trigger auto-reconnect and does not report a network error.
         """
         if clean:
+            # lets a plugin tell the server ending the session from the user
+            # ending it, which both arrive as "channel closed"
+            self.server_closed_at = time.monotonic()
             logger.info(f"Connection closed cleanly by the server: {reason}")
         else:
             logger.warning(f"Connection lost: {reason}")

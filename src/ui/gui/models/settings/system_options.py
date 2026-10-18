@@ -81,6 +81,13 @@ class SettingsSystemOptionsMixin:
     def _set_ambientSpeakUp(self, value: bool):
         self._set_value("AMBIENT_SOUNDS.SPEAK_UP", value)
 
+    # AMBIENT_SOUNDS.CHECK_IN: ask before going idle if someone is still around
+    def _get_ambientCheckIn(self) -> bool:
+        return self._get_value("AMBIENT_SOUNDS.CHECK_IN", False)
+
+    def _set_ambientCheckIn(self, value: bool):
+        self._set_value("AMBIENT_SOUNDS.CHECK_IN", value)
+
     # music settings
     def _get_musicSearchUrl(self) -> str:
         return self._get_value("MUSIC.SEARCH_URL", "")

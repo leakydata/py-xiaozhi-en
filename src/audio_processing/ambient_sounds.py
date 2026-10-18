@@ -380,6 +380,25 @@ class AmbientSounds:
             state = "no sound of anyone for a while"
         return {"last_sign_seconds_ago": ago, "last_sign": what, "state": state}
 
+    def now_line(self, now: float | None = None) -> str:
+        """A few words for the screen: what is being heard right now."""
+        now = self._clock() if now is None else now
+        if not self.enabled:
+            return ""
+        sounds = self.heard(1.0, now)["sounds"]
+        parts = []
+        if (
+            self._last_voice is not None
+            and now - self._last_voice <= 2 * self.hop_s + 1
+        ):
+            parts.append("a voice")
+        parts += [s["sound"] for s in sounds if s["going_on_now"]]
+        if parts:
+            return "Hearing: " + " · ".join(parts[:4])
+        if sounds:
+            return f"Just heard: {sounds[0]['sound']}"
+        return ""
+
     def describe(self, minutes: float = 10.0, now: float | None = None) -> str:
         """The same thing as a sentence or two, for a briefing."""
         data = self.heard(minutes, now)

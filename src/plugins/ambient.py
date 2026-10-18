@@ -31,6 +31,10 @@ class AmbientSoundsPlugin(Plugin):
         self._task: asyncio.Task | None = None
         self._last_talk = time.monotonic()
         self._last_update = time.monotonic()
+        self._protocol = None
+        self._last_check_in = -1e9
+        self._spoke_since_check_in = True
+        self._check_in_sent_at = -1e9
 
     def _cfg(self, key: str, default):
         return self._ctx.get_config().get_config(f"AMBIENT_SOUNDS.{key}", default)
@@ -38,6 +42,10 @@ class AmbientSoundsPlugin(Plugin):
     async def setup(self, ctx, cmd) -> None:
         await super().setup(ctx, cmd)
         ctx.event_bus.on(Events.CONFIG_CHANGED, self._on_config_changed)
+        ctx.event_bus.on(Events.AUDIO_CHANNEL_CLOSED, self._on_channel_closed)
+
+    async def on_protocol_connected(self, protocol) -> None:
+        self._protocol = protocol
 
     async def _on_config_changed(self, data=None):
         await self._sync()
@@ -50,6 +58,75 @@ class AmbientSoundsPlugin(Plugin):
         # Any conversation traffic means the room is not quiet.
         if isinstance(message, dict) and message.get("type") in ("stt", "tts", "llm"):
             self._last_talk = time.monotonic()
+        # the server may echo our own prompt back as stt, so only a reply that
+        # comes well after we asked counts as the user answering
+        if (
+            isinstance(message, dict)
+            and message.get("type") == "stt"
+            and time.monotonic() - self._check_in_sent_at > 8
+        ):
+            self._spoke_since_check_in = True
+
+    # ------------------------------------------------------------------
+    # the server ended the session but someone is still around: ask first
+
+    async def _on_channel_closed(self, data=None) -> None:
+        try:
+            if not self._cfg("CHECK_IN", False) or self._sounds is None:
+                return
+            closed_at = getattr(self._protocol, "server_closed_at", None)
+            now = time.monotonic()
+            if closed_at is None or now - closed_at > 5:
+                return  # the user (or the app) closed it, not the server
+            if not self._spoke_since_check_in:
+                logger.info("ambient: not checking in again, no reply to the last one")
+                return
+            if now - self._last_check_in < float(self._cfg("CHECK_IN_GAP_S", 600)):
+                return
+            self._cmd.spawn(self._check_in(), "ambient_check_in")
+        except Exception as e:
+            logger.error(f"ambient check-in failed: {e}", exc_info=True)
+
+    async def _check_in(self) -> None:
+        # Let the server finish closing, and let the room say whether anyone is
+        # still there, before deciding.
+        await asyncio.sleep(4)
+        sounds = self._sounds
+        if sounds is None or self._ctx.is_audio_channel_opened():
+            return
+        sign = sounds.presence()
+        limit = float(self._cfg("CHECK_IN_PRESENCE_S", 90))
+        ago = sign["last_sign_seconds_ago"]
+        if ago is None or ago > limit:
+            logger.info(
+                f"ambient: server ended the session, no sign of anyone ({sign})"
+            )
+            return
+        prompt = (
+            "The connection just dropped, but Nathan is still around "
+            f"({sign['last_sign']}, {ambient_sounds.ago_text(ago)}). In one "
+            "short, natural sentence ask whether he wants to keep talking. "
+            "Do not mention the connection or sensors."
+        )
+        from src.constants.constants import ListeningMode
+
+        self._last_check_in = time.monotonic()
+        self._check_in_sent_at = self._last_check_in
+        self._spoke_since_check_in = False
+        if not await self._cmd.connect_protocol():
+            logger.warning("ambient: could not reconnect to check in")
+            return
+        logger.info(f"ambient: checking in, last sign {sign['last_sign']} {ago}s ago")
+        mode = (
+            ListeningMode.REALTIME
+            if self._cfg_global("AEC_OPTIONS.ENABLED", True)
+            else ListeningMode.AUTO_STOP
+        )
+        await self._cmd.start_listening(mode)
+        await self._cmd.send_wake_word_detected(prompt)
+
+    def _cfg_global(self, key: str, default):
+        return self._ctx.get_config().get_config(key, default)
 
     # ------------------------------------------------------------------
     # speaking up about a notable sound, once the room has been quiet

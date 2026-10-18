@@ -8,6 +8,8 @@ from src.ui.gui.models.base_model import BaseModel
 # Avatar animation refresh. 30 Hz is smooth enough for lip-sync and costs far
 # less than the audio callback rate (50-100 Hz) it samples from.
 _LEVEL_POLL_MS = 33
+# What the room sounds like changes every second or two at most.
+_AMBIENT_POLL_MS = 1000
 
 
 class MainModel(BaseModel):
@@ -16,6 +18,7 @@ class MainModel(BaseModel):
     # signals
     ttsTextChanged = Signal()
     musicLineChanged = Signal()
+    ambientLineChanged = Signal()
     emotionUrlChanged = Signal()
     statusTextChanged = Signal()
     connectedChanged = Signal()
@@ -30,6 +33,7 @@ class MainModel(BaseModel):
         super().__init__(parent)
         self._tts_text = ""
         self._music_line = ""
+        self._ambient_line = ""
         self._emotion_url = ""
         self._status_text = ""
         self._connected = False
@@ -46,6 +50,24 @@ class MainModel(BaseModel):
         self._level_timer.setInterval(_LEVEL_POLL_MS)
         self._level_timer.timeout.connect(self._poll_audio_level)
         self._level_timer.start()
+
+        self._ambient_timer = QTimer(self)
+        self._ambient_timer.setInterval(_AMBIENT_POLL_MS)
+        self._ambient_timer.timeout.connect(self._poll_ambient)
+        self._ambient_timer.start()
+
+    def _poll_ambient(self) -> None:
+        """Show what the sound tagger is hearing, if it is running."""
+        try:
+            from src.audio_processing.ambient_sounds import get_ambient
+
+            ambient = get_ambient()
+            line = ambient.now_line() if ambient is not None else ""
+        except Exception:
+            line = ""
+        if line != self._ambient_line:
+            self._ambient_line = line
+            self.ambientLineChanged.emit()
 
     def _poll_audio_level(self) -> None:
         """Drive the avatar from whichever side is currently making sound."""
@@ -70,6 +92,10 @@ class MainModel(BaseModel):
     @Property(str, notify=musicLineChanged)
     def musicLine(self) -> str:
         return self._music_line
+
+    @Property(str, notify=ambientLineChanged)
+    def ambientLine(self) -> str:
+        return self._ambient_line
 
     @Property(str, notify=emotionUrlChanged)
     def emotionUrl(self) -> str:

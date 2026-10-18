@@ -222,6 +222,15 @@ class ConfigManager:
             "QUIET_AFTER_S": 120,
             # least seconds between two of these
             "MIN_GAP_S": 300,
+            # When the server ends the session but there are signs the user is
+            # still around (typing, footsteps, a voice), reconnect and ask if
+            # they want to keep talking instead of quietly going idle. Off by
+            # default: it makes the assistant talk without being asked.
+            "CHECK_IN": False,
+            # how recent the last sign of someone has to be, in seconds
+            "CHECK_IN_PRESENCE_S": 90,
+            # least seconds between two check-ins
+            "CHECK_IN_GAP_S": 600,
         },
         "AEC_OPTIONS": {
             "ENABLED": False,

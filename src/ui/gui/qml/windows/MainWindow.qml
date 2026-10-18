@@ -112,7 +112,7 @@ AppWindow {
                     // the chat and music lines
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 72
+                        Layout.preferredHeight: 92
                         color: "transparent"
 
                         Column {
@@ -122,13 +122,25 @@ AppWindow {
 
                             Text {
                                 width: parent.width
-                                height: parent.height - (musicLineText.visible ? 22 : 0)
+                                height: parent.height - (musicLineText.visible ? 22 : 0) - (ambientLineText.visible ? 20 : 0)
                                 text: (mainModel && mainModel.ttsText) ? mainModel.ttsText : "Idle"
                                 font.pixelSize: Theme.fontSizeSm
                                 color: Theme.textSecondary
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 wrapMode: Text.WordWrap
+                                elide: Text.ElideRight
+                            }
+
+                            Text {
+                                id: ambientLineText
+                                width: parent.width
+                                visible: mainModel && mainModel.ambientLine && mainModel.ambientLine.length > 0
+                                text: mainModel ? mainModel.ambientLine : ""
+                                font.pixelSize: Theme.fontSizeXs
+                                font.italic: true
+                                color: Theme.textPlaceholder
+                                horizontalAlignment: Text.AlignHCenter
                                 elide: Text.ElideRight
                             }
 

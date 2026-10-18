@@ -277,6 +277,12 @@ class SettingsModel(
         SettingsSystemOptionsMixin._set_ambientSpeakUp,
         notify=settingsChanged,
     )
+    ambientCheckIn = Property(
+        bool,
+        SettingsSystemOptionsMixin._get_ambientCheckIn,
+        SettingsSystemOptionsMixin._set_ambientCheckIn,
+        notify=settingsChanged,
+    )
     musicSearchUrl = Property(
         str,
         SettingsSystemOptionsMixin._get_musicSearchUrl,
