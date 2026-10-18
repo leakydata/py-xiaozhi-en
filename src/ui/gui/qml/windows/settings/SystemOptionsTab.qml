@@ -77,6 +77,34 @@ ScrollView {
                 Layout.fillWidth: true
             }
 
+            // Ambient sound awareness
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingLg
+
+                Text {
+                    text: "Listen to the room"
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.textSecondary
+                    Layout.preferredWidth: 140
+                }
+                XSwitch {
+                    checked: settingsModel ? settingsModel.ambientSoundsEnabled : true
+                    onToggled: if (settingsModel) settingsModel.ambientSoundsEnabled = checked
+                }
+            }
+
+            Text {
+                text: "Names the sounds the microphone hears that are not speech (typing, a dog, "
+                    + "music, an alarm) and notes when someone is around even if they are not "
+                    + "talking, so the assistant can be told. Runs on this computer; applies "
+                    + "when you save."
+                font.pixelSize: Theme.fontSizeXs
+                color: Theme.textPlaceholder
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
             // Form fields
             GridLayout {
                 Layout.fillWidth: true

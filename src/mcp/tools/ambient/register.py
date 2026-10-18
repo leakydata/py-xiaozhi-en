@@ -23,6 +23,10 @@ DESCRIPTION = (
     "period the microphone was free to listen; it is low while you were "
     "speaking or music was playing, so a short list then means you could not "
     "hear, not that nothing happened. Speech is deliberately left out. "
+    "'presence' says when someone was last audibly around (a voice, typing, "
+    "footsteps, a cough...), so you can tell they are still there while they "
+    "are not talking. It cannot say who, and silence is not absence: they may "
+    "be reading. "
     "Args: minutes - how far back to look (default 10, up to 180)."
 )
 

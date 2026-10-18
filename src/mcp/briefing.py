@@ -120,6 +120,9 @@ _AMBIENT = """What you can hear besides speech:
   recent ones, each with a confidence, whether it is going on now and how long
   ago it was last heard. The line below, if present, is only what was heard
   just before this session began.
+- It also tells you when someone was last audibly around (a voice, typing,
+  footsteps), so you know the user is still there while not talking. It cannot
+  say who, and silence is not absence: they may just be reading.
 - Use it to be aware of what is going on around the user: that they are typing,
   that music is playing, that a smoke alarm has been going, that the dog has
   been barking. Mention a sound unprompted only when it matters to them, such

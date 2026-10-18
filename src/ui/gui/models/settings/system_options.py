@@ -67,6 +67,13 @@ class SettingsSystemOptionsMixin:
     def _set_avatarStyle(self, value: str):
         self._set_value("SYSTEM_OPTIONS.AVATAR_STYLE", value)
 
+    # AMBIENT_SOUNDS.ENABLED: name non-speech sounds and note when someone is around
+    def _get_ambientSoundsEnabled(self) -> bool:
+        return self._get_value("AMBIENT_SOUNDS.ENABLED", True)
+
+    def _set_ambientSoundsEnabled(self, value: bool):
+        self._set_value("AMBIENT_SOUNDS.ENABLED", value)
+
     # music settings
     def _get_musicSearchUrl(self) -> str:
         return self._get_value("MUSIC.SEARCH_URL", "")

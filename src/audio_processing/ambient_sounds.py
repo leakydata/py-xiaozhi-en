@@ -73,6 +73,64 @@ IGNORED = frozenset(
     }
 )
 
+#: Speech labels. Not logged as sounds, but hearing one is the clearest sign
+#: that someone is there.
+VOICE = frozenset(
+    {
+        "Speech",
+        "Male speech, man speaking",
+        "Female speech, woman speaking",
+        "Conversation",
+        "Narration, monologue",
+    }
+)
+
+#: Sounds a person makes just by being there and doing things. None of them is
+#: speech, so someone sitting silently at the desk still shows up.
+ACTIVITY = frozenset(
+    {
+        "Typing",
+        "Computer keyboard",
+        "Typewriter",
+        "Clicking",
+        "Clickety-clack",
+        "Mouse",
+        "Writing",
+        "Walk, footsteps",
+        "Shuffle",
+        "Cough",
+        "Throat clearing",
+        "Sneeze",
+        "Sniff",
+        "Breathing",
+        "Snoring",
+        "Sigh",
+        "Gasp",
+        "Burping, eructation",
+        "Hiccup",
+        "Humming",
+        "Whistling",
+        "Laughter",
+        "Chuckle, chortle",
+        "Finger snapping",
+        "Clapping",
+        "Rustle",
+        "Zipper (clothing)",
+        "Door",
+        "Sliding door",
+        "Cupboard open or close",
+        "Drawer open or close",
+        "Dishes, pots, and pans",
+        "Cutlery, silverware",
+        "Water tap, faucet",
+        "Toilet flush",
+        "Pour",
+        "Microwave oven",
+    }
+)
+#: Speech at least this likely counts as a voice.
+_VOICE_CONFIDENCE = 0.5
+
 #: A window is analysed at most this often; the model takes ~15 ms on a CPU.
 _WINDOW_S = 3.0
 _HOP_S = 1.5
@@ -136,6 +194,7 @@ class AmbientSounds:
         self._last_playback = -1e9
         self._events: deque[Event] = deque(maxlen=_MAX_EVENTS)
         self._open: dict[str, Event] = {}
+        self._last_voice: float | None = None
 
         # Time accounting, so the digest can say how much it could not hear.
         self._started = clock()
@@ -179,6 +238,8 @@ class AmbientSounds:
     def ingest(self, detections: list[tuple[str, float]], now: float) -> None:
         """Fold one window's labels into the event log."""
         for label, prob in detections:
+            if label in VOICE and prob >= _VOICE_CONFIDENCE:
+                self._last_voice = now
             if prob < self.min_confidence or label in IGNORED:
                 continue
             event = self._open.get(label)
@@ -210,7 +271,7 @@ class AmbientSounds:
         span = max(1.0, minutes * 60.0)
         since = now - span
         by_label: dict[str, list[Event]] = {}
-        for e in self._events:
+        for e in tuple(self._events):
             if e.confirmed() and e.last >= since:
                 by_label.setdefault(e.label, []).append(e)
 
@@ -230,30 +291,69 @@ class AmbientSounds:
             )
         sounds.sort(key=lambda s: s["last_seconds_ago"])
 
-        recent = [(t, ok) for t, ok in self._windows if t >= since]
+        recent = [(t, ok) for t, ok in tuple(self._windows) if t >= since]
         listened = sum(1 for _, ok in recent if ok)
         coverage = listened / len(recent) if recent else 0.0
         return {
             "window_minutes": round(minutes, 1),
+            "presence": self.presence(now),
             "sounds": sounds,
             "listened_fraction": round(coverage, 2),
             "listening": self.enabled,
         }
+
+    def presence(self, now: float | None = None) -> dict:
+        """When someone was last audibly around: a voice, or just doing things.
+
+        Silence is not absence - reading, thinking and sleeping make no sound -
+        so this reports when the last sign was, not whether anyone left.
+        """
+        now = self._clock() if now is None else now
+        last, what = None, None
+        for e in tuple(self._events):
+            if (
+                e.label in ACTIVITY
+                and e.confirmed()
+                and (last is None or e.last > last)
+            ):
+                last, what = e.last, short_name(e.label)
+        if self._last_voice is not None and (last is None or self._last_voice > last):
+            last, what = self._last_voice, "a voice"
+        if last is None:
+            return {
+                "last_sign_seconds_ago": None,
+                "last_sign": None,
+                "state": "no sign yet",
+            }
+        ago = int(now - last)
+        if ago <= 20:
+            state = "active right now"
+        elif ago <= 180:
+            state = "active a moment ago"
+        else:
+            state = "no sound of anyone for a while"
+        return {"last_sign_seconds_ago": ago, "last_sign": what, "state": state}
 
     def describe(self, minutes: float = 10.0, now: float | None = None) -> str:
         """The same thing as a sentence or two, for a briefing."""
         data = self.heard(minutes, now)
         if not data["listening"]:
             return "Ambient sound awareness is not running."
+        who = data["presence"]
+        around = ""
+        if who["last_sign"]:
+            around = f" Last sign of someone around: {who['last_sign']}, {_ago(who['last_sign_seconds_ago'])}."
         if not data["sounds"]:
-            return f"Nothing but quiet or speech in the last {minutes:g} minutes."
+            return (
+                f"Nothing but quiet or speech in the last {minutes:g} minutes.{around}"
+            )
         parts = []
         for s in data["sounds"][:6]:
             if s["going_on_now"]:
                 parts.append(f"{s['sound']} (happening now)")
             else:
                 parts.append(f"{s['sound']} ({_ago(s['last_seconds_ago'])})")
-        return "Background sounds lately: " + ", ".join(parts) + "."
+        return "Background sounds lately: " + ", ".join(parts) + "." + around
 
     # ----------------------------------------------------------- the worker
 

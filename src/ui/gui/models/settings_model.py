@@ -265,6 +265,12 @@ class SettingsModel(
         SettingsSystemOptionsMixin._set_avatarStyle,
         notify=settingsChanged,
     )
+    ambientSoundsEnabled = Property(
+        bool,
+        SettingsSystemOptionsMixin._get_ambientSoundsEnabled,
+        SettingsSystemOptionsMixin._set_ambientSoundsEnabled,
+        notify=settingsChanged,
+    )
     musicSearchUrl = Property(
         str,
         SettingsSystemOptionsMixin._get_musicSearchUrl,

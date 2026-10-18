@@ -193,3 +193,63 @@ def test_the_briefing_explains_the_sounds_only_when_the_tool_exists():
     assert "What you can hear besides speech" not in without
     assert "What you can hear besides speech" in with_it
     assert "ambient_sounds" in with_it
+
+
+# ---------------------------------------------------------------- presence
+
+
+def test_typing_counts_as_someone_being_around_without_a_word_said():
+    a, _ = sounds()
+    a.ingest([("Typing", 0.8)], 1000.0)
+    p = a.presence(now=1005.0)
+    assert p["last_sign"] == "Typing"
+    assert p["state"] == "active right now"
+
+
+def test_a_voice_counts_as_presence_but_is_not_logged_as_a_sound():
+    a, _ = sounds()
+    a.ingest([("Speech", 0.9)], 1000.0)
+    assert a.presence(now=1010.0)["last_sign"] == "a voice"
+    assert a.heard(10, now=1010.0)["sounds"] == []
+
+
+def test_a_faint_voice_is_not_enough():
+    a, _ = sounds()
+    a.ingest([("Speech", 0.3)], 1000.0)
+    assert a.presence(now=1005.0)["last_sign"] is None
+
+
+def test_the_dog_or_the_kettle_is_not_a_sign_of_a_person():
+    a, _ = sounds()
+    a.ingest(
+        [("Dog", 0.9), ("Whimper (dog)", 0.9), ("Smoke detector, smoke alarm", 0.9)],
+        1000.0,
+    )
+    assert a.presence(now=1005.0)["last_sign"] is None
+
+
+def test_presence_fades_to_a_while_ago_not_to_gone():
+    a, _ = sounds()
+    a.ingest([("Walk, footsteps", 0.8)], 1000.0)
+    assert a.presence(now=1060.0)["state"] == "active a moment ago"
+    later = a.presence(now=1600.0)
+    assert later["state"] == "no sound of anyone for a while"
+    assert later["last_sign_seconds_ago"] == 600
+
+
+def test_the_most_recent_sign_wins():
+    a, _ = sounds()
+    a.ingest([("Typing", 0.8)], 1000.0)
+    a.ingest([("Speech", 0.9)], 1100.0)
+    assert a.presence(now=1101.0)["last_sign"] == "a voice"
+
+
+def test_no_sign_yet_is_said_plainly():
+    a, _ = sounds()
+    assert a.presence(now=1000.0)["state"] == "no sign yet"
+
+
+def test_describe_mentions_who_was_last_around():
+    a, _ = sounds()
+    a.ingest([("Typing", 0.8)], 1000.0)
+    assert "Last sign of someone around: Typing" in a.describe(10, now=1010.0)
