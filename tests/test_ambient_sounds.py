@@ -283,3 +283,55 @@ def test_the_screen_line_is_blank_when_nothing_or_when_off():
     a.ingest([("Typing", 0.8)], 1000.0)
     a.enabled = False
     assert a.now_line(now=1001.0) == ""
+
+
+# ---------------------------------------------------------------- brief sounds
+
+
+def test_a_cough_counts_on_one_clear_detection():
+    a, _ = sounds()
+    a.ingest([("Cough", 0.45)], 1000.0)
+    assert a.heard(10, now=1001.0)["sounds"][0]["sound"] == "Cough"
+
+
+def test_a_sound_that_goes_on_still_needs_more_than_one_weak_detection():
+    a, _ = sounds()
+    a.ingest([("Typing", 0.45)], 1000.0)
+    assert a.heard(10, now=1001.0)["sounds"] == []
+
+
+def test_a_faint_cough_is_still_not_enough():
+    a, _ = sounds()
+    a.ingest([("Cough", 0.36)], 1000.0)
+    assert a.heard(10, now=1001.0)["sounds"] == []
+
+
+def test_the_short_window_catches_what_the_long_one_would_dilute():
+    """Both scales are run each tick and the better score for a label wins."""
+    a, clock = sounds()
+    seen = {}
+
+    class Tagger:
+        def create_stream(self):
+            class S:
+                def accept_waveform(s, rate, w):
+                    seen[len(seen)] = w.size
+
+            return S()
+
+        def compute(self, stream):
+            n = seen[len(seen) - 1]
+
+            class E:
+                def __init__(s, name, prob):
+                    s.name, s.prob = name, prob
+
+            # strong only in the one-second window
+            return [E("Clapping", 0.8 if n == 16_000 else 0.1)]
+
+    a._tagger = Tagger()
+    for _ in range(400):
+        a.on_audio_data(np.full(320, 0.05, dtype=np.float32))
+    a.step()
+    assert sorted(seen.values()) == [16_000, 48_000]
+    assert a.heard(10, now=clock["t"])["sounds"][0]["sound"] == "Clapping"

@@ -77,6 +77,9 @@ class AudioCodec:
         # listeners (thread-safe)
         self._encoded_callback: Callable | None = None
         self._audio_listeners: list[AudioListener] = []
+        # listeners that want the microphone as it came in, before echo
+        # cancellation and noise suppression have had a go at it
+        self._raw_listeners: list[AudioListener] = []
         self._listeners_lock = threading.Lock()
 
         # device config (filled in after initialisation)
@@ -166,6 +169,18 @@ class AudioCodec:
             )
             if audio_converted is None:
                 return  # not enough data, wait for the next frame
+
+            # 1.4 the microphone untouched, for listeners that care about sounds
+            # the noise suppressor treats as noise (a cough, a clap, typing)
+            if self._raw_listeners:
+                raw_mic = audio_converted.copy()
+                with self._listeners_lock:
+                    raw_listeners = tuple(self._raw_listeners)
+                for listener in raw_listeners:
+                    try:
+                        listener.on_audio_data(raw_mic)
+                    except Exception as e:
+                        logger.warning(f"Raw listener failed: {e}", exc_info=True)
 
             # 1.5 AEC: cancel echo using the far reference taken from the playback callback (returned unchanged when bypassed)
             if self._aec is not None and self._aec.active:
@@ -376,6 +391,19 @@ class AudioCodec:
             if listener not in self._audio_listeners:
                 self._audio_listeners.append(listener)
                 logger.info(f"Audio listener added: {listener.__class__.__name__}")
+
+    def add_raw_audio_listener(self, listener: AudioListener):
+        """Like add_audio_listener, but the audio is taken before echo cancellation
+        and noise suppression, so quick, noise-like sounds survive."""
+        with self._listeners_lock:
+            if listener not in self._raw_listeners:
+                self._raw_listeners.append(listener)
+                logger.info(f"Raw audio listener added: {listener.__class__.__name__}")
+
+    def remove_raw_audio_listener(self, listener: AudioListener):
+        with self._listeners_lock:
+            if listener in self._raw_listeners:
+                self._raw_listeners.remove(listener)
 
     def remove_audio_listener(self, listener: AudioListener):
         """Remove an audio listener (thread-safe)
@@ -611,6 +639,7 @@ class AudioCodec:
             # 5. clear listeners
             with self._listeners_lock:
                 self._audio_listeners.clear()
+                self._raw_listeners.clear()
 
             logger.info("AudioCodec closed")
             self._closed = True
@@ -652,6 +681,7 @@ class AudioCodec:
             try:
                 with self._listeners_lock:
                     self._audio_listeners.clear()
+                    self._raw_listeners.clear()
             except Exception as e:
                 logger.warning(
                     f"Failed to clear audio listeners (the lock may be broken): {e}",

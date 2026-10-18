@@ -212,7 +212,7 @@ class AmbientSoundsPlugin(Plugin):
         if not await asyncio.to_thread(sounds.load, model_dir, threads):
             return
         sounds.start()
-        audio.codec.add_audio_listener(sounds)
+        audio.codec.add_raw_audio_listener(sounds)
         ambient_sounds.set_ambient(sounds)
         self._sounds = sounds
 
@@ -223,7 +223,7 @@ class AmbientSoundsPlugin(Plugin):
         ambient_sounds.set_ambient(None)
         audio = self.get_dep("audio")
         if audio and audio.codec:
-            audio.codec.remove_audio_listener(sounds)
+            audio.codec.remove_raw_audio_listener(sounds)
         await asyncio.to_thread(sounds.stop)
 
     async def stop(self) -> None:

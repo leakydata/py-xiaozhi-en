@@ -155,7 +155,41 @@ _VOICE_CONFIDENCE = 0.5
 
 #: A window is analysed at most this often; the model takes ~15 ms on a CPU.
 _WINDOW_S = 3.0
-_HOP_S = 1.5
+_HOP_S = 0.5
+#: A short window as well as the long one: a cough or a clap lasts a fraction of
+#: a second, and in three seconds of otherwise ordinary room it is too diluted
+#: for the model to be sure. The short window sees it nearly on its own.
+_SHORT_S = 1.0
+#: How recent a sound has to be to count as going on now.
+_NOW_S = 4.0
+#: Brief sounds that happen once and are gone. One clear detection is enough:
+#: asking for a second would mean it never confirms, because by the next
+#: window the sound is over.
+TRANSIENT = frozenset(
+    {
+        "Cough",
+        "Throat clearing",
+        "Sneeze",
+        "Clapping",
+        "Finger snapping",
+        "Knock",
+        "Door",
+        "Slam",
+        "Thump, thud",
+        "Doorbell",
+        "Bark",
+        "Gasp",
+        "Hiccup",
+        "Burping, eructation",
+        "Glass",
+        "Shatter",
+        "Breaking",
+        "Cupboard open or close",
+        "Drawer open or close",
+    }
+)
+_TRANSIENT_CONFIDENCE = 0.4
+
 #: Below this RMS the window is just the room being quiet.
 _QUIET_RMS = 0.0008
 #: Two detections of one label this far apart are the same event.
@@ -173,7 +207,12 @@ class Event:
     peak: float = 0.0
 
     def confirmed(self) -> bool:
-        """One strong detection, or the same one twice, not a single flicker."""
+        """One strong detection, or the same one twice, not a single flicker.
+
+        A sound that is over in a moment gets by on one good detection.
+        """
+        if self.label in TRANSIENT and self.peak >= _TRANSIENT_CONFIDENCE:
+            return True
         return self.hits >= 2 or self.peak >= 0.6
 
 
@@ -217,6 +256,7 @@ class AmbientSounds:
         self._events: deque[Event] = deque(maxlen=_MAX_EVENTS)
         self._open: dict[str, Event] = {}
         self._last_voice: float | None = None
+        self._tick = 0
 
         # Time accounting, so the digest can say how much it could not hear.
         self._started = clock()
@@ -247,8 +287,8 @@ class AmbientSounds:
             while self._buffered - self._buffer[0].size >= keep:
                 self._buffered -= self._buffer.popleft().size
 
-    def _take_window(self) -> np.ndarray | None:
-        need = int(SAMPLE_RATE * self.window_s)
+    def _take_window(self, seconds: float | None = None) -> np.ndarray | None:
+        need = int(SAMPLE_RATE * (self.window_s if seconds is None else seconds))
         with self._lock:
             if self._buffered < need:
                 return None
@@ -315,7 +355,7 @@ class AmbientSounds:
                     "times": len(events),
                     "last_seconds_ago": int(now - last),
                     "first_seconds_ago": int(now - first),
-                    "going_on_now": now - last <= 2 * self.hop_s + 1.0,
+                    "going_on_now": now - last <= _NOW_S,
                     "confidence": round(max(e.peak for e in events), 2),
                 }
             )
@@ -387,10 +427,7 @@ class AmbientSounds:
             return ""
         sounds = self.heard(1.0, now)["sounds"]
         parts = []
-        if (
-            self._last_voice is not None
-            and now - self._last_voice <= 2 * self.hop_s + 1
-        ):
+        if self._last_voice is not None and now - self._last_voice <= _NOW_S:
             parts.append("a voice")
         parts += [s["sound"] for s in sounds if s["going_on_now"]]
         if parts:
@@ -474,23 +511,46 @@ class AmbientSounds:
                 logger.warning(f"ambient sounds: analysis failed: {e}")
 
     def step(self) -> None:
-        """Analyse the latest window, unless it cannot be trusted."""
+        """Analyse the latest audio, unless it cannot be trusted.
+
+        Every tick looks at the last second; every third tick also at the last
+        three, which suits sounds that go on (typing, a kettle, music).
+        """
         now = self._clock()
-        window = self._take_window()
-        if window is None:
-            return
-        # The assistant talking, or music the app is playing, is not the room.
-        if now - self._last_playback < self.window_s:
-            self.note_window(now, False)
-            return
-        if float(np.sqrt(np.mean(window * window))) < _QUIET_RMS:
+        self._tick += 1
+        scales = [_SHORT_S]
+        if self._tick % 3 == 1:
+            scales.append(self.window_s)
+
+        best: dict[str, float] = {}
+        analysed = masked = False
+        for seconds in scales:
+            window = self._take_window(seconds)
+            if window is None:
+                continue
+            # The assistant talking, or music the app is playing, is not the room.
+            if now - self._last_playback < seconds:
+                masked = True
+                continue
+            analysed = True
+            if float(np.sqrt(np.mean(window * window))) < _QUIET_RMS:
+                continue
+            stream = self._tagger.create_stream()
+            stream.accept_waveform(SAMPLE_RATE, window)
+            for e in self._tagger.compute(stream):
+                best[e.name] = max(best.get(e.name, 0.0), float(e.prob))
+
+        if analysed:
             self.note_window(now, True)
-            return
-        stream = self._tagger.create_stream()
-        stream.accept_waveform(SAMPLE_RATE, window)
-        results = self._tagger.compute(stream)
-        self.note_window(now, True)
-        self.ingest([(e.name, float(e.prob)) for e in results], now)
+        elif masked:
+            self.note_window(now, False)
+        if best:
+            if logger.isEnabledFor(10):  # DEBUG
+                top = sorted(best.items(), key=lambda kv: -kv[1])[:4]
+                logger.debug(
+                    "ambient raw: " + ", ".join(f"{n} {p:.2f}" for n, p in top)
+                )
+            self.ingest(list(best.items()), now)
 
 
 def ago_text(seconds: int) -> str:
