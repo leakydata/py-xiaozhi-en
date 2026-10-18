@@ -335,3 +335,28 @@ def test_the_short_window_catches_what_the_long_one_would_dilute():
     a.step()
     assert sorted(seen.values()) == [16_000, 48_000]
     assert a.heard(10, now=clock["t"])["sounds"][0]["sound"] == "Clapping"
+
+
+# ---------------------------------------------------------------- body sounds
+
+
+def test_a_snort_the_model_is_only_a_fifth_sure_of_counts_when_it_repeats():
+    a, _ = sounds()
+    a.ingest([("Snort", 0.22)], 1000.0)
+    assert a.heard(10, now=1001.0)["sounds"] == []  # once is a guess
+    a.ingest([("Snort", 0.21)], 1003.0)
+    assert a.heard(10, now=1004.0)["sounds"][0]["sound"] == "Snort"
+
+
+def test_the_low_floor_is_only_for_body_sounds():
+    a, _ = sounds()
+    a.ingest([("Tick", 0.22)], 1000.0)
+    a.ingest([("Tick", 0.22)], 1003.0)
+    assert a.heard(10, now=1004.0)["sounds"] == []
+
+
+def test_a_snort_is_a_sign_someone_is_there():
+    a, _ = sounds()
+    a.ingest([("Snort", 0.25)], 1000.0)
+    a.ingest([("Snort", 0.25)], 1002.0)
+    assert a.presence(now=1005.0)["last_sign"] == "Snort"

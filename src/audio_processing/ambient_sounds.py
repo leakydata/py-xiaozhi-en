@@ -101,6 +101,7 @@ ACTIVITY = frozenset(
         "Cough",
         "Throat clearing",
         "Sneeze",
+        "Snort",
         "Sniff",
         "Breathing",
         "Snoring",
@@ -148,6 +149,28 @@ NOTABLE = frozenset(
         "Telephone bell ringing",
     }
 )
+#: Sounds a body makes, which the model scores low even when they are real
+#: (a snort or a sniff in a quiet room came back at 0.2). They are counted from
+#: a lower floor, but still have to be heard twice, so one stray guess is not
+#: enough.
+BODY = frozenset(
+    {
+        "Snort",
+        "Sniff",
+        "Breathing",
+        "Sigh",
+        "Snoring",
+        "Throat clearing",
+        "Cough",
+        "Sneeze",
+        "Gasp",
+        "Hiccup",
+        "Burping, eructation",
+        "Pant",
+    }
+)
+_BODY_CONFIDENCE = 0.2
+
 #: A notable sound has to be at least this sure to be spoken about.
 _NOTABLE_CONFIDENCE = 0.6
 #: Speech at least this likely counts as a voice.
@@ -304,7 +327,10 @@ class AmbientSounds:
                 if self._last_voice is None or now - self._last_voice > _MERGE_GAP_S:
                     logger.info("ambient: heard a voice")
                 self._last_voice = now
-            if prob < self.min_confidence or label in IGNORED:
+            floor = self.min_confidence
+            if label in BODY:
+                floor = min(floor, _BODY_CONFIDENCE)
+            if prob < floor or label in IGNORED:
                 continue
             event = self._open.get(label)
             if event is not None and now - event.last <= _MERGE_GAP_S:
