@@ -56,6 +56,7 @@ async def setup_plugins(
     cmd: "PluginCommands",
 ) -> None:
     """Bind the shared services, register and initialise the plugins, and hook up the cleanup and direct audio path."""
+    from src.plugins.ambient import AmbientSoundsPlugin
     from src.plugins.audio import AudioPlugin
     from src.plugins.mcp import McpPlugin
     from src.plugins.reminders import RemindersPlugin
@@ -73,6 +74,7 @@ async def setup_plugins(
     shortcuts_plugin = ShortcutsPlugin()
     reminders_plugin = RemindersPlugin()
     turn_taking_plugin = TurnTakingPlugin()
+    ambient_plugin = AmbientSoundsPlugin()
     mcp_plugin = McpPlugin(
         server=container.mcp_server,
         music_player=container.music_player,
@@ -86,6 +88,7 @@ async def setup_plugins(
         shortcuts_plugin,
         reminders_plugin,
         turn_taking_plugin,
+        ambient_plugin,
     )
 
     await container.plugins.setup_all(ctx, cmd)

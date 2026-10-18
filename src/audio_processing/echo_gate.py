@@ -185,13 +185,21 @@ class EchoGate:
         delay is only approximate. Taking the loudest errs towards calling
         things echo, which costs a missed cut-in rather than a severed reply.
         """
-        if not self._far:
+        # A snapshot: the output callback appends to this from another thread,
+        # and iterating a deque that changes underneath raises.
+        far = tuple(self._far)
+        if not far:
             return 0.0
         half = 0.06
-        window = [rms for t, rms in self._far if when - half <= t <= when + half]
+        window = [rms for t, rms in far if when - half <= t <= when + half]
         if window:
             return max(window)
-        return self._far[-1][1] if when > self._far[-1][0] else self._far[0][1]
+        return far[-1][1] if when > far[-1][0] else far[0][1]
+
+    def playback_active(self, within_s: float = 0.5) -> bool:
+        """Has something audible been written to the speakers just now?"""
+        now = time.monotonic()
+        return any(rms > _SILENCE for t, rms in tuple(self._far) if now - t <= within_s)
 
     def threshold(self, far: float) -> float:
         """The microphone level neither the playback nor the room explains."""

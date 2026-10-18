@@ -71,7 +71,7 @@ class ConfigManager:
             "CLIENT_ID": None,
             "DEVICE_ID": None,
             "WINDOW_SIZE_MODE": "default",
-            # avatar style: person (cartoon) | simple (abstract disc) | gif (animated emoji)
+            # avatar style: person (cartoon man) | woman (cartoon woman) | simple (abstract disc) | gif (animated emoji)
             "AVATAR_STYLE": "person",
             "NETWORK": {
                 "OTA_VERSION_URL": "https://api.tenclass.net/xiaozhi/ota/",
@@ -201,6 +201,19 @@ class ConfigManager:
             "RECONNECT_MAX_DELAY": 60,
             # 0 keeps trying for as long as the app is running
             "RECONNECT_MAX_ATTEMPTS": 0,
+        },
+        # What the microphone hears that is not speech (keyboard, dog, kettle,
+        # music, an alarm), named by an audio-tagging model and offered to the
+        # assistant through the ambient_sounds tool. All of it stays on this
+        # machine until the assistant asks for the digest.
+        "AMBIENT_SOUNDS": {
+            "ENABLED": True,
+            "MODEL_PATH": "models/ambient",
+            "NUM_THREADS": 2,
+            # a label has to reach this probability to be counted
+            "MIN_CONFIDENCE": 0.35,
+            # how far back the briefing's "lately" line looks
+            "BRIEFING_MINUTES": 10,
         },
         "AEC_OPTIONS": {
             "ENABLED": False,

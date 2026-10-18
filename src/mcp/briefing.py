@@ -46,6 +46,10 @@ _GROUPS: list[tuple[str, tuple[str, ...]]] = [
     ),
     ("The web", ("web_search", "fetch_page")),
     (
+        "The room - sounds that are not speech",
+        ("ambient_sounds",),
+    ),
+    (
         "Deeper reasoning - a stronger model, for hard questions",
         ("ask_claude", "ask_claude_background"),
     ),
@@ -106,6 +110,40 @@ _HABITS = """How to work:
   then tell the user you will report back.
 - Keep spoken replies short. This is voice: a sentence or two, not an essay.
 - You are not in a conversation with this briefing. Do not reply to it."""
+
+
+_AMBIENT = """What you can hear besides speech:
+- The microphone is also listened to by a sound-recognition model that names
+  non-speech sounds (typing, a dog, running water, a kettle, music, an alarm, a
+  cough, a door). Speech is excluded: what people say reaches you as words.
+- You do not receive these sounds on their own. Call ambient_sounds to get the
+  recent ones, each with a confidence, whether it is going on now and how long
+  ago it was last heard. The line below, if present, is only what was heard
+  just before this session began.
+- Use it to be aware of what is going on around the user: that they are typing,
+  that music is playing, that a smoke alarm has been going, that the dog has
+  been barking. Mention a sound unprompted only when it matters to them, such
+  as an alarm or something that sounds wrong, or when they ask. Do not narrate
+  routine background noise.
+- It is a classifier. Under 0.5 confidence say it sounded like something, and
+  never report a sound that was not listed. While you are speaking or music is
+  playing the microphone cannot listen, so an empty list then is not silence."""
+
+
+def _ambient_snapshot() -> str:
+    """The sounds heard just before this session began, if the tagger is up."""
+    try:
+        from src.audio_processing.ambient_sounds import get_ambient
+        from src.utils.config_manager import get_config
+
+        ambient = get_ambient()
+        if ambient is None:
+            return ""
+        minutes = float(get_config().get_config("AMBIENT_SOUNDS.BRIEFING_MINUTES", 10))
+        return ambient.describe(minutes)
+    except Exception as e:
+        logger.debug(f"briefing: no ambient snapshot ({e})")
+        return ""
 
 
 def _workspace_extra() -> str:
@@ -187,6 +225,12 @@ def build(tools: Iterable["McpTool"], clients=None) -> str:
         pass
 
     lines += ["", _HABITS]
+
+    if "ambient_sounds" in names:
+        lines += ["", _AMBIENT]
+        snapshot = _ambient_snapshot()
+        if snapshot:
+            lines.append(snapshot)
 
     # Each connected MCP server may describe itself during the handshake. That
     # is the server telling the model what it holds and when to reach for it,
