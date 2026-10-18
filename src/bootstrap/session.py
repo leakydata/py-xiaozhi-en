@@ -196,6 +196,10 @@ class ConversationSession:
         try:
             msg_type = json_data.get("type") if isinstance(json_data, dict) else None
             logger.info(f"JSON message received: type={msg_type}")
+            if msg_type in ("alert", "error"):
+                # The server uses these to say why it is about to hang up
+                # (limits, busy, idle). The type alone told us nothing.
+                logger.warning(f"server {msg_type}: {str(json_data)[:600]}")
 
             if msg_type == "tts":
                 state = json_data.get("state")
