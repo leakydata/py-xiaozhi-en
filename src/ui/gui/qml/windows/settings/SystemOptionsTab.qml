@@ -54,8 +54,8 @@ ScrollView {
                     id: avatarCombo
                     Layout.preferredWidth: 200
                     // index order must match avatarValues below
-                    property var avatarValues: ["person", "simple", "gif"]
-                    model: ["Cartoon person", "Abstract face", "Animated emoji (GIF)"]
+                    property var avatarValues: ["person", "woman", "simple", "gif"]
+                    model: ["Cartoon man", "Cartoon woman (Xiaozhi)", "Abstract face", "Animated emoji (GIF)"]
                     currentIndex: {
                         if (!settingsModel) return 0
                         var i = avatarValues.indexOf(settingsModel.avatarStyle)
@@ -69,7 +69,7 @@ ScrollView {
             }
 
             Text {
-                text: "Cartoon person and Abstract face are drawn live and lip-sync to audio. "
+                text: "Cartoon man, Cartoon woman and Abstract face are drawn live and lip-sync to audio. "
                     + "Animated emoji uses the bundled GIF set. Takes effect immediately."
                 font.pixelSize: Theme.fontSizeXs
                 color: Theme.textPlaceholder

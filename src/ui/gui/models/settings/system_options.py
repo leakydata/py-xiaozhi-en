@@ -60,7 +60,7 @@ class SettingsSystemOptionsMixin:
     def _set_windowSizeMode(self, value: str):
         self._set_value("SYSTEM_OPTIONS.WINDOW_SIZE_MODE", value)
 
-    # AVATAR_STYLE: person | simple | gif
+    # AVATAR_STYLE: person | woman | simple | gif
     def _get_avatarStyle(self) -> str:
         return self._get_value("SYSTEM_OPTIONS.AVATAR_STYLE", "person")
 

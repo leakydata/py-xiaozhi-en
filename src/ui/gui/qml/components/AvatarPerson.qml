@@ -25,6 +25,10 @@ Item {
     // you reshape it to hug the jaw much more tightly.
     property bool stubble: false
     property bool glasses: false
+    // The woman variant (see Avatar.qml "woman"): long hair behind the head, a
+    // side fringe, lashes, a faint resting blush and one brow that sits a touch
+    // higher than the other - warm, a little dry.
+    property bool feminine: false
 
     implicitWidth: 220
     implicitHeight: 220
@@ -141,9 +145,25 @@ Item {
         readonly property real cx: width / 2
         readonly property real cy: height / 2
 
+        // ---- long hair behind the head (woman variant) ----
+        Rectangle {
+            visible: root.feminine
+            x: -head.width * 0.10
+            y: -head.height * 0.07
+            width: head.width * 1.20
+            height: head.height * 1.10
+            topLeftRadius: width * 0.5
+            topRightRadius: width * 0.5
+            bottomLeftRadius: width * 0.16
+            bottomRightRadius: width * 0.16
+            color: root.hairShade
+            border.width: 1.5 * root.unit
+            border.color: Qt.darker(root.hairShade, 1.15)
+        }
+
         // ---- ears (behind the face) ----
         Repeater {
-            model: 2
+            model: root.feminine ? 0 : 2
             Rectangle {
                 required property int index
                 width: 20 * root.unit
@@ -228,10 +248,10 @@ Item {
                 PathCubic {
                     x: head.cx - root.headR * 0.99
                     y: head.cy - root.headR * 0.12
-                    control1X: head.cx + root.headR * 0.45
-                    control1Y: head.cy - root.headR * 0.86
-                    control2X: head.cx - root.headR * 0.62
-                    control2Y: head.cy - root.headR * 0.30
+                    control1X: head.cx + root.headR * (root.feminine ? 0.55 : 0.45)
+                    control1Y: head.cy - root.headR * (root.feminine ? 0.52 : 0.86)
+                    control2X: head.cx - root.headR * (root.feminine ? 0.50 : 0.62)
+                    control2Y: head.cy - root.headR * (root.feminine ? 0.40 : 0.30)
                 }
             }
         }
@@ -242,12 +262,14 @@ Item {
             Rectangle {
                 required property int index
                 readonly property bool isLeft: index === 0
-                width: 30 * root.unit
-                height: 6 * root.unit
+                width: (root.feminine ? 26 : 30) * root.unit
+                height: (root.feminine ? 4.5 : 6) * root.unit
                 radius: height / 2
                 color: root.hairShade
                 x: head.cx + (isLeft ? -46 : 16) * root.unit + root.gazeX * 0.35
+                // woman variant: the right brow rests slightly raised (dry wit)
                 y: head.cy - 30 * root.unit - root.brow * 8 * root.unit + root.gazeY * 0.3
+                   - ((root.feminine && !isLeft && root.brow < 0.2) ? 2.5 * root.unit : 0)
                 rotation: (isLeft ? 1 : -1) * root.brow * -15
                 Behavior on y { NumberAnimation { duration: 220 } }
                 Behavior on rotation { NumberAnimation { duration: 220 } }
@@ -334,12 +356,43 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: lid.y + lid.height - 1.2 * root.unit
                     width: parent.width * 0.94
-                    height: 2.2 * root.unit
+                    height: (root.feminine ? 3.2 : 2.2) * root.unit
                     radius: height / 2
                     color: root.hairShade
                     opacity: eye.openAmt > 0.1 ? 0.8 : 0.0
                 }
             }
+        }
+
+        // ---- lash flicks at the outer corners (woman variant) ----
+        Repeater {
+            model: root.feminine ? 2 : 0
+            Rectangle {
+                required property int index
+                readonly property bool isLeft: index === 0
+                width: 9 * root.unit
+                height: 2.6 * root.unit
+                radius: height / 2
+                color: root.hairShade
+                opacity: (root.eyeOpen * root.blink) > 0.35 ? 0.9 : 0.0
+                rotation: isLeft ? 28 : -28
+                x: head.cx + (isLeft ? -52 : 36) * root.unit + root.gazeX * 0.2
+                y: head.cy - 10 * root.unit
+            }
+        }
+
+        // ---- hair clip: takes the emotion colour (woman variant) ----
+        Rectangle {
+            visible: root.feminine
+            width: 16 * root.unit
+            height: 7 * root.unit
+            radius: height / 2
+            color: root.tint
+            border.width: 1 * root.unit
+            border.color: Qt.darker(root.tint, 1.3)
+            rotation: -22
+            x: head.cx + 30 * root.unit
+            y: head.cy - 62 * root.unit
         }
 
         // ---- glasses (optional) ----
@@ -390,7 +443,7 @@ Item {
                 height: 11 * root.unit
                 radius: height / 2
                 color: "#F2827F"
-                opacity: root.face.blush === 1 ? 0.45 : 0.0
+                opacity: root.face.blush === 1 ? 0.45 : (root.feminine ? 0.16 : 0.0)
                 x: head.cx + (index === 0 ? -64 : 42) * root.unit
                 y: head.cy + 16 * root.unit
                 Behavior on opacity { NumberAnimation { duration: 300 } }
