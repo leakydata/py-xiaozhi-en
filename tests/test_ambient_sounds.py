@@ -46,10 +46,10 @@ def test_a_strong_detection_counts_at_once():
     assert got[0]["going_on_now"] is True
 
 
-def test_a_weak_detection_seen_twice_counts():
+def test_a_weak_detection_seen_in_several_windows_in_a_row_counts():
     a, _ = sounds()
-    a.ingest([("Typing", 0.4)], 1000.0)
-    a.ingest([("Typing", 0.45)], 1001.5)
+    for i, p in enumerate((0.4, 0.45, 0.4)):
+        a.ingest([("Typing", p)], 1000.0 + i * 0.5)
     assert a.heard(10, now=1002.0)["sounds"][0]["sound"] == "Typing"
 
 
@@ -360,3 +360,42 @@ def test_a_snort_is_a_sign_someone_is_there():
     a.ingest([("Snort", 0.25)], 1000.0)
     a.ingest([("Snort", 0.25)], 1002.0)
     assert a.presence(now=1005.0)["last_sign"] == "Snort"
+
+
+# ---------------------------------------------------------------- consistency
+
+
+def test_scattered_guesses_do_not_add_up_to_a_sound():
+    """A hallucination turns up once here, once there; seen three times in
+    twelve seconds it is still never three times in four."""
+    a, _ = sounds(min_confidence=0.25)
+    for t in (1000.0, 1004.5, 1009.0, 1013.5, 1018.0):
+        a.ingest([("Tick-tock", 0.3)], t)
+    assert a.heard(10, now=1019.0)["sounds"] == []
+
+
+def test_a_sound_that_stays_in_the_windows_counts():
+    a, _ = sounds(min_confidence=0.25)
+    for i in range(6):
+        a.ingest([("Tick-tock", 0.3)], 1000.0 + i * 0.5)
+    assert a.heard(10, now=1003.0)["sounds"][0]["sound"] == "Tick-tock"
+
+
+def test_two_in_a_row_is_not_yet_a_sustained_sound():
+    a, _ = sounds(min_confidence=0.25)
+    a.ingest([("Typing", 0.3)], 1000.0)
+    a.ingest([("Typing", 0.3)], 1000.5)
+    assert a.heard(10, now=1001.0)["sounds"] == []
+
+
+def test_a_label_on_the_ignore_list_never_counts():
+    a, _ = sounds(ignore=("Tick-tock", "tick"))
+    for i in range(6):
+        a.ingest([("Tick-tock", 0.9), ("Tick", 0.9)], 1000.0 + i * 0.5)
+    assert a.heard(10, now=1003.0)["sounds"] == []
+
+
+def test_the_ignore_list_matches_the_short_name_too():
+    a, _ = sounds(ignore=("smoke detector",))
+    a.ingest([("Smoke detector, smoke alarm", 0.95)], 1000.0)
+    assert a.heard(10, now=1001.0)["sounds"] == []

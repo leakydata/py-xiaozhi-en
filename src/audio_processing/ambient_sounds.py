@@ -185,6 +185,11 @@ _HOP_S = 0.5
 _SHORT_S = 1.0
 #: How recent a sound has to be to count as going on now.
 _NOW_S = 4.0
+#: A sound that goes on has to turn up in several windows close together, not
+#: once here and once there: the model's stray guesses are scattered, a real
+#: keyboard or kettle is in every window while it lasts.
+_SUSTAIN_S = 4.0
+_SUSTAIN_HITS = 3
 #: Brief sounds that happen once and are gone. One clear detection is enough:
 #: asking for a second would mean it never confirms, because by the next
 #: window the sound is over.
@@ -212,6 +217,8 @@ TRANSIENT = frozenset(
     }
 )
 _TRANSIENT_CONFIDENCE = 0.4
+#: Sure enough on its own, however brief.
+_STRONG_CONFIDENCE = 0.6
 
 #: Below this RMS the window is just the room being quiet.
 _QUIET_RMS = 0.0008
@@ -228,15 +235,6 @@ class Event:
     last: float
     hits: int = 1
     peak: float = 0.0
-
-    def confirmed(self) -> bool:
-        """One strong detection, or the same one twice, not a single flicker.
-
-        A sound that is over in a moment gets by on one good detection.
-        """
-        if self.label in TRANSIENT and self.peak >= _TRANSIENT_CONFIDENCE:
-            return True
-        return self.hits >= 2 or self.peak >= 0.6
 
 
 def short_name(label: str) -> str:
@@ -261,12 +259,14 @@ class AmbientSounds:
         self,
         *,
         min_confidence: float = 0.35,
+        ignore: tuple[str, ...] = (),
         window_s: float = _WINDOW_S,
         hop_s: float = _HOP_S,
         playback_active: Callable[[], bool] | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.min_confidence = min_confidence
+        self._ignore = {x.strip().lower() for x in ignore if x and x.strip()}
         self.window_s = window_s
         self.hop_s = hop_s
         self._playback_active = playback_active or (lambda: False)
@@ -278,6 +278,7 @@ class AmbientSounds:
         self._last_playback = -1e9
         self._events: deque[Event] = deque(maxlen=_MAX_EVENTS)
         self._open: dict[str, Event] = {}
+        self._recent: dict[str, deque[tuple[float, float]]] = {}
         self._last_voice: float | None = None
         self._tick = 0
 
@@ -320,8 +321,17 @@ class AmbientSounds:
 
     # ----------------------------------------------------------- the log
 
+    def _corroborated(self, label: str, prob: float, hist) -> bool:
+        """Is this label real enough to log, given the windows just before?"""
+        if prob >= _STRONG_CONFIDENCE:
+            return True
+        if label in TRANSIENT and prob >= _TRANSIENT_CONFIDENCE:
+            return True
+        needed = 2 if label in BODY else _SUSTAIN_HITS
+        return len(hist) >= needed
+
     def ingest(self, detections: list[tuple[str, float]], now: float) -> None:
-        """Fold one window's labels into the event log."""
+        """Fold one tick's labels into the event log."""
         for label, prob in detections:
             if label in VOICE and prob >= _VOICE_CONFIDENCE:
                 if self._last_voice is None or now - self._last_voice > _MERGE_GAP_S:
@@ -332,21 +342,31 @@ class AmbientSounds:
                 floor = min(floor, _BODY_CONFIDENCE)
             if prob < floor or label in IGNORED:
                 continue
+            if (
+                label.lower() in self._ignore
+                or short_name(label).lower() in self._ignore
+            ):
+                continue
+
+            hist = self._recent.setdefault(label, deque())
+            hist.append((now, prob))
+            while hist and hist[0][0] < now - _SUSTAIN_S:
+                hist.popleft()
+            if not self._corroborated(label, prob, hist):
+                continue
+
             event = self._open.get(label)
             if event is not None and now - event.last <= _MERGE_GAP_S:
-                was_confirmed = event.confirmed()
                 event.last = now
                 event.hits += 1
                 event.peak = max(event.peak, prob)
             else:
-                was_confirmed = False
                 event = Event(label, now, now, 1, prob)
                 self._open[label] = event
                 self._events.append(event)
-            # One line when a sound is first counted, so `tail -f` on the log
-            # shows what the room is being heard as.
-            if event.confirmed() and not was_confirmed:
-                logger.info(f"ambient: heard {short_name(label)} ({event.peak:.2f})")
+                # One line when a sound is first counted, so `tail -f` on the
+                # log shows what the room is being heard as.
+                logger.info(f"ambient: heard {short_name(label)} ({prob:.2f})")
         cutoff = now - _KEEP_S
         while self._events and self._events[0].last < cutoff:
             old = self._events.popleft()
@@ -368,7 +388,7 @@ class AmbientSounds:
         since = now - span
         by_label: dict[str, list[Event]] = {}
         for e in tuple(self._events):
-            if e.confirmed() and e.last >= since:
+            if e.last >= since:
                 by_label.setdefault(e.label, []).append(e)
 
         sounds = []
@@ -408,10 +428,7 @@ class AmbientSounds:
         return [
             e
             for e in tuple(self._events)
-            if e.label in NOTABLE
-            and e.confirmed()
-            and e.peak >= _NOTABLE_CONFIDENCE
-            and e.last > since
+            if e.label in NOTABLE and e.peak >= _NOTABLE_CONFIDENCE and e.last > since
         ]
 
     def presence(self, now: float | None = None) -> dict:
@@ -423,11 +440,7 @@ class AmbientSounds:
         now = self._clock() if now is None else now
         last, what = None, None
         for e in tuple(self._events):
-            if (
-                e.label in ACTIVITY
-                and e.confirmed()
-                and (last is None or e.last > last)
-            ):
+            if e.label in ACTIVITY and (last is None or e.last > last):
                 last, what = e.last, short_name(e.label)
         if self._last_voice is not None and (last is None or self._last_voice > last):
             last, what = self._last_voice, "a voice"

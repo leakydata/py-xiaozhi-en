@@ -205,6 +205,7 @@ class AmbientSoundsPlugin(Plugin):
             return
         sounds = ambient_sounds.AmbientSounds(
             min_confidence=float(self._cfg("MIN_CONFIDENCE", 0.35)),
+            ignore=tuple(self._cfg("IGNORE", []) or []),
             playback_active=get_gate().playback_active,
         )
         model_dir = get_app_root() / self._cfg("MODEL_PATH", "models/ambient")

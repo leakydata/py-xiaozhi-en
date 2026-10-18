@@ -212,6 +212,9 @@ class ConfigManager:
             "NUM_THREADS": 2,
             # a label has to reach this probability to be counted
             "MIN_CONFIDENCE": 0.35,
+            # labels never to count, e.g. ["Tick", "Tick-tock"] if the model
+            # keeps hearing a clock that is really a keyboard
+            "IGNORE": [],
             # how far back the briefing's "lately" line looks
             "BRIEFING_MINUTES": 10,
             # Speak up, unprompted, about a notable sound (a doorbell, the dog
