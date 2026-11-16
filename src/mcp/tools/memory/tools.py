@@ -125,6 +125,17 @@ async def remember_payload(args: dict[str, Any]) -> str:
     return json.dumps({"saved": True, "id": nid, "kind": kind, "text": text})
 
 
+def _past_conversations(query: str, k: int = 3) -> list[dict]:
+    """What was said about this in earlier sessions, from the conversation log."""
+    try:
+        from src.memory.conversation_log import get_conversation_log
+
+        return get_conversation_log().search(query, k=k)
+    except Exception as e:
+        logger.debug(f"[Memory] no past conversations: {e}")
+        return []
+
+
 def core_snapshot(max_items: int = 25, max_chars: int = 1400) -> str:
     """The permanent basics as one block of text, or "" when there are none.
 
@@ -164,6 +175,7 @@ async def recall_payload(args: dict[str, Any]) -> str:
         )
     if not query:
         return json.dumps({"error": "No query given."})
+    conversations = _past_conversations(query)
     try:
         k = max(1, min(10, int(args.get("max_results", 5))))
     except (TypeError, ValueError):
@@ -173,16 +185,22 @@ async def recall_payload(args: dict[str, Any]) -> str:
     except Exception as e:
         logger.warning(f"[Memory] recall failed: {e}")
         return json.dumps({"error": f"Could not search: {e}"})
-    if not rows:
+    if not rows and not conversations:
         return json.dumps(
             {
                 "query": query,
                 "results": [],
+                "past_conversations": [],
                 "note": "Nothing relevant stored. Say so rather than guessing.",
             }
         )
     return json.dumps(
-        {"query": query, "results": [_row(r) for r in rows]}, ensure_ascii=False
+        {
+            "query": query,
+            "results": [_row(r) for r in rows],
+            "past_conversations": conversations,
+        },
+        ensure_ascii=False,
     )
 
 

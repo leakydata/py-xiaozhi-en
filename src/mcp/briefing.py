@@ -149,6 +149,21 @@ _MEMORY = """Your memory:
   anything new. If a turn passes with neither, ask yourself what you missed."""
 
 
+def _where_you_left_off() -> str:
+    try:
+        from src.memory.conversation_log import get_conversation_log
+        from src.utils.config_manager import get_config
+
+        cfg = get_config()
+        if not cfg.get_config("CONVERSATION_LOG.ENABLED", True):
+            return ""
+        hours = float(cfg.get_config("CONVERSATION_LOG.BRIEFING_HOURS", 3))
+        return get_conversation_log().recent(hours=hours)
+    except Exception as e:
+        logger.debug(f"briefing: no recent conversation ({e})")
+        return ""
+
+
 def _core_facts() -> str:
     try:
         from src.mcp.tools.memory.tools import core_snapshot, memory_overview
@@ -294,6 +309,15 @@ def build(tools: Iterable["McpTool"], clients=None) -> str:
         pass
 
     lines += ["", _HABITS, "", _CUES]
+
+    left_off = _where_you_left_off()
+    if left_off:
+        lines += [
+            "",
+            "Where you left off (earlier sessions, oldest first; the server "
+            "forgets on every reconnect, so this is your only record of them):",
+            left_off,
+        ]
 
     if "remember" in names:
         lines += ["", _MEMORY]

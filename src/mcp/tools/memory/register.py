@@ -32,6 +32,22 @@ def _known_now() -> str:
     overview = memory_overview()
     if overview:
         parts.append(overview + " recall searches all of them.")
+    try:
+        from src.memory.conversation_log import get_conversation_log
+
+        log = get_conversation_log()
+        recent = log.recent(hours=3, max_chars=1200)
+        if recent:
+            parts.append(
+                "WHAT YOU WERE TALKING ABOUT (earlier sessions today; the server "
+                "forgets on reconnect, this does not):\n" + recent
+            )
+        else:
+            last = log.last_line()
+            if last:
+                parts.append(last)
+    except Exception:
+        pass
     return "\n".join(parts)
 
 
@@ -77,7 +93,8 @@ def register_memory_tools(add_tool: Callable[[McpTool], None]) -> None:
             "recall",
             (
                 "Search long-term memory - everything you have ever been told "
-                "or chose to keep, across all sessions. Use this BEFORE saying "
+                "or chose to keep, across all sessions - and the saved "
+                "transcripts of past conversations (past_conversations). Use this BEFORE saying "
                 "you do not know something personal, before asking the user "
                 "to repeat themselves, and whenever they refer to something "
                 "previously discussed ('the part I mentioned', 'that place I "

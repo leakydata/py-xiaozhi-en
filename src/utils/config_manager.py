@@ -196,6 +196,15 @@ class ConfigManager:
             "SIDECAR_PYTHON": "",
         },
         # what to do when the connection to the server drops mid-use
+        # Every exchange (what the user said and the reply) saved locally with an
+        # embedding, so each new session starts knowing what was being talked
+        # about and recall can search past conversations. Also written as a
+        # plain JSONL file per day under transcripts/.
+        "CONVERSATION_LOG": {
+            "ENABLED": True,
+            # how far back the startup briefing reaches
+            "BRIEFING_HOURS": 3,
+        },
         "NETWORK_OPTIONS": {
             # redial on our own after a drop. Without it the app sits idle
             # until someone presses a button - and the wake word cannot help,
