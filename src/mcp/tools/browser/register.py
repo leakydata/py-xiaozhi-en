@@ -30,7 +30,7 @@ logger = get_logger()
 _SERVICE = "org.kde.plasma.browser_integration"
 
 DESCRIPTION = (
-    "The titles of the tabs open in the user's web browsers (mostly Chrome), "
+    "The titles of the tabs open in the USER'S OWN browser (mostly Chrome), "
     "with which browser each is in. Use it when they ask what tabs or pages "
     "they have open, what they were reading, or to find the tab about "
     "something. Titles only: no addresses, no page contents, and it cannot "
@@ -193,7 +193,7 @@ async def open_payload(args: dict[str, Any]) -> str:
 def register_browser_tools(add_tool: Callable[[McpTool], None]) -> None:
     add_tool(
         McpTool(
-            "browser_tabs",
+            "my_chrome_tabs",
             DESCRIPTION,
             PropertyList([Property("contains", PropertyType.STRING, default_value="")]),
             browser_tabs_payload,
@@ -201,9 +201,9 @@ def register_browser_tools(add_tool: Callable[[McpTool], None]) -> None:
     )
     add_tool(
         McpTool(
-            "browser_switch_tab",
+            "my_chrome_switch_tab",
             "Bring an already-open browser tab to the front, found by a word from its "
-            "title (see browser_tabs). If several match it lists them instead; ask "
+            "title (see my_chrome_tabs). If several match it lists them instead; ask "
             "which. Args: contains - part of the tab's title.",
             PropertyList([Property("contains", PropertyType.STRING)]),
             switch_payload,
@@ -211,10 +211,11 @@ def register_browser_tools(add_tool: Callable[[McpTool], None]) -> None:
     )
     add_tool(
         McpTool(
-            "browser_open",
-            "Open a web address in a new tab of the user's default browser. Only "
-            "full http/https addresses. Use it when they ask to open or pull up a "
-            "site; for facts you need yourself, use web search instead. "
+            "my_chrome_open",
+            "Open a web address in a new tab of the USER'S OWN default browser, so "
+            "they can look at it. Only full http/https addresses. Use it when they "
+            "ask to open or pull up a site for them; to browse or read something "
+            "yourself use the own_browser tools, and for plain facts web search. "
             "Args: url - the full address.",
             PropertyList([Property("url", PropertyType.STRING)]),
             open_payload,
