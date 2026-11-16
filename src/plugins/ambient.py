@@ -35,6 +35,8 @@ class AmbientSoundsPlugin(Plugin):
         self._last_check_in = -1e9
         self._spoke_since_check_in = True
         self._check_in_sent_at = -1e9
+        self._wake_task: asyncio.Task | None = None
+        self._last_wake = -1e9
 
     def _cfg(self, key: str, default):
         return self._ctx.get_config().get_config(f"AMBIENT_SOUNDS.{key}", default)
@@ -53,6 +55,7 @@ class AmbientSoundsPlugin(Plugin):
     async def start(self) -> None:
         await self._sync()
         self._task = self._cmd.spawn(self._speak_up_loop(), "ambient_speak_up")
+        self._wake_task = self._cmd.spawn(self._wake_on_voice_loop(), "ambient_wake")
 
     async def on_incoming_json(self, message) -> None:
         # Any conversation traffic means the room is not quiet.
@@ -124,6 +127,50 @@ class AmbientSoundsPlugin(Plugin):
 
     def _cfg_global(self, key: str, default):
         return self._ctx.get_config().get_config(key, default)
+
+    # ------------------------------------------------------------------
+    # a voice in the room while idle: someone is near, so start talking
+
+    async def _wake_on_voice_loop(self) -> None:
+        await asyncio.sleep(10)
+        while True:
+            try:
+                await self._maybe_wake_on_voice()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.error(f"ambient wake-on-voice failed: {e}", exc_info=True)
+            await asyncio.sleep(1.0)
+
+    async def _maybe_wake_on_voice(self) -> None:
+        sounds = self._sounds
+        if sounds is None or not self._cfg("WAKE_ON_VOICE", False):
+            return
+        from src.constants.constants import DeviceState, ListeningMode
+
+        if (
+            self._ctx.get_device_state() != DeviceState.IDLE
+            or self._ctx.is_audio_channel_opened()
+        ):
+            return
+        now = time.monotonic()
+        if now - self._last_wake < float(self._cfg("WAKE_GAP_S", 30)):
+            return
+        # A voice has to be there for a couple of seconds, not one blip - a
+        # TV in the next room or a word through the wall comes and goes.
+        if sounds.voice_hits(4.0) < int(self._cfg("WAKE_VOICE_HITS", 3)):
+            return
+        self._last_wake = now
+        logger.info("ambient: a voice while idle, starting the conversation")
+        if not await self._cmd.connect_protocol():
+            logger.warning("ambient: could not connect to start the conversation")
+            return
+        mode = (
+            ListeningMode.REALTIME
+            if self._cfg_global("AEC_OPTIONS.ENABLED", True)
+            else ListeningMode.AUTO_STOP
+        )
+        await self._cmd.start_listening(mode)
 
     # ------------------------------------------------------------------
     # speaking up about a notable sound, once the room has been quiet

@@ -244,6 +244,14 @@ class ConfigManager:
             # they want to keep talking instead of quietly going idle. Off by
             # default: it makes the assistant talk without being asked.
             "CHECK_IN": False,
+            # While idle, a voice in the room starts the conversation, as the
+            # wake word would: someone near is probably there to talk. A
+            # television or a conversation with someone else can trigger it.
+            "WAKE_ON_VOICE": False,
+            # voice detections (about two a second) needed within 4 s
+            "WAKE_VOICE_HITS": 3,
+            # at least this long between automatic starts
+            "WAKE_GAP_S": 30,
             # how recent the last sign of someone has to be, in seconds
             "CHECK_IN_PRESENCE_S": 90,
             # least seconds between two check-ins

@@ -286,6 +286,8 @@ class AmbientSounds:
         self._last_voice: float | None = None
         #: (start, end) of each stretch of speech heard, newest last.
         self._speech: deque[list[float]] = deque(maxlen=50)
+        #: When each voice detection happened, for waking on a voice.
+        self._voice_times: deque[float] = deque(maxlen=64)
         self._tick = 0
 
         # Time accounting, so the digest can say how much it could not hear.
@@ -326,6 +328,11 @@ class AmbientSounds:
         return joined[-need:]
 
     # ----------------------------------------------------------- the log
+
+    def voice_hits(self, within_s: float, now: float | None = None) -> int:
+        """How many voice detections there were in the last `within_s` seconds."""
+        now = self._clock() if now is None else now
+        return sum(1 for t in tuple(self._voice_times) if now - t <= within_s)
 
     def _note_speech(self, now: float) -> None:
         """Grow the current stretch of talking, or start a new one."""
@@ -380,6 +387,7 @@ class AmbientSounds:
                 if self._last_voice is None or now - self._last_voice > _MERGE_GAP_S:
                     logger.info("ambient: heard a voice")
                 self._last_voice = now
+                self._voice_times.append(now)
                 self._note_speech(now)
             floor = self.min_confidence
             if label in BODY:

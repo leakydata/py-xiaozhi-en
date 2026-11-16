@@ -162,6 +162,34 @@ ScrollView {
                 Layout.fillWidth: true
             }
 
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingLg
+                opacity: ambientSwitch.checked ? 1 : 0.45
+
+                Text {
+                    text: "Start on a voice"
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.textSecondary
+                    Layout.preferredWidth: 140
+                }
+                XSwitch {
+                    enabled: ambientSwitch.checked
+                    checked: settingsModel ? settingsModel.ambientWakeOnVoice : false
+                    onToggled: if (settingsModel) settingsModel.ambientWakeOnVoice = checked
+                }
+            }
+
+            Text {
+                text: "While she is idle, a voice in the room starts the conversation, like the "
+                    + "wake word, since someone is near. A television or a conversation with "
+                    + "someone else can start it too."
+                font.pixelSize: Theme.fontSizeXs
+                color: Theme.textPlaceholder
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+
             // Form fields
             GridLayout {
                 Layout.fillWidth: true

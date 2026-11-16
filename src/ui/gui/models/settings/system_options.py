@@ -88,6 +88,13 @@ class SettingsSystemOptionsMixin:
     def _set_ambientCheckIn(self, value: bool):
         self._set_value("AMBIENT_SOUNDS.CHECK_IN", value)
 
+    # AMBIENT_SOUNDS.WAKE_ON_VOICE: a voice while idle starts the conversation
+    def _get_ambientWakeOnVoice(self) -> bool:
+        return self._get_value("AMBIENT_SOUNDS.WAKE_ON_VOICE", False)
+
+    def _set_ambientWakeOnVoice(self, value: bool):
+        self._set_value("AMBIENT_SOUNDS.WAKE_ON_VOICE", value)
+
     # music settings
     def _get_musicSearchUrl(self) -> str:
         return self._get_value("MUSIC.SEARCH_URL", "")
