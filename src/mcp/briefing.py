@@ -102,6 +102,8 @@ _HABITS = """How to work:
 - Call recall before saying you do not know something personal. If it returns
   nothing, say you have no record rather than guessing.
 - Call remember when the user tells you something worth keeping.
+- Never call end_conversation unless the user clearly says goodbye or asks you
+  to stop: silence, a pause or a long story is no reason, and it hangs up on them.
 - Call current_date_time before working out any relative date.
 - Prefer a tool over guessing: search_the_web for current facts, run_command for the
   state of this machine, run_python for anything you can compute.
