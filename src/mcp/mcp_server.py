@@ -429,8 +429,9 @@ class McpServer:
             {
                 "type": "text",
                 "text": (
-                    "[Memory: did you recall what you already know about this, "
-                    "and remember anything new from this turn?]"
+                    "[Memory: use remember and recall, never the 'memory' tool. Did "
+                    "you recall what you know about this, and remember anything "
+                    "new from this turn?]"
                 ),
             }
         )

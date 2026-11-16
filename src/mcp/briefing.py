@@ -135,10 +135,10 @@ _HABITS = """How to work:
 _MEMORY = """Your memory:
 - remember and recall are your memory, and the most important thing you do:
   use them constantly, on every conversation, not only when asked. A database
-  on this computer with no size limit, searched by meaning. The server's
-  built-in memory is small and full: use it only for constant things (name,
-  family, pets, addresses, phone numbers) and even then save them with
-  remember kind=core too. Everything else goes in remember, never the built-in.
+  on this computer with no size limit, searched by meaning. Never use the
+  'memory' tool: it is the server's own, small and full. Everything goes in
+  remember, permanent basics (name, family, pets, addresses, phone numbers)
+  included, as kind=core.
 - Save freely, without being asked and without announcing it: as many separate
   memories as you like. kind=core for the permanent basics (name, family, pets,
   addresses, phone numbers, birthdays - listed below at the start of every
@@ -259,10 +259,13 @@ def build(tools: Iterable["McpTool"], clients=None) -> str:
     ]
     if {"remember", "recall"} <= names:
         lines += [
-            "Your two most important tools are remember and recall. They are "
-            "your memory across every session; use them constantly - recall "
-            "before you say you do not know something, remember whenever you "
-            "learn something worth keeping.",
+            "MEMORY RULE: never use the 'memory' tool (the server's built-in "
+            "one - it is small, full, and not searchable). Your memory is the "
+            "remember and recall tools, always: remember every fact, name, "
+            "preference, number and decision, including permanent ones like "
+            "the user's name, family, pets, addresses and phone numbers "
+            "(kind=core); recall before you say you do not know something. "
+            "They are the most important tools you have; use them constantly.",
             "",
         ]
     lines.append("What you can do:")

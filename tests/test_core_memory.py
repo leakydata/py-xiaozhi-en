@@ -92,7 +92,11 @@ def test_remember_tells_her_never_to_use_the_servers_memory():
     registered = []
     reg.register_memory_tools(registered.append)
     text = next(t for t in registered if t.name == "remember").description
-    assert "Use remember constantly" in text and "built-in" in text and "core" in text
+    assert (
+        "Use remember constantly" in text
+        and "Never use the 'memory' tool" in text
+        and "core" in text
+    )
 
 
 def test_the_briefing_carries_the_rule_and_the_basics(store):
@@ -103,7 +107,7 @@ def test_the_briefing_carries_the_rule_and_the_basics(store):
             self.name = name
 
     text = briefing.build([T("remember"), T("recall")])
-    assert "most important thing you do" in text and "built-in" in text
+    assert "MEMORY RULE" in text and "never use the 'memory' tool" in text.lower()
     assert "Name is Nathan." in text
 
 
@@ -113,9 +117,7 @@ def test_the_briefing_puts_remember_and_recall_first():
             self.name = name
 
     text = briefing.build([T("remember"), T("recall"), T("fetch_page")])
-    assert text.index("most important tools are remember and recall") < text.index(
-        "What you can do"
-    )
+    assert text.index("MEMORY RULE") < text.index("What you can do")
 
 
 def test_the_three_clashing_tool_names_are_gone():
@@ -143,8 +145,8 @@ def test_other_tool_results_nudge_towards_memory_but_memory_tools_do_not():
         assert not any("[Memory:" in c["text"] for c in out["content"])
 
 
-def test_the_builtin_memory_is_allowed_only_for_constant_things_saved_here_too():
+def test_the_builtin_memory_tool_is_ruled_out():
     registered = []
     reg.register_memory_tools(registered.append)
     text = next(t for t in registered if t.name == "remember").description
-    assert "only for constant things" in text and "save those here too" in text
+    assert "Never use the 'memory' tool" in text and "kind core" in text
