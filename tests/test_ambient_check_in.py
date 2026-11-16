@@ -90,7 +90,6 @@ def test_the_server_ends_it_and_someone_is_typing_so_she_asks(monkeypatch):
     calls = closed(make(monkeypatch))
     assert calls[:2] == ["connect", "listen"]
     assert "keep talking" in calls[2][1]
-    assert "Typing" in calls[2][1]
 
 
 def test_no_sign_of_anyone_means_quietly_idle(monkeypatch):

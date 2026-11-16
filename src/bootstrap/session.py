@@ -7,6 +7,7 @@ the application-level session logic - connect, listen, abort, the TTS loop.
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import TYPE_CHECKING, Optional
 
 from src.constants.constants import DeviceState, ListeningMode
@@ -42,6 +43,10 @@ class ConversationSession:
         #: The background redial started by a dropped connection. Only one runs
         #: at a time, and anything that connects by hand cancels it.
         self._reconnect_task: asyncio.Task | None = None
+        #: Whether the redial in progress should come back listening (the
+        #: server ended a quiet session) rather than idle (a real drop).
+        self._reconnect_listening = False
+        self._last_stay_connected = 0.0
 
     # -------------------------
     # event subscriptions
@@ -82,6 +87,35 @@ class ConversationSession:
 
     async def _on_audio_channel_closed(self, _=None) -> None:
         await self.state.set_device_state(DeviceState.IDLE)
+        self._maybe_stay_connected()
+
+    def _maybe_stay_connected(self) -> None:
+        """The server hangs up on a quiet session; come straight back.
+
+        The server ends a conversation after a stretch with no speech, which
+        from the user's side is the assistant going to standby while they sit
+        there thinking. Redial and listen again instead - unless the server's
+        hang-ups are coming faster than a person could have caused them.
+        """
+        try:
+            from src.utils.config_manager import get_config
+
+            if not get_config().get_config("NETWORK_OPTIONS.STAY_CONNECTED", True):
+                return
+            closed_at = getattr(
+                getattr(self.protocol, "_protocol", None), "server_closed_at", None
+            )
+            now = time.monotonic()
+            if closed_at is None or now - closed_at > 5:
+                return  # the user or the app closed it
+            if now - self._last_stay_connected < 20:
+                logger.info("server hung up again straight away: staying idle")
+                return
+            self._last_stay_connected = now
+            logger.info("server ended a quiet session: reconnecting and listening")
+            self._start_reconnect(listening=True)
+        except Exception as e:
+            logger.error(f"stay-connected failed: {e}", exc_info=True)
 
     async def _on_network_error(self, error_message: str = None) -> None:
         """On a network error: stop listening continuously and reset the device state to IDLE."""
@@ -113,7 +147,7 @@ class ConversationSession:
         except Exception:
             return True, 60.0, 0
 
-    def _start_reconnect(self) -> None:
+    def _start_reconnect(self, listening: bool = False) -> None:
         """Redial in the background after the connection dropped.
 
         Without this the app simply sits there: nothing else retries, so a
@@ -122,6 +156,7 @@ class ConversationSession:
         word needs is the connection that is gone.
         """
         enabled, _, _ = self._reconnect_settings()
+        self._reconnect_listening = listening
         if not enabled:
             logger.info("connection lost and automatic reconnect is off")
             return
@@ -162,7 +197,7 @@ class ConversationSession:
                 # Come back idle rather than listening: the drop interrupted
                 # whatever was being said, and opening a live microphone on a
                 # reconnect nobody asked for is not the right answer.
-                self._keep_idle_on_channel_open = True
+                self._keep_idle_on_channel_open = not self._reconnect_listening
                 try:
                     ok = await self.connect_protocol()
                 except Exception as e:

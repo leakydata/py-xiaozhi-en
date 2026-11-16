@@ -102,12 +102,9 @@ class AmbientSoundsPlugin(Plugin):
                 f"ambient: server ended the session, no sign of anyone ({sign})"
             )
             return
-        prompt = (
-            "The connection just dropped, but Nathan is still around "
-            f"({sign['last_sign']}, {ambient_sounds.ago_text(ago)}). In one "
-            "short, natural sentence ask whether he wants to keep talking. "
-            "Do not mention the connection or sensors."
-        )
+        # The server rejects a long text sent this way ("Detect is only for
+        # wake words"), so this has to stay short.
+        prompt = "Nathan is still here. Ask in one short sentence if he wants to keep talking."
         from src.constants.constants import ListeningMode
 
         self._last_check_in = time.monotonic()
@@ -166,13 +163,12 @@ class AmbientSoundsPlugin(Plugin):
             f"({ambient_sounds.ago_text(int(now - e.last))})"
             for e in events
         ]
+        # Kept short: the server rejects a long text sent this way.
         prompt = (
-            "Background update from the room sensors, not from Nathan: "
-            + ", ".join(parts)
-            + ". If this matters to him, say so in one short, natural sentence, "
-            "as if you noticed it yourself. Do not ask a question and do not "
-            "mention sensors."
-        )
+            "Room sensors heard: "
+            + ", ".join(parts[:3])
+            + ". If it matters, mention it in one short sentence."
+        )[:150]
         self._last_update = now
         if not await self._cmd.connect_protocol():
             logger.warning("ambient: could not connect to speak up; will retry later")

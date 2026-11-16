@@ -197,6 +197,10 @@ class ConfigManager:
             # until someone presses a button - and the wake word cannot help,
             # because what the wake word needs is the connection that is gone.
             "AUTO_RECONNECT": True,
+            # when the server ends a quiet conversation (it does after a minute
+            # or so without speech), reconnect and keep listening instead of
+            # going to standby
+            "STAY_CONNECTED": True,
             # the backoff ceiling in seconds; attempts double from 2s up to it
             "RECONNECT_MAX_DELAY": 60,
             # 0 keeps trying for as long as the app is running
