@@ -176,7 +176,17 @@ class ConversationSession:
             logger.error(f"stay-connected failed: {e}", exc_info=True)
 
     async def _on_network_error(self, error_message: str = None) -> None:
-        """On a network error: stop listening continuously and reset the device state to IDLE."""
+        """On a network error: stop listening continuously and reset the device state to IDLE.
+
+        Then redial. If the drop cut into a live conversation - the user spoke
+        in the last two minutes - come back listening, not idle: at 21:34:04 a
+        server TTS error dropped the connection mid-reply, the redial came back
+        idle three seconds later, and the user had to start it again by hand.
+        """
+        mid_conversation = (
+            time.monotonic() - presence_state.last_user_speech() < 120
+            and not presence_state.standing_down()
+        )
         self.state.set_keep_listening(False)
         try:
             if not self.state.is_idle():
@@ -186,7 +196,9 @@ class ConversationSession:
                 f"failed to reset the device state after the network error: {e}",
                 exc_info=True,
             )
-        self._start_reconnect()
+        if mid_conversation:
+            logger.info("connection dropped mid-conversation: redialling and listening")
+        self._start_reconnect(listening=mid_conversation)
 
     # -------------------------
     # reconnecting after a drop

@@ -196,3 +196,42 @@ def test_someone_heard_recently_keeps_it_connected(monkeypatch):
     )
     s._maybe_stay_connected()
     assert s.calls == [True]
+
+
+def _network_error(s):
+    import asyncio
+
+    class State:
+        def set_keep_listening(self, v):
+            pass
+
+        def is_idle(self):
+            return True
+
+    s.state = State()
+    asyncio.run(s._on_network_error("Connection lost"))
+
+
+def test_a_drop_mid_conversation_comes_back_listening():
+    from src.core import presence_state
+
+    s = session(None)
+    presence_state.user_spoke()
+    _network_error(s)
+    assert s.calls == [True]
+
+
+def test_a_drop_with_nobody_talking_comes_back_idle():
+    s = session(None)
+    _network_error(s)
+    assert s.calls == [False]
+
+
+def test_a_drop_after_a_goodbye_comes_back_idle():
+    from src.core import presence_state
+
+    s = session(None)
+    presence_state.user_spoke()
+    presence_state.stand_down(300)
+    _network_error(s)
+    assert s.calls == [False]
