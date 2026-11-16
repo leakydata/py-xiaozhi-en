@@ -15,6 +15,7 @@ from src.core import presence_state
 from src.core.event_bus import Events
 from src.logging import get_logger
 from src.plugins.base import Plugin
+from src.protocols import cues
 from src.utils.resource_finder import get_app_root
 
 logger = get_logger()
@@ -68,6 +69,7 @@ class AmbientSoundsPlugin(Plugin):
             isinstance(message, dict)
             and message.get("type") == "stt"
             and time.monotonic() - self._check_in_sent_at > 8
+            and not cues.is_echo(message.get("text", ""))
         ):
             self._spoke_since_check_in = True
 

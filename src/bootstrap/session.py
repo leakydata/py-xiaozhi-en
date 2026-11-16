@@ -309,15 +309,15 @@ class ConversationSession:
         try:
             msg_type = json_data.get("type") if isinstance(json_data, dict) else None
             logger.info(f"JSON message received: type={msg_type}")
-            if msg_type == "stt":
+            from src.protocols import cues
+
+            if msg_type == "stt" and not cues.is_echo(json_data.get("text", "")):
                 self._last_user_text = str(json_data.get("text", ""))
                 presence_state.user_spoke()
             elif msg_type in ("tts", "llm"):
                 presence_state.activity()
                 if msg_type == "tts" and json_data.get("state") == "stop":
                     self._last_tts_stop = time.monotonic()
-            from src.protocols import cues
-
             if cues.is_rejection(json_data):
                 text = cues.note_rejected()
                 logger.warning(

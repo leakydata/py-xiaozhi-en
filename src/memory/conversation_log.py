@@ -74,6 +74,12 @@ class ConversationLog:
             return None
         with self._lock:
             if kind == "stt":
+                from src.protocols import cues
+
+                if cues.is_echo(text):
+                    # the app's own cue, reported back as if the user said it
+                    self._line("cue", text)
+                    return None
                 done = self._take() if self._assistant else None
                 if self._started is None:
                     self._started = time.time()

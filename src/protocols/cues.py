@@ -49,6 +49,24 @@ def note_sent(text: str) -> float:
     return _last_sent_at
 
 
+def is_echo(text: str, within_s: float = 15.0) -> bool:
+    """Is this transcript just our own cue coming back?
+
+    The server reports an accepted cue as `stt`, exactly as if the user had
+    said it ("still there?" at 21:49:11 was logged as the user speaking). It
+    must not count as the user talking: that would reset the quiet-redial
+    budget, look like a reply to a check-in, and land in the transcript.
+    """
+    # only the app's own cues: text typed in the chat box goes the same way
+    # and is the user's
+    if _last_sent_text not in ALL or time.monotonic() - _last_sent_at > within_s:
+        return False
+    norm = " ".join(str(text or "").lower().split()).strip(" .!?")
+    return bool(norm) and norm == " ".join(_last_sent_text.lower().split()).strip(
+        " .!?"
+    )
+
+
 def is_rejection(message: dict) -> bool:
     return (
         isinstance(message, dict)
