@@ -346,78 +346,127 @@ class ScreenshotCamera(BaseCamera):
             logger.error(f"Windows screenshot capture failed: {e}", exc_info=True)
             return None
 
-    def _capture_linux(self, display_id=None) -> bytes:
-        """Capture using a Linux system command.
+    #: Longest side of a screenshot sent for analysis, in pixels.
+    _MAX_EDGE = 2600
 
-        Args:
-            display_id: the display (not implemented yet; the default display is used)
+    @staticmethod
+    def _linux_monitors() -> list[dict]:
+        """The connected monitors, main first, from KDE's kscreen-doctor.
 
-        Returns:
-            the image as JPEG bytes
+        Each is {"name", "x", "y", "w", "h"}. Empty when kscreen-doctor is
+        missing (not KDE) - then only whole-desktop capture is offered.
         """
+        import re
+        import shutil
+        import subprocess
+
+        if not shutil.which("kscreen-doctor"):
+            return []
         try:
-            import os
-            import subprocess
-            import tempfile
-
-            logger.debug(
-                f"Capturing screenshot with Linux screenshot commands, display_id: {display_id}"
-            )
-
-            # try the available Linux screenshot tools in turn
-            screenshot_commands = [
-                ["gnome-screenshot", "-f"],  # GNOME
-                ["scrot"],  # scrot
-                ["import", "-window", "root"],  # ImageMagick
-            ]
-
-            for cmd_base in screenshot_commands:
-                try:
-                    # create a temporary file
-                    with tempfile.NamedTemporaryFile(
-                        suffix=".jpg", delete=False
-                    ) as temp_file:
-                        temp_path = temp_file.name
-
-                    # build the full command
-                    cmd = cmd_base + [temp_path]
-
-                    # run it
-                    result = subprocess.run(
-                        cmd, capture_output=True, text=True, timeout=10
+            out = subprocess.run(
+                ["kscreen-doctor", "-o"], capture_output=True, text=True, timeout=5
+            ).stdout
+        except Exception:
+            return []
+        out = re.sub(r"\x1b\[[0-9;]*m", "", out)
+        monitors, cur = [], None
+        for line in out.splitlines():
+            m = re.match(r"Output:\s+\d+\s+(\S+)", line)
+            if m:
+                cur = {"name": m.group(1), "priority": 99, "on": True}
+                monitors.append(cur)
+            elif cur is not None:
+                if line.strip() == "disabled":
+                    cur["on"] = False
+                m = re.search(r"priority\s+(\d+)", line)
+                if m:
+                    cur["priority"] = int(m.group(1))
+                m = re.search(r"Geometry:\s+(-?\d+),(-?\d+)\s+(\d+)x(\d+)", line)
+                if m:
+                    cur.update(
+                        x=int(m.group(1)),
+                        y=int(m.group(2)),
+                        w=int(m.group(3)),
+                        h=int(m.group(4)),
                     )
+        ok = [m for m in monitors if m["on"] and "w" in m]
+        return sorted(ok, key=lambda m: m["priority"])
 
-                    if result.returncode == 0 and os.path.exists(temp_path):
-                        # read the screenshot data
-                        with open(temp_path, "rb") as f:
-                            screenshot_data = f.read()
+    def _capture_linux(self, display_id=None) -> bytes:
+        """Capture on Linux, optionally just one monitor, as a JPEG.
 
-                        # remove the temporary file
-                        os.unlink(temp_path)
+        Wayland (KDE) only allows screenshots through the desktop's own tool,
+        so spectacle is tried first; the older X11 tools follow. Monitors are
+        numbered 1, 2, 3 in KDE's priority order, "main" is 1 and "secondary"
+        is 2.
+        """
+        import io
+        import os
+        import subprocess
+        import tempfile
 
-                        logger.debug(
-                            f"Successfully captured screenshot with: {' '.join(cmd_base)}"
-                        )
-                        return screenshot_data
-                    else:
-                        # remove the temporary file
-                        if os.path.exists(temp_path):
-                            os.unlink(temp_path)
+        from PIL import Image
 
-                except subprocess.TimeoutExpired:
-                    logger.warning(
-                        f"Screenshot command timed out: {' '.join(cmd_base)}"
-                    )
-                except FileNotFoundError:
-                    logger.debug(f"Screenshot tool not found: {' '.join(cmd_base)}")
-                except Exception as e:
-                    logger.debug(f"Screenshot command failed {' '.join(cmd_base)}: {e}")
-
+        commands = [
+            ["spectacle", "-b", "-n", "-f", "-o"],  # KDE, works on Wayland
+            ["gnome-screenshot", "-f"],
+            ["scrot"],
+            ["import", "-window", "root"],
+        ]
+        raw = None
+        for base in commands:
+            fd, path = tempfile.mkstemp(suffix=".png")
+            os.close(fd)
+            try:
+                os.unlink(path)  # some tools refuse to overwrite
+                r = subprocess.run(
+                    base + [path], capture_output=True, text=True, timeout=20
+                )
+                if r.returncode == 0 and os.path.exists(path):
+                    with open(path, "rb") as f:
+                        raw = f.read()
+                    logger.debug(f"captured with: {base[0]}")
+                    break
+            except subprocess.TimeoutExpired:
+                logger.warning(f"screenshot command timed out: {base[0]}")
+            except FileNotFoundError:
+                logger.debug(f"screenshot tool not found: {base[0]}")
+            except Exception as e:
+                logger.debug(f"screenshot command failed {base[0]}: {e}")
+            finally:
+                if os.path.exists(path):
+                    os.unlink(path)
+        if not raw:
             return None
 
-        except Exception as e:
-            logger.error(f"Linux screenshot capture failed: {e}", exc_info=True)
-            return None
+        img = Image.open(io.BytesIO(raw)).convert("RGB")
+        if display_id is not None:
+            monitors = self._linux_monitors()
+            index = {"main": 0, "secondary": 1}.get(display_id)
+            if index is None and isinstance(display_id, int):
+                index = display_id - 1
+            if monitors and index is not None and 0 <= index < len(monitors):
+                m = monitors[index]
+                # the capture's origin is the top-left of the whole desktop
+                left = min(mm["x"] for mm in monitors)
+                top = min(mm["y"] for mm in monitors)
+                box = (
+                    m["x"] - left,
+                    m["y"] - top,
+                    m["x"] - left + m["w"],
+                    m["y"] - top + m["h"],
+                )
+                img = img.crop(box)
+                logger.info(f"screenshot cropped to {m['name']} {m['w']}x{m['h']}")
+            else:
+                logger.warning(
+                    f"display {display_id!r} not found among {len(monitors)} "
+                    "monitors; sending the whole desktop"
+                )
+        img.thumbnail((self._MAX_EDGE, self._MAX_EDGE))
+        out = io.BytesIO()
+        img.save(out, "JPEG", quality=82)
+        return out.getvalue()
 
     def analyze(self, question: str, image_data: bytes | None = None) -> str:
         try:

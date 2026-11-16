@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from typing import Callable
+from collections.abc import Callable
 
 from src.logging import get_logger
 from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
@@ -110,7 +110,8 @@ def register_screenshot_tools(
                 "the state of the desktop, and handles multiple screens. "
                 "Arguments: { question: 'what you want to know about the screen', display: 'which screen (optional)' }. "
                 "display accepts 'main' (or primary/built-in/laptop), 'secondary' (or second/external/monitor), "
-                "a screen number, or nothing at all for every screen. "
+                "a screen number (1 is the main one), or nothing at all for every screen side by side. "
+                "When asked about one particular monitor, name it: a single screen is far easier to read. "
                 "Good for diagnosing an interface problem, checking what an app is doing, or reading an error. "
                 "Note: this captures the desktop, so make sure the user is happy for you to do that."
             ),
