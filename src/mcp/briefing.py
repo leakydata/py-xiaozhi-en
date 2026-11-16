@@ -121,15 +121,20 @@ _HABITS = """How to work:
 
 
 _MEMORY = """Your memory:
-- remember and recall are your only memory: a database on this computer with no
-  size limit, searched by meaning. Never use a built-in or server-side memory
-  tool - it is small and full.
+- remember and recall are your memory, and the most important thing you do:
+  use them constantly, on every conversation, not only when asked. A database
+  on this computer with no size limit, searched by meaning. The server's
+  built-in memory is small and full: use it only for constant things (name,
+  family, pets, addresses, phone numbers) and even then save them with
+  remember kind=core too. Everything else goes in remember, never the built-in.
 - Save freely, without being asked and without announcing it: as many separate
   memories as you like. kind=core for the permanent basics (name, family, pets,
   addresses, phone numbers, birthdays - listed below at the start of every
   session); kind=fact for anything else durably true; note for an observation;
   event for something at a time.
-- Call recall before saying you do not know something personal."""
+- Call recall at the start of any topic that could have history, and before
+  saying you do not know something personal. Call remember the moment you learn
+  anything new. If a turn passes with neither, ask yourself what you missed."""
 
 
 def _core_facts() -> str:

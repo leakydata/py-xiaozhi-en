@@ -44,8 +44,10 @@ def register_memory_tools(add_tool: Callable[[McpTool], None]) -> None:
             (
                 "Save something to long-term memory. This is your ONLY memory: "
                 "a database on the user's own computer with no size limit, "
-                "searched by meaning with recall. Never use any built-in or "
-                "server-side 'memory' tool - it is small and full. Save as "
+                "searched by meaning with recall. The server's built-in memory is "
+                "small and full: use it only for constant things like a name or "
+                "address, and even then save those here too, as kind core. "
+                "Everything else goes here. Use remember constantly. Save as "
                 "much as you like, as many separate memories as you like, "
                 "without being asked and without announcing it: preferences, "
                 "facts about their home, vehicles, equipment, work, people's "

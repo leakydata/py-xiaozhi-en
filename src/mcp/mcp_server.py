@@ -420,6 +420,22 @@ class McpServer:
             await self._reply_error(request_id, str(e))
 
     @staticmethod
+    def _nudge_memory(tool_name: str, result: dict) -> None:
+        """Keep remember and recall in use: every other tool result carries a nudge."""
+        content = result.get("content")
+        if tool_name in ("remember", "recall") or not isinstance(content, list):
+            return
+        content.append(
+            {
+                "type": "text",
+                "text": (
+                    "[Memory: did you recall what you already know about this, "
+                    "and remember anything new from this turn?]"
+                ),
+            }
+        )
+
+    @staticmethod
     def _with_room(tool_name: str, result: Any) -> Any:
         """Add one line about the room to a tool result.
 
@@ -430,6 +446,7 @@ class McpServer:
         """
         if tool_name == "ambient_sounds" or not isinstance(result, dict):
             return result
+        McpServer._nudge_memory(tool_name, result)
         try:
             from src.audio_processing.ambient_sounds import get_ambient
             from src.utils.config_manager import get_config

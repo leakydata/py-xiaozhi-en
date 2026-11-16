@@ -92,7 +92,7 @@ def test_remember_tells_her_never_to_use_the_servers_memory():
     registered = []
     reg.register_memory_tools(registered.append)
     text = next(t for t in registered if t.name == "remember").description
-    assert "ONLY memory" in text and "server-side" in text and "core" in text
+    assert "Use remember constantly" in text and "built-in" in text and "core" in text
 
 
 def test_the_briefing_carries_the_rule_and_the_basics(store):
@@ -103,7 +103,7 @@ def test_the_briefing_carries_the_rule_and_the_basics(store):
             self.name = name
 
     text = briefing.build([T("remember"), T("recall")])
-    assert "only memory" in text and "Never use a built-in" in text
+    assert "most important thing you do" in text and "built-in" in text
     assert "Name is Nathan." in text
 
 
@@ -129,3 +129,22 @@ def test_the_three_clashing_tool_names_are_gone():
     names = {t.name for t in registered}
     assert not names & {"get_weather", "web_search", "get_current_time"}
     assert {"weather_lookup", "search_the_web", "current_date_time"} <= names
+
+
+def test_other_tool_results_nudge_towards_memory_but_memory_tools_do_not():
+    from src.mcp.mcp_server import McpServer
+
+    out = McpServer._with_room(
+        "weather_lookup", {"content": [{"type": "text", "text": "{}"}]}
+    )
+    assert any("[Memory:" in c["text"] for c in out["content"])
+    for name in ("remember", "recall"):
+        out = McpServer._with_room(name, {"content": []})
+        assert not any("[Memory:" in c["text"] for c in out["content"])
+
+
+def test_the_builtin_memory_is_allowed_only_for_constant_things_saved_here_too():
+    registered = []
+    reg.register_memory_tools(registered.append)
+    text = next(t for t in registered if t.name == "remember").description
+    assert "only for constant things" in text and "save those here too" in text
