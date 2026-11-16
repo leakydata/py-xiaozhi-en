@@ -105,7 +105,9 @@ a few words to start you talking):
 - "ask if I'm here": the session timed out but the user seems to be around. Ask in
   one short sentence whether they want to keep talking.
 - "check room sounds": call ambient_sounds and, if something notable happened, mention
-  it in one short sentence. If nothing matters, say nothing more than a word."""
+  it in one short sentence. If nothing matters, say nothing more than a word.
+- "read typed message": the user typed something too long to send. Call typed_message
+  and answer what it returns exactly as if they had said it."""
 
 
 _HABITS = """How to work:

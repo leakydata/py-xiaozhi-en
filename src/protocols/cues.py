@@ -21,7 +21,7 @@ import asyncio
 import time
 
 #: No cue is longer than this; 21 was the longest measured to be accepted.
-MAX_CHARS = 18
+MAX_CHARS = 18  # TYPED is exactly 18
 
 #: Call list_reminders(scope="due"), announce each, then complete_reminder.
 REMINDER = "read due reminders"
@@ -32,7 +32,10 @@ STILL_THERE = "ask if I'm here"
 #: matters, in one sentence, without a question.
 ROOM_SOUND = "check room sounds"
 
-ALL = (REMINDER, STILL_THERE, ROOM_SOUND)
+#: The user typed something too long to send: call typed_message to read it.
+TYPED = "read typed message"
+
+ALL = (REMINDER, STILL_THERE, ROOM_SOUND, TYPED)
 
 _REJECTION = "Detect is only for wake words"
 

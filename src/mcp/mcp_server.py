@@ -170,6 +170,7 @@ class McpServer:
         from src.mcp.tools.files import register_file_tools
         from src.mcp.tools.lab import register_lab_tools
         from src.mcp.tools.memory import register_memory_tools
+        from src.mcp.tools.typed import register_typed_tools
         from src.mcp.tools.volume import register_volume_tools
         from src.mcp.tools.weather import register_weather_tools
         from src.mcp.tools.web import register_web_tools
@@ -180,6 +181,7 @@ class McpServer:
         register_web_tools(self.add_tool)
         register_memory_tools(self.add_tool)
         register_ambient_tools(self.add_tool)
+        register_typed_tools(self.add_tool)
         register_diagnostics_tools(self.add_tool)
         register_claude_code_tools(self.add_tool)
         register_file_tools(self.add_tool)

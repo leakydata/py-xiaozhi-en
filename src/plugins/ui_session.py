@@ -3,8 +3,10 @@
 from typing import TYPE_CHECKING
 
 from src.constants.constants import AbortReason, DeviceState, ListeningMode
+from src.core import typed_messages
 from src.core.event_bus import Events
 from src.logging import get_logger
+from src.protocols import cues
 
 if TYPE_CHECKING:
     from src.bootstrap.protocols import PluginCommands, PluginContext
@@ -119,6 +121,11 @@ class SessionActions:
         if not await self._ensure_listen_session():
             return
 
+        if len(text) > typed_messages.DIRECT_MAX_CHARS:
+            # the server refuses long detect text; park it and send a cue that
+            # makes her fetch it with the typed_message tool
+            typed_messages.park(text)
+            text = cues.TYPED
         await self._cmd.send_wake_word_detected(text)
 
     async def press(self, _data=None) -> None:
