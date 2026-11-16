@@ -399,3 +399,50 @@ def test_the_ignore_list_matches_the_short_name_too():
     a, _ = sounds(ignore=("smoke detector",))
     a.ingest([("Smoke detector, smoke alarm", 0.95)], 1000.0)
     assert a.heard(10, now=1001.0)["sounds"] == []
+
+
+# ---------------------------------------------------------------- around talking
+
+
+def test_it_says_what_was_going_on_before_during_and_after_someone_talked():
+    a, _ = sounds()
+    a.ingest([("Typing", 0.8)], 1000.0)  # typing before
+    a.ingest([("Typing", 0.8)], 1005.0)
+    for t in (1008.0, 1009.0, 1010.0):  # then talking
+        a.ingest([("Speech", 0.9)], t)
+    a.ingest([("Dog", 0.9)], 1009.5)  # a dog barks while they talk
+    a.ingest([("Doorbell", 0.9)], 1014.0)  # and a doorbell after
+    around = a.around_speech(now=1016.0)
+    assert around["lasted_seconds"] == 3.0
+    assert "Typing" in around["before"]
+    assert "Dog" in around["during"]
+    assert "Doorbell" in around["after"]
+    assert "Doorbell" not in around["before"] + around["during"]
+
+
+def test_nothing_is_reported_before_anyone_has_talked():
+    a, _ = sounds()
+    a.ingest([("Typing", 0.8)], 1000.0)
+    assert a.around_speech(now=1001.0) is None
+    assert a.heard(10, now=1001.0)["around_the_last_talking"] is None
+
+
+def test_two_bursts_of_talking_far_apart_are_separate():
+    a, _ = sounds()
+    a.ingest([("Speech", 0.9)], 1000.0)
+    a.ingest([("Speech", 0.9)], 1030.0)
+    around = a.around_speech(now=1031.0)
+    assert around["lasted_seconds"] == 1.0 and around["started_seconds_ago"] == 2
+
+
+def test_continuous_talking_is_one_stretch():
+    a, _ = sounds()
+    for t in range(1000, 1010):
+        a.ingest([("Speech", 0.9)], float(t))
+    assert a.around_speech(now=1011.0)["lasted_seconds"] == 10.0
+
+
+def test_a_faint_voice_does_not_make_a_stretch():
+    a, _ = sounds()
+    a.ingest([("Speech", 0.3)], 1000.0)
+    assert a.around_speech(now=1001.0) is None

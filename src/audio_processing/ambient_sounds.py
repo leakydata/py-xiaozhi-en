@@ -224,6 +224,10 @@ _STRONG_CONFIDENCE = 0.6
 _QUIET_RMS = 0.0008
 #: Two detections of one label this far apart are the same event.
 _MERGE_GAP_S = 12.0
+#: Speech detections closer together than this are one stretch of talking.
+_SPEECH_GAP_S = 2.5
+#: How far back "before they spoke" looks.
+_BEFORE_S = 10.0
 _KEEP_S = 3 * 3600.0
 _MAX_EVENTS = 600
 
@@ -280,6 +284,8 @@ class AmbientSounds:
         self._open: dict[str, Event] = {}
         self._recent: dict[str, deque[tuple[float, float]]] = {}
         self._last_voice: float | None = None
+        #: (start, end) of each stretch of speech heard, newest last.
+        self._speech: deque[list[float]] = deque(maxlen=50)
         self._tick = 0
 
         # Time accounting, so the digest can say how much it could not hear.
@@ -321,6 +327,43 @@ class AmbientSounds:
 
     # ----------------------------------------------------------- the log
 
+    def _note_speech(self, now: float) -> None:
+        """Grow the current stretch of talking, or start a new one."""
+        if self._speech and now - self._speech[-1][1] <= _SPEECH_GAP_S:
+            self._speech[-1][1] = now
+        else:
+            # a detection covers roughly the last second of audio
+            self._speech.append([now - 1.0, now])
+
+    def around_speech(self, now: float | None = None) -> dict | None:
+        """What else was going on before, during and after the latest talking.
+
+        Speech here is anyone's voice reaching the microphone while the
+        assistant is not playing sound; her own voice is never analysed.
+        """
+        now = self._clock() if now is None else now
+        if not self._speech:
+            return None
+        start, end = self._speech[-1]
+        before, during, after = {}, {}, {}
+        for e in tuple(self._events):
+            name = short_name(e.label)
+            if e.first < start and e.last >= start - _BEFORE_S:
+                before[name] = max(before.get(name, 0.0), e.peak)
+            if e.first <= end and e.last >= start:
+                during[name] = max(during.get(name, 0.0), e.peak)
+            if e.last > end:
+                after[name] = max(after.get(name, 0.0), e.peak)
+        rank = lambda d: [n for n, _ in sorted(d.items(), key=lambda kv: -kv[1])][:5]  # noqa: E731
+        return {
+            "started_seconds_ago": int(now - start),
+            "ended_seconds_ago": int(now - end),
+            "lasted_seconds": round(end - start, 1),
+            "before": rank(before),
+            "during": rank(during),
+            "after": rank(after),
+        }
+
     def _corroborated(self, label: str, prob: float, hist) -> bool:
         """Is this label real enough to log, given the windows just before?"""
         if prob >= _STRONG_CONFIDENCE:
@@ -337,6 +380,7 @@ class AmbientSounds:
                 if self._last_voice is None or now - self._last_voice > _MERGE_GAP_S:
                     logger.info("ambient: heard a voice")
                 self._last_voice = now
+                self._note_speech(now)
             floor = self.min_confidence
             if label in BODY:
                 floor = min(floor, _BODY_CONFIDENCE)
@@ -414,6 +458,7 @@ class AmbientSounds:
             "window_minutes": round(minutes, 1),
             "presence": self.presence(now),
             "sounds": sounds,
+            "around_the_last_talking": self.around_speech(now),
             "listened_fraction": round(coverage, 2),
             "listening": self.enabled,
         }
