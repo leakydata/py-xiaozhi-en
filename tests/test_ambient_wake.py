@@ -87,3 +87,12 @@ def test_the_setting_defaults_to_off():
     from src.utils.config_manager import ConfigManager
 
     assert ConfigManager.DEFAULT_CONFIG["AMBIENT_SOUNDS"]["WAKE_ON_VOICE"] is False
+
+
+def test_after_a_goodbye_a_voice_does_not_restart_it():
+    from src.core import presence_state
+
+    presence_state.reset()
+    presence_state.stand_down(300)
+    assert run(make()) == []
+    presence_state.reset()

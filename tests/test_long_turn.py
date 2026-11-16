@@ -44,3 +44,24 @@ def test_silence_alone_is_not_a_long_turn():
 
 def test_it_can_be_turned_off():
     assert not plugin(60, limit=0)._turn_too_long(tick())
+
+
+def test_the_clock_restarts_when_a_turn_reopens_without_a_state_change():
+    import asyncio
+
+    from src.constants.constants import DeviceState
+
+    p = plugin(100)
+    p._phase = DeviceState.LISTENING
+
+    class Ctx:
+        def get_device_state(self):
+            return DeviceState.LISTENING
+
+        def is_turn_ended(self):
+            return True
+
+    p._ctx = Ctx()
+    p._take_audio = lambda: None
+    asyncio.run(p._step())
+    assert not p._turn_too_long(tick())

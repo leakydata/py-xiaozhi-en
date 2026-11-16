@@ -7,8 +7,9 @@ answering "what are my reminders?".
 Announcing goes through send_wake_word_detected, which is the same text-in path
 the GUI's Send button uses: {"type":"listen","state":"detect","text":...}. The
 server treats it as an utterance and replies in the assistant's own voice, so
-no separate TTS voice is needed. The text is phrased as an instruction so the
-model announces it rather than answering it.
+no separate TTS voice is needed. xiaozhi.me refuses anything longer than a wake
+word there, so the text is the short cue "reminder due" (src/protocols/cues.py),
+which the assistant is told to answer by listing and announcing what is due.
 
 Two guards matter more than the timing:
   - never fire on a closed channel, or the reminder is spoken into the void
@@ -20,6 +21,7 @@ is silently lost.
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import TYPE_CHECKING
 
 from src.logging import get_logger
@@ -45,6 +47,12 @@ class RemindersPlugin(Plugin):
         self._running = False
         self._poll = _DEFAULT_POLL
         self._enabled = True
+        #: After the server refuses the cue, wait before trying again rather
+        #: than sending it every poll.
+        self._cue_backoff_until = 0.0
+        #: reminder id -> (when last raised, how many times), so one that
+        #: has been raised is not raised again every poll
+        self._cued: dict[int, tuple[float, int]] = {}
 
     async def setup(self, ctx: PluginContext, cmd: PluginCommands) -> None:
         await super().setup(ctx, cmd)
@@ -98,58 +106,92 @@ class RemindersPlugin(Plugin):
         if not due:
             return
 
-        if not self._ctx.is_audio_channel_opened():
-            logger.debug(
-                f"{len(due)} reminders are due, but the protocol channel is not connected - retrying later"
-            )
+        from src.core import presence_state
+
+        # Not over the assistant, and not over the user mid-sentence. With the
+        # session kept open the device is LISTENING most of the time, so
+        # "idle" alone would starve reminders; a quiet stretch will do.
+        if self._ctx.is_speaking():
             return
+        now = time.monotonic()
         if not self._ctx.is_idle():
-            logger.debug(
-                f"{len(due)} reminders are due, but a conversation is in progress - retrying later"
+            quiet = now - max(
+                presence_state.last_activity(), presence_state.last_user_speech()
             )
-            return
+            if quiet < 20:
+                logger.debug(f"{len(due)} reminders are due; waiting for a pause")
+                return
 
-        # one per tick: several at once would talk over itself
-        item = due[0]
-        await self._announce(item)
+        fresh = [
+            r for r in due if now - self._cued.get(int(r["id"]), (-1e9, 0))[0] > 600
+        ]
+        if not fresh:
+            return  # all were raised in the last ten minutes
+        await self._announce(fresh[0], fresh)
 
-    async def _announce(self, item: dict) -> None:
+    async def _announce(self, item: dict, due: list | None = None) -> None:
+        due_at_cue = list(due or [item])
         text = (item.get("text") or "").strip()
         if not text:
             get_memory_safe_complete(item)
             return
 
-        who = (item.get("speaker") or "").strip()
-        target = who if who else "me"
-        prompt = (
-            f"This is a scheduled reminder that is due now: {text}. "
-            f"Announce it to {target} briefly and naturally. "
-            f"Do not answer it or ask a question - just deliver the reminder."
-        )
+        from src.constants.constants import ListeningMode
+        from src.core import presence_state
+        from src.protocols import cues
 
+        if time.monotonic() < self._cue_backoff_until:
+            return
+        # The server refuses a sentence sent this way, so send the short cue:
+        # the assistant knows to list the due reminders, announce them and
+        # mark them done herself.
         try:
-            if not await self._cmd.connect_protocol():
-                logger.warning(
-                    "could not announce the reminder: the protocol would not connect, so it stays due for the next attempt"
+            if not self._ctx.is_listening():
+                # a detect straight from idle is often dropped by the server
+                if not await self._cmd.connect_protocol():
+                    logger.warning(
+                        "could not announce the reminder: no connection; it stays due"
+                    )
+                    return
+                mode = (
+                    ListeningMode.REALTIME
+                    if self._ctx.get_config().get_config("AEC_OPTIONS.ENABLED", True)
+                    else ListeningMode.AUTO_STOP
                 )
-                return
-            await self._cmd.send_wake_word_detected(prompt)
+                await self._cmd.start_listening(mode)
+            sent_at = cues.note_sent(cues.REMINDER)
+            await self._cmd.send_wake_word_detected(cues.REMINDER)
+            replied = False
+            for _ in range(20):
+                await asyncio.sleep(1.0)
+                if cues.rejected_since(sent_at):
+                    break
+                if presence_state.last_activity() > sent_at:
+                    replied = True
+                    break
         except Exception as e:
-            # leave it due; the next tick retries rather than losing it
+            logger.warning(f"could not announce the reminder, leaving it due: {e}")
+            return
+
+        if not replied:
+            refused = cues.rejected_since(sent_at)
+            self._cue_backoff_until = time.monotonic() + (600 if refused else 120)
             logger.warning(
-                f"could not announce the reminder, leaving it due to retry: {e}"
+                f"the reminder cue was {'refused' if refused else 'not answered'}; "
+                f"{len(due_at_cue)} reminder(s) stay due"
             )
             return
 
-        from src.memory.store import get_memory
-
-        try:
-            get_memory().complete(int(item["id"]))
-        except Exception as e:
-            logger.warning(
-                f"announced the reminder but could not mark it done #{item.get('id')}: {e}"
-            )
-        logger.info(f"announced reminder #{item.get('id')}: {text[:60]}")
+        now = time.monotonic()
+        for row in due_at_cue:
+            nid = int(row["id"])
+            count = self._cued.get(nid, (0, 0))[1] + 1
+            self._cued[nid] = (now, count)
+            if count >= 3:
+                # raised three times and answered each time, but never marked
+                # done: she has said it, so close it rather than nag forever
+                get_memory_safe_complete(row)
+        logger.info(f"cued {len(due_at_cue)} due reminder(s), first #{item.get('id')}")
 
 
 def get_memory_safe_complete(item: dict) -> None:

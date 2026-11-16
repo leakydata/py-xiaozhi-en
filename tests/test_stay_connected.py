@@ -27,9 +27,21 @@ def session(closed_ago):
     )
     s._last_stay_connected = 0.0
     s._reconnect_listening = False
+    s._last_user_text = ""
+    s._last_tts_stop = -1e9
+    s._quiet_redials = 0
     s.calls = []
     s._start_reconnect = lambda listening=False: s.calls.append(listening)
     return s
+
+
+@pytest.fixture(autouse=True)
+def fresh_state():
+    from src.core import presence_state
+
+    presence_state.reset()
+    yield
+    presence_state.reset()
 
 
 @pytest.fixture(autouse=True)
@@ -68,14 +80,103 @@ def test_it_can_be_turned_off(monkeypatch):
     assert s.calls == []
 
 
-def test_the_check_in_and_speak_up_texts_are_short_enough_for_the_server():
-    import inspect
+def test_every_cue_is_wake_word_length():
+    from src.protocols import cues
 
-    from src.plugins import ambient
+    assert all(len(c) <= cues.MAX_CHARS for c in cues.ALL)
 
-    src = inspect.getsource(ambient)
-    assert "Nathan is still here. Ask in one short sentence" in src
-    assert ")[:150]" in src
+
+def test_a_goodbye_is_not_undone(monkeypatch):
+    for said in ("OK, bye.", "Goodbye!", "That's all for now", "good night"):
+        s = session(1.0)
+        s._last_user_text = said
+        s._last_tts_stop = time.monotonic() - 3  # she replied, then hung up
+        s._maybe_stay_connected()
+        assert s.calls == [], said
+
+
+def test_a_goodbye_long_before_the_hangup_is_just_a_timeout():
+    s = session(1.0)
+    s._last_user_text = "I'm done with the dishes, what next?"
+    s._last_tts_stop = time.monotonic() - 60
+    s._maybe_stay_connected()
+    assert s.calls == [True]
+
+
+def test_a_goodbye_stands_everything_down():
+    from src.core import presence_state
+
+    s = session(1.0)
+    s._last_user_text = "bye"
+    s._last_tts_stop = time.monotonic() - 3
+    s._maybe_stay_connected()
+    assert presence_state.standing_down()
+
+
+def test_a_silent_room_gets_a_few_redials_not_one_a_minute_forever():
+    s = session(1.0)
+    for _ in range(5):
+        s._last_stay_connected -= 100  # the next hang-up, a minute or so later
+        s._maybe_stay_connected()
+    assert s.calls == [True, True, True]
+
+
+def test_speaking_renews_the_redials():
+    from src.core import presence_state
+
+    s = session(1.0)
+    for _ in range(3):
+        s._last_stay_connected -= 100
+        s._maybe_stay_connected()
+    s._last_stay_connected -= 100
+    presence_state.user_spoke()
+    s._maybe_stay_connected()
+    assert s.calls == [True] * 4
+
+
+def test_ordinary_words_are_not_a_goodbye():
+    for said in ("Tell me about the bylaw", "What's the byline?", "Hold on a sec"):
+        s = session(1.0)
+        s._last_user_text = said
+        s._maybe_stay_connected()
+        assert s.calls == [True], said
+
+
+def test_the_decision_is_made_before_the_slow_move_to_idle():
+    import asyncio
+
+    s = session(1.0)
+    order = []
+
+    class State:
+        async def set_device_state(self, st):
+            order.append("idle")
+
+    s.state = State()
+    s._start_reconnect = lambda listening=False: order.append("redial")
+    asyncio.run(s._on_audio_channel_closed())
+    assert order == ["redial", "idle"]
+
+
+def test_a_refused_text_is_recorded():
+    import asyncio
+
+    from src.protocols import cues
+
+    s = session(None)
+    s.plugins = type(
+        "P", (), {"notify_incoming_json": staticmethod(lambda m: asyncio.sleep(0))}
+    )()
+    sent = cues.note_sent("a long sentence that is far too long")
+    asyncio.run(
+        s._on_incoming_json(
+            {
+                "type": "alert",
+                "message": "Detect is only for wake words, do not send long texts.",
+            }
+        )
+    )
+    assert cues.rejected_since(sent)
 
 
 def test_nobody_heard_for_a_while_means_standby(monkeypatch):

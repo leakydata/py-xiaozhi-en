@@ -88,8 +88,7 @@ def closed(p):
 
 def test_the_server_ends_it_and_someone_is_typing_so_she_asks(monkeypatch):
     calls = closed(make(monkeypatch))
-    assert calls[:2] == ["connect", "listen"]
-    assert "keep talking" in calls[2][1]
+    assert calls == ["connect", "listen", ("say", "still there?")]
 
 
 def test_no_sign_of_anyone_means_quietly_idle(monkeypatch):
@@ -134,7 +133,30 @@ def test_a_failed_reconnect_does_not_loop(monkeypatch):
     assert closed(p) == ["connect"]
 
 
-def test_nothing_if_the_channel_already_came_back(monkeypatch):
+def test_if_the_session_already_redialled_it_only_asks(monkeypatch):
+    from src.core import presence_state
+
+    presence_state.reset()
     p = make(monkeypatch)
     p._ctx.opened = True
+    presence_state.redialled()
+    assert closed(p) == [("say", "still there?")]
+    presence_state.reset()
+
+
+def test_a_conversation_the_user_opened_is_left_alone(monkeypatch):
+    from src.core import presence_state
+
+    presence_state.reset()
+    p = make(monkeypatch)
+    p._ctx.opened = True  # opened by the wake word or the button, not a redial
     assert closed(p) == []
+
+
+def test_after_a_goodbye_it_does_not_check_in(monkeypatch):
+    from src.core import presence_state
+
+    presence_state.reset()
+    presence_state.stand_down(300)
+    assert closed(make(monkeypatch)) == []
+    presence_state.reset()

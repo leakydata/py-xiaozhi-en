@@ -365,6 +365,10 @@ class TurnTakingPlugin(Plugin):
         if state == DeviceState.LISTENING:
             if self.ctx.is_turn_ended():
                 self._take_audio()
+                # The next turn starts when this one reopens, not when the
+                # device last changed state - it can stay LISTENING across
+                # several turns.
+                self._listen_started = time.monotonic()
                 return
             tick = await self._sidecar.tick(self._take_audio())
             if tick and self._turn_too_long(tick):

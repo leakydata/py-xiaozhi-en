@@ -7,10 +7,12 @@ the application-level session logic - connect, listen, abort, the TTS loop.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from typing import TYPE_CHECKING, Optional
 
 from src.constants.constants import DeviceState, ListeningMode
+from src.core import presence_state
 from src.core.event_bus import Events
 from src.logging import get_logger
 
@@ -21,6 +23,16 @@ if TYPE_CHECKING:
     from src.plugins.manager import PluginManager
 
 logger = get_logger()
+
+
+#: What ends a conversation on purpose. The server's end_conversation tool
+#: hangs up exactly as its idle timeout does, so this is how they are told apart.
+_GOODBYE = re.compile(
+    r"\b(good ?bye|bye|good ?night|see you|that'?s all|that is all|stop listening|"
+    r"go to sleep|go to standby|i'?m done|we'?re done|talk (to you )?later|"
+    r"that'?s it|that will be all|that'?ll be all)\b",
+    re.IGNORECASE,
+)
 
 
 class ConversationSession:
@@ -47,6 +59,13 @@ class ConversationSession:
         #: server ended a quiet session) rather than idle (a real drop).
         self._reconnect_listening = False
         self._last_stay_connected = 0.0
+        #: What the user last said, as the server transcribed it - a goodbye
+        #: means a hang-up was wanted.
+        self._last_user_text = ""
+        self._last_tts_stop = -1e9
+        #: Redials since the user last spoke: a silent room gets a few, not
+        #: one a minute for as long as the keyboard is clicking.
+        self._quiet_redials = 0
 
     # -------------------------
     # event subscriptions
@@ -86,8 +105,11 @@ class ConversationSession:
         await self.state.set_device_state(DeviceState.LISTENING)
 
     async def _on_audio_channel_closed(self, _=None) -> None:
-        await self.state.set_device_state(DeviceState.IDLE)
+        # Decide before going idle: the move to idle shuts the audio down and
+        # takes about five seconds, after which the close no longer looks
+        # recent and nothing was ever redialled.
         self._maybe_stay_connected()
+        await self.state.set_device_state(DeviceState.IDLE)
 
     def _maybe_stay_connected(self) -> None:
         """The server hangs up on a quiet session; come straight back.
@@ -108,8 +130,29 @@ class ConversationSession:
             now = time.monotonic()
             if closed_at is None or now - closed_at > 5:
                 return  # the user or the app closed it
+            said = (self._last_user_text or "").strip()
+            # The assistant hanging up on a goodbye (end_conversation) happens
+            # right after her reply; the server's idle timeout a minute later.
+            # Only a short closing remark just before that counts.
+            if (
+                now - self._last_tts_stop < 15
+                and len(said) <= 60
+                and _GOODBYE.search(said)
+            ):
+                presence_state.stand_down(300)
+                logger.info(f"server ended the session after {said!r}: standby")
+                return
             if now - self._last_stay_connected < 20:
                 logger.info("server hung up again straight away: staying idle")
+                return
+            if presence_state.last_user_speech() > self._last_stay_connected:
+                self._quiet_redials = 0
+            budget = int(get_config().get_config("NETWORK_OPTIONS.QUIET_REDIALS", 3))
+            if self._quiet_redials >= budget:
+                logger.info(
+                    f"{self._quiet_redials} quiet sessions in a row with nothing said: "
+                    "standby (a voice or the wake word starts it again)"
+                )
                 return
             minutes = float(
                 get_config().get_config("NETWORK_OPTIONS.STAY_CONNECTED_MINUTES", 15)
@@ -121,7 +164,11 @@ class ConversationSession:
                 )
                 return
             self._last_stay_connected = now
-            logger.info("server ended a quiet session: reconnecting and listening")
+            self._quiet_redials += 1
+            logger.info(
+                f"server ended a quiet session: reconnecting and listening "
+                f"({self._quiet_redials}/{budget})"
+            )
             self._start_reconnect(listening=True)
         except Exception as e:
             logger.error(f"stay-connected failed: {e}", exc_info=True)
@@ -228,6 +275,12 @@ class ConversationSession:
                     logger.debug(f"reconnect attempt {attempt} failed: {e}")
                 if ok:
                     logger.info(f"reconnected after {attempt} attempt(s)")
+                    if self._reconnect_listening:
+                        # Opening the channel only sets the state; the server
+                        # also has to be told to listen, or it hears nothing
+                        # and hangs up again a minute later.
+                        presence_state.redialled()
+                        await self.start_auto_conversation()
                     return
                 self._keep_idle_on_channel_open = False
 
@@ -254,6 +307,21 @@ class ConversationSession:
         try:
             msg_type = json_data.get("type") if isinstance(json_data, dict) else None
             logger.info(f"JSON message received: type={msg_type}")
+            if msg_type == "stt":
+                self._last_user_text = str(json_data.get("text", ""))
+                presence_state.user_spoke()
+            elif msg_type in ("tts", "llm"):
+                presence_state.activity()
+                if msg_type == "tts" and json_data.get("state") == "stop":
+                    self._last_tts_stop = time.monotonic()
+            from src.protocols import cues
+
+            if cues.is_rejection(json_data):
+                text = cues.note_rejected()
+                logger.warning(
+                    f"the server refused the text {text[:60]!r} ({len(text)} chars): "
+                    "it only accepts wake-word-length text this way"
+                )
             if msg_type in ("alert", "error"):
                 # The server uses these to say why it is about to hang up
                 # (limits, busy, idle). The type alone told us nothing.

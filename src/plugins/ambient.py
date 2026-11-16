@@ -11,6 +11,7 @@ import time
 
 from src.audio_processing import ambient_sounds
 from src.audio_processing.echo_gate import get_gate
+from src.core import presence_state
 from src.core.event_bus import Events
 from src.logging import get_logger
 from src.plugins.base import Plugin
@@ -95,7 +96,7 @@ class AmbientSoundsPlugin(Plugin):
         # still there, before deciding.
         await asyncio.sleep(4)
         sounds = self._sounds
-        if sounds is None or self._ctx.is_audio_channel_opened():
+        if sounds is None or presence_state.standing_down():
             return
         sign = sounds.presence()
         limit = float(self._cfg("CHECK_IN_PRESENCE_S", 90))
@@ -105,25 +106,40 @@ class AmbientSoundsPlugin(Plugin):
                 f"ambient: server ended the session, no sign of anyone ({sign})"
             )
             return
-        # The server rejects a long text sent this way ("Detect is only for
-        # wake words"), so this has to stay short.
-        prompt = "Nathan is still here. Ask in one short sentence if he wants to keep talking."
         from src.constants.constants import ListeningMode
+        from src.protocols import cues
 
+        # The session may be redialling on its own (NETWORK_OPTIONS.
+        # STAY_CONNECTED). Give it a moment; if the channel then belongs to a
+        # conversation the user started, keep out of it.
+        for _ in range(8):
+            if self._ctx.is_audio_channel_opened():
+                break
+            await asyncio.sleep(1)
+        if self._ctx.is_audio_channel_opened():
+            redial = presence_state.last_redial()
+            if (
+                time.monotonic() - redial > 20
+                or presence_state.last_user_speech() > redial
+            ):
+                logger.info("ambient: a conversation is already open, not checking in")
+                return
+        else:
+            if not await self._cmd.connect_protocol():
+                logger.warning("ambient: could not reconnect to check in")
+                return
+            mode = (
+                ListeningMode.REALTIME
+                if self._cfg_global("AEC_OPTIONS.ENABLED", True)
+                else ListeningMode.AUTO_STOP
+            )
+            await self._cmd.start_listening(mode)
         self._last_check_in = time.monotonic()
         self._check_in_sent_at = self._last_check_in
         self._spoke_since_check_in = False
-        if not await self._cmd.connect_protocol():
-            logger.warning("ambient: could not reconnect to check in")
-            return
         logger.info(f"ambient: checking in, last sign {sign['last_sign']} {ago}s ago")
-        mode = (
-            ListeningMode.REALTIME
-            if self._cfg_global("AEC_OPTIONS.ENABLED", True)
-            else ListeningMode.AUTO_STOP
-        )
-        await self._cmd.start_listening(mode)
-        await self._cmd.send_wake_word_detected(prompt)
+        # A short cue: the server refuses a sentence sent this way.
+        await self._cmd.send_wake_word_detected(cues.STILL_THERE)
 
     def _cfg_global(self, key: str, default):
         return self._ctx.get_config().get_config(key, default)
@@ -151,6 +167,7 @@ class AmbientSoundsPlugin(Plugin):
         if (
             self._ctx.get_device_state() != DeviceState.IDLE
             or self._ctx.is_audio_channel_opened()
+            or presence_state.standing_down()
         ):
             return
         now = time.monotonic()
@@ -202,7 +219,7 @@ class AmbientSoundsPlugin(Plugin):
         if now - self._last_update < float(self._cfg("MIN_GAP_S", 300)):
             return
         events = sounds.notable_since(self._last_update)
-        if not events:
+        if not events or presence_state.standing_down():
             return
 
         parts = [
@@ -210,12 +227,11 @@ class AmbientSoundsPlugin(Plugin):
             f"({ambient_sounds.ago_text(int(now - e.last))})"
             for e in events
         ]
-        # Kept short: the server rejects a long text sent this way.
-        prompt = (
-            "Room sensors heard: "
-            + ", ".join(parts[:3])
-            + ". If it matters, mention it in one short sentence."
-        )[:150]
+        from src.protocols import cues
+
+        # A short cue: the server refuses a sentence sent this way, so she
+        # calls ambient_sounds to find out what it was.
+        prompt = cues.ROOM_SOUND
         self._last_update = now
         if not await self._cmd.connect_protocol():
             logger.warning("ambient: could not connect to speak up; will retry later")

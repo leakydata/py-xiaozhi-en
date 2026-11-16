@@ -208,6 +208,9 @@ class ConfigManager:
             # ...for as long as someone has been heard within this many minutes
             # (needs AMBIENT_SOUNDS; without it, always)
             "STAY_CONNECTED_MINUTES": 15,
+            # quiet sessions in a row (nothing said) before standby; a voice
+            # (AMBIENT_SOUNDS.WAKE_ON_VOICE) or the wake word starts it again
+            "QUIET_REDIALS": 3,
             # the backoff ceiling in seconds; attempts double from 2s up to it
             "RECONNECT_MAX_DELAY": 60,
             # 0 keeps trying for as long as the app is running

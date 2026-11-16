@@ -123,6 +123,9 @@ class Protocol:
         """
         Send a wake-word-detected message.
         """
+        from src.protocols import cues
+
+        cues.note_sent(wake_word)
         message = {
             "session_id": self.session_id,
             "type": "listen",
