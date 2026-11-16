@@ -7,8 +7,8 @@ answering "what are my reminders?".
 Announcing goes through send_wake_word_detected, which is the same text-in path
 the GUI's Send button uses: {"type":"listen","state":"detect","text":...}. The
 server treats it as an utterance and replies in the assistant's own voice, so
-no separate TTS voice is needed. xiaozhi.me refuses anything longer than a wake
-word there, so the text is the short cue "reminder due" (src/protocols/cues.py),
+no separate TTS voice is needed. xiaozhi.me refuses long text (over ~21 characters)
+there, so the text is the short cue "read due reminders" (src/protocols/cues.py),
 which the assistant is told to answer by listing and announcing what is due.
 
 Two guards matter more than the timing:

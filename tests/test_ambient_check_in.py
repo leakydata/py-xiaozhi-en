@@ -88,7 +88,7 @@ def closed(p):
 
 def test_the_server_ends_it_and_someone_is_typing_so_she_asks(monkeypatch):
     calls = closed(make(monkeypatch))
-    assert calls == ["connect", "listen", ("say", "still there?")]
+    assert calls == ["connect", "listen", ("say", "ask if I'm here")]
 
 
 def test_no_sign_of_anyone_means_quietly_idle(monkeypatch):
@@ -140,7 +140,7 @@ def test_if_the_session_already_redialled_it_only_asks(monkeypatch):
     p = make(monkeypatch)
     p._ctx.opened = True
     presence_state.redialled()
-    assert closed(p) == [("say", "still there?")]
+    assert closed(p) == [("say", "ask if I'm here")]
     presence_state.reset()
 
 

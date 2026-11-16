@@ -8,8 +8,11 @@ refused, so a check-in, a sound worth mentioning or a due reminder was silently
 dropped. So the app sends a short fixed cue instead, and the personality text
 and the briefing tell the assistant what each cue means.
 
-The exact limit is not documented. The cues are kept to wake-word length, and
-every rejection is recorded so callers can tell sent from heard.
+The limit is not documented. scripts/cue_probe.py measured it on 2026-11-15:
+texts of 2-21 characters were accepted (the server transcribes them as the user
+speaking and she answers), so the cues are worded to make sense on their own -
+"ask if I'm here" made her ask "Are you there?" even without being told what it
+means. Every refusal is still recorded so callers can tell sent from heard.
 """
 
 from __future__ import annotations
@@ -17,17 +20,17 @@ from __future__ import annotations
 import asyncio
 import time
 
-#: No cue is longer than this. Typical wake words are 2-4 words.
-MAX_CHARS = 12
+#: No cue is longer than this; 21 was the longest measured to be accepted.
+MAX_CHARS = 18
 
 #: Call list_reminders(scope="due"), announce each, then complete_reminder.
-REMINDER = "reminder due"
+REMINDER = "read due reminders"
 #: The server ended the session but someone is still around: ask briefly
 #: whether they want to keep talking.
-STILL_THERE = "still there?"
+STILL_THERE = "ask if I'm here"
 #: A notable sound in a quiet room: call ambient_sounds and mention it if it
 #: matters, in one sentence, without a question.
-ROOM_SOUND = "room sound"
+ROOM_SOUND = "check room sounds"
 
 ALL = (REMINDER, STILL_THERE, ROOM_SOUND)
 

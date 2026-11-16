@@ -100,11 +100,11 @@ _GROUPS: list[tuple[str, tuple[str, ...]]] = [
 
 _CUES = """Short cues from the app, not words the user said (the app can only send
 a few words to start you talking):
-- "reminder due": call list_reminders with scope due, announce each one briefly,
+- "read due reminders": call list_reminders with scope due, announce each one briefly,
   then call complete_reminder for each. Do not ask a question.
-- "still there?": the session timed out but the user seems to be around. Ask in
+- "ask if I'm here": the session timed out but the user seems to be around. Ask in
   one short sentence whether they want to keep talking.
-- "room sound": call ambient_sounds and, if something notable happened, mention
+- "check room sounds": call ambient_sounds and, if something notable happened, mention
   it in one short sentence. If nothing matters, say nothing more than a word."""
 
 

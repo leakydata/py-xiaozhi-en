@@ -48,9 +48,9 @@ def recently_used(minutes: float = 20) -> bool:
 async def probe(texts: list[str]) -> list[dict]:
     import websockets
 
-    from src.utils.config_manager import get_config
+    from src.utils.config_manager import initialize_config
 
-    cfg = get_config()
+    cfg = initialize_config()
     url = cfg.get_config("SYSTEM_OPTIONS.NETWORK.WEBSOCKET_URL")
     headers = {
         "Authorization": "Bearer "

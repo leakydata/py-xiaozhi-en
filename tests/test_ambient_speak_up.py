@@ -69,7 +69,7 @@ def test_a_notable_sound_in_a_quiet_room_is_spoken_about():
     hear(p, "Doorbell")
     sent = run(p)
     assert len(sent) == 1
-    assert sent[0] == "room sound"
+    assert sent[0] == "check room sounds"
 
 
 def test_it_is_off_by_default_and_by_switch():
