@@ -46,6 +46,10 @@ _GROUPS: list[tuple[str, tuple[str, ...]]] = [
     ),
     ("The web", ("web_search", "fetch_page")),
     (
+        "Your own logs - for working out what went wrong with you",
+        ("app_health", "read_logs"),
+    ),
+    (
         "The room - sounds that are not speech",
         ("ambient_sounds",),
     ),
@@ -108,6 +112,10 @@ _HABITS = """How to work:
 - The workspace is yours: create, edit and delete files there freely.
 - ask_claude for hard reasoning; ask_claude_background when it may take a while,
   then tell the user you will report back.
+- When something is not working - you cut out, went idle, missed what was
+  said, or the user reports a problem - call app_health first, then read_logs
+  on whatever it flags, before guessing. Say plainly what you found and what
+  would fix it. Do not read log lines or numbers aloud.
 - Keep spoken replies short. This is voice: a sentence or two, not an essay.
 - You are not in a conversation with this briefing. Do not reply to it."""
 
