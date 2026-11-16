@@ -350,8 +350,8 @@ def test_a_snort_the_model_is_only_a_fifth_sure_of_counts_when_it_repeats():
 
 def test_the_low_floor_is_only_for_body_sounds():
     a, _ = sounds()
-    a.ingest([("Tick", 0.22)], 1000.0)
-    a.ingest([("Tick", 0.22)], 1003.0)
+    a.ingest([("Dog", 0.22)], 1000.0)
+    a.ingest([("Dog", 0.22)], 1003.0)
     assert a.heard(10, now=1004.0)["sounds"] == []
 
 
@@ -370,15 +370,15 @@ def test_scattered_guesses_do_not_add_up_to_a_sound():
     twelve seconds it is still never three times in four."""
     a, _ = sounds(min_confidence=0.25)
     for t in (1000.0, 1004.5, 1009.0, 1013.5, 1018.0):
-        a.ingest([("Tick-tock", 0.3)], t)
+        a.ingest([("Dog", 0.3)], t)
     assert a.heard(10, now=1019.0)["sounds"] == []
 
 
 def test_a_sound_that_stays_in_the_windows_counts():
     a, _ = sounds(min_confidence=0.25)
     for i in range(6):
-        a.ingest([("Tick-tock", 0.3)], 1000.0 + i * 0.5)
-    assert a.heard(10, now=1003.0)["sounds"][0]["sound"] == "Tick-tock"
+        a.ingest([("Dog", 0.3)], 1000.0 + i * 0.5)
+    assert a.heard(10, now=1003.0)["sounds"][0]["sound"] == "Dog"
 
 
 def test_two_in_a_row_is_not_yet_a_sustained_sound():

@@ -47,6 +47,12 @@ IGNORED = frozenset(
         "Narration, monologue",
         "Babbling",
         "Speech synthesizer",
+        # Misfires on speech and room tone in this room's logs: "Mantra" 12
+        # times in ten minutes of ordinary talking, and a clock that is not
+        # there. Real ticking and chanting are not worth reporting anyway.
+        "Mantra",
+        "Tick",
+        "Tick-tock",
         "Hubbub, speech noise, speech babble",
         "Whispering",
         "Shout",

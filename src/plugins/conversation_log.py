@@ -19,6 +19,16 @@ class ConversationLogPlugin(Plugin):
         await super().setup(ctx, cmd)
         ctx.event_bus.on(Events.AUDIO_CHANNEL_CLOSED, self._on_channel_closed)
 
+    async def start(self) -> None:
+        # Once a day, copy the memory databases somewhere safe.
+        try:
+            from src.memory.backup import backup_databases
+            from src.utils.resource_finder import get_user_data_dir
+
+            await asyncio.to_thread(backup_databases, get_user_data_dir())
+        except Exception as e:
+            logger.warning(f"memory backup skipped: {e}")
+
     def _enabled(self) -> bool:
         return bool(self._ctx.get_config().get_config("CONVERSATION_LOG.ENABLED", True))
 
