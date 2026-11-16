@@ -191,14 +191,26 @@ class McpTool:
     description: str
     properties: PropertyList
     callback: Callable[[Dict[str, Any]], ReturnValue]
+    #: Optional text appended to the description each time the tool list is
+    #: built, for a tool whose description should carry live state (the
+    #: function list is the one thing the model reliably sees every session).
+    dynamic: Optional[Callable[[], str]] = None
 
     def to_json(self) -> Dict[str, Any]:
         """
         Convert to JSON.
         """
+        description = self.description
+        if self.dynamic is not None:
+            try:
+                extra = self.dynamic()
+                if extra:
+                    description = f"{description} {extra}"
+            except Exception:
+                pass  # a broken snapshot must not take the tool list down
         return {
             "name": self.name,
-            "description": self.description,
+            "description": description,
             "inputSchema": {
                 "type": "object",
                 "properties": self.properties.to_json(),

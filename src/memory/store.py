@@ -24,7 +24,10 @@ from src.utils.resource_finder import get_user_data_dir
 
 logger = get_logger()
 
-KINDS = ("note", "reminder", "fact", "event")
+#: "core" is the permanent basics - name, family, pets, addresses, phone
+#: numbers - which the assistant is shown at the start of every session
+#: instead of having to ask for them.
+KINDS = ("note", "reminder", "fact", "event", "core")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS notes (
@@ -386,6 +389,14 @@ class MemoryStore:
                 }
             )
         return out
+
+    def core(self, limit: int = 40) -> list[dict]:
+        """The permanent basics, oldest first so the list reads in the order told."""
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM notes WHERE kind='core' ORDER BY id LIMIT ?", (limit,)
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     def count(self) -> int:
         with self._lock, self._connect() as conn:

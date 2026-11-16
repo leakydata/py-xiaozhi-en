@@ -120,6 +120,35 @@ _HABITS = """How to work:
 - You are not in a conversation with this briefing. Do not reply to it."""
 
 
+_MEMORY = """Your memory:
+- remember and recall are your only memory: a database on this computer with no
+  size limit, searched by meaning. Never use a built-in or server-side memory
+  tool - it is small and full.
+- Save freely, without being asked and without announcing it: as many separate
+  memories as you like. kind=core for the permanent basics (name, family, pets,
+  addresses, phone numbers, birthdays - listed below at the start of every
+  session); kind=fact for anything else durably true; note for an observation;
+  event for something at a time.
+- Call recall before saying you do not know something personal."""
+
+
+def _core_facts() -> str:
+    try:
+        from src.mcp.tools.memory.tools import core_snapshot, memory_overview
+
+        core = core_snapshot()
+        head = memory_overview()
+        parts = []
+        if core:
+            parts.append("What you already know about the user (permanent):\n" + core)
+        if head:
+            parts.append(head)
+        return "\n".join(parts)
+    except Exception as e:
+        logger.debug(f"briefing: no core facts ({e})")
+        return ""
+
+
 _AMBIENT = """What you can hear besides speech:
 - The microphone is also listened to by a sound-recognition model that names
   non-speech sounds (typing, a dog, running water, a kettle, music, an alarm, a
@@ -236,6 +265,12 @@ def build(tools: Iterable["McpTool"], clients=None) -> str:
         pass
 
     lines += ["", _HABITS]
+
+    if "remember" in names:
+        lines += ["", _MEMORY]
+        known = _core_facts()
+        if known:
+            lines += ["", known]
 
     if "ambient_sounds" in names:
         lines += ["", _AMBIENT]

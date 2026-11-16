@@ -112,7 +112,7 @@ async def remember_payload(args: dict[str, Any]) -> str:
     if not text:
         return json.dumps({"error": "Nothing to remember - text was empty."})
     kind = str(args.get("kind", "note")).lower()
-    if kind not in ("note", "fact", "event"):
+    if kind not in ("note", "fact", "event", "core"):
         kind = "note"
     speaker = str(args.get("speaker", "") or "") or get_current_speaker()
     tags = str(args.get("tags", "") or "") or None
@@ -125,8 +125,43 @@ async def remember_payload(args: dict[str, Any]) -> str:
     return json.dumps({"saved": True, "id": nid, "kind": kind, "text": text})
 
 
+def core_snapshot(max_items: int = 25, max_chars: int = 1400) -> str:
+    """The permanent basics as one block of text, or "" when there are none.
+
+    Shown to the assistant at session start, so it knows who it is talking to
+    without having to recall them.
+    """
+    try:
+        rows = get_memory().core(limit=max_items)
+    except Exception as e:
+        logger.debug(f"[Memory] no core facts: {e}")
+        return ""
+    lines, used = [], 0
+    for r in rows:
+        line = "- " + " ".join(str(r["text"]).split())
+        if used + len(line) > max_chars:
+            break
+        lines.append(line)
+        used += len(line)
+    return "\n".join(lines)
+
+
+def memory_overview() -> str:
+    """One sentence a session can start knowing: how much is stored."""
+    try:
+        total = get_memory().count()
+    except Exception:
+        return ""
+    return f"{total} memories are stored in all." if total else ""
+
+
 async def recall_payload(args: dict[str, Any]) -> str:
     query = str(args.get("query", "")).strip()
+    if str(args.get("kind", "") or "").lower() == "core" and not query:
+        rows = get_memory().core(limit=50)
+        return json.dumps(
+            {"core": [_row(r) for r in rows], "count": len(rows)}, ensure_ascii=False
+        )
     if not query:
         return json.dumps({"error": "No query given."})
     try:
