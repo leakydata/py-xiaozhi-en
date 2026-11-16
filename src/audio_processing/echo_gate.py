@@ -71,6 +71,21 @@ _LEARN_S = 4.0
 _PERCENTILE = 10.0
 #: Recompute that at most this often; it is read from an audio callback.
 _RECOMPUTE_EVERY = 10
+#: The echo canceller's leftover is not steady the way a room's echo is: it
+#: swings with volume, delay drift and speaker distortion, and a low percentile
+#: of those swings is over-optimistic. Never trust a coupling below this when
+#: judging, so a bad moment in the canceller is not read as the user.
+_MIN_COUPLING = 0.02
+#: The same for the noise floor: the suppressor can squash an idle room to a
+#: fraction of what the microphone really sits at (0.0004 was measured), which
+#: leaves a threshold any stray click clears.
+_MIN_FLOOR = 0.003
+#: Sound above the threshold has to add up to this much before it is called a
+#: cut-in. A voice goes on for a second; a keyboard click, a dog's nails or one
+#: bad frame from the canceller are a few hundredths of one.
+_MIN_OVER_S = 0.2
+#: The sample rate of the near side, to turn block sizes into time.
+_NEAR_RATE = 16_000
 
 
 class EchoGate:
@@ -100,10 +115,18 @@ class EchoGate:
         self._quiet: deque[tuple[float, float]] = deque()
         self._floor = _FLOOR_START
         self._since_recompute = 0
-        self._last_double_talk = 0.0
+        #: (time, seconds) of each stretch of microphone above the threshold.
+        self._over: deque[tuple[float, float]] = deque()
         self._near = 0.0
 
     # ------------------------------------------------------------ levels in
+
+    @staticmethod
+    def _block_seconds(block) -> float:
+        try:
+            return float(np.asarray(block).size) / _NEAR_RATE
+        except Exception:
+            return 0.0
 
     @staticmethod
     def _rms(block) -> float:
@@ -155,7 +178,10 @@ class EchoGate:
             self._recompute_floor()
 
         if near > self.threshold(far):
-            self._last_double_talk = now
+            self._over.append((now, self._block_seconds(block)))
+        cutoff = now - 3.0
+        while self._over and self._over[0][0] < cutoff:
+            self._over.popleft()
 
     def _recompute_coupling(self) -> None:
         """The room's own echo: the quiet end of the recent ratios.
@@ -203,21 +229,29 @@ class EchoGate:
 
     def threshold(self, far: float) -> float:
         """The microphone level neither the playback nor the room explains."""
-        return (self._coupling * far + self._floor) * self.margin
+        return (
+            max(self._coupling, _MIN_COUPLING) * far + max(self._floor, _MIN_FLOOR)
+        ) * self.margin
+
+    def over_seconds_at(self, now: float, within_s: float = 1.5) -> float:
+        """How much sound the playback and room cannot explain, lately."""
+        return sum(d for t, d in tuple(self._over) if 0 <= now - t <= within_s)
 
     def recent_double_talk_at(self, now: float, within_s: float = 1.5) -> bool:
         """As recent_double_talk, against a given clock reading."""
-        if not self._last_double_talk:
-            return False
-        return (now - self._last_double_talk) <= within_s
+        return self.over_seconds_at(now, within_s) >= _MIN_OVER_S
 
     def recent_double_talk(self, within_s: float = 1.5) -> bool:
         """Has the user been heard over the reply in the last `within_s`?
 
         A window, because the words that trigger a cut-in are transcribed from
-        audio already a moment old.
+        audio already a moment old. And a total, not a single frame: see
+        _MIN_OVER_S.
         """
         return self.recent_double_talk_at(time.monotonic(), within_s)
+
+    def over_seconds(self, within_s: float = 1.5) -> float:
+        return self.over_seconds_at(time.monotonic(), within_s)
 
     @property
     def coupling(self) -> float:
@@ -241,7 +275,7 @@ class EchoGate:
         against whatever was playing before, and the percentile would carry
         them into the new turn.
         """
-        self._last_double_talk = 0.0
+        self._over.clear()
         self._ratios.clear()
         self._coupling = self._coupling_start
         self._since_recompute = 0

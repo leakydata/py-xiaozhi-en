@@ -371,5 +371,11 @@ class TurnTakingPlugin(Plugin):
                         f"noise floor {gate.noise_floor:.4f})"
                     )
                     return
-                logger.info(f"turn-taking: interrupted by {tick['text'][-60:]!r}")
+                gate = get_gate()
+                logger.info(
+                    f"turn-taking: interrupted by {tick['text'][-60:]!r} "
+                    f"(over the echo for {gate.over_seconds():.2f}s, room returns "
+                    f"{gate.coupling:.1%}, noise floor {gate.noise_floor:.4f}, "
+                    f"mic {gate.near_level:.4f})"
+                )
                 await self.cmd.abort_speaking(AbortReason.USER_INTERRUPTION)

@@ -90,7 +90,7 @@ def test_headphones_let_anything_through():
     # Almost nothing couples back, so a quiet remark still registers.
     pairs = [(b, b * 0.002) for b in reply]
     run(gate, pairs)
-    pairs = [(reply[i], speech(BLOCK, 0.05, seed=700 + i)) for i in range(20)]
+    pairs = [(reply[i], speech(BLOCK, 0.08, seed=700 + i)) for i in range(20)]
     assert any(run(gate, pairs, start=200.0))
 
 
@@ -136,8 +136,9 @@ def test_talking_over_the_whole_window_is_taken_at_face_value():
 
 def test_the_verdict_expires():
     gate = EchoGate()
-    gate.feed_far(silence(BLOCK), now=100.0)
-    gate.feed_near(speech(BLOCK, 0.2), now=100.0)
+    for i in range(15):
+        gate.feed_far(silence(BLOCK), now=100.0 + i * 0.02)
+        gate.feed_near(speech(BLOCK, 0.2, seed=i), now=100.0 + i * 0.02)
     assert gate.recent_double_talk_at(100.5)
     assert not gate.recent_double_talk_at(102.0)
 
@@ -147,8 +148,9 @@ def test_reset_forgets_the_verdict_not_the_room():
     reply = [speech(BLOCK, 0.3, seed=i) for i in range(100)]
     run(gate, [(b, b * 0.25) for b in reply])
     learned = gate.coupling
-    gate.feed_near(speech(BLOCK, 0.5), now=200.0)
-    assert gate.recent_double_talk_at(200.1)
+    for i in range(15):
+        gate.feed_near(speech(BLOCK, 0.5, seed=i), now=200.0 + i * 0.02)
+    assert gate.recent_double_talk_at(200.4)
     gate.reset()
     assert not gate.recent_double_talk_at(200.1)
     assert gate.coupling == pytest.approx(learned, rel=0.5)
@@ -176,3 +178,55 @@ def test_odd_input_does_not_raise():
         gate.feed_far(block, now=100.0)
         gate.feed_near(block, now=100.0)
     assert not gate.recent_double_talk_at(100.0)
+
+
+# ---------------------------------------------------------------- stray sounds
+
+
+def test_one_stray_frame_is_not_a_cut_in():
+    """A click, a dog's nail or one bad frame from the canceller."""
+    gate = EchoGate()
+    gate.feed_far(silence(BLOCK), now=100.0)
+    gate.feed_near(speech(BLOCK, 0.4), now=100.0)
+    assert not gate.recent_double_talk_at(100.1)
+
+
+def test_a_few_stray_frames_are_not_a_cut_in_either():
+    gate = EchoGate()
+    for i in range(4):  # 80 ms in all
+        gate.feed_far(silence(BLOCK), now=100.0 + i * 0.5)
+        gate.feed_near(speech(BLOCK, 0.4, seed=i), now=100.0 + i * 0.5)
+    assert not gate.recent_double_talk_at(102.0, within_s=3.0)
+
+
+def test_a_sustained_voice_is_a_cut_in():
+    gate = EchoGate()
+    for i in range(20):  # 400 ms
+        gate.feed_far(silence(BLOCK), now=100.0 + i * 0.02)
+        gate.feed_near(speech(BLOCK, 0.2, seed=i), now=100.0 + i * 0.02)
+    assert gate.recent_double_talk_at(100.5)
+
+
+def test_the_canceller_swinging_to_a_poor_moment_is_not_a_cut_in():
+    """Learned coupling collapses to ~0.002 with the canceller on, then the
+    residual rises to a few percent of the reply for a stretch. That is the
+    canceller, not a person, and must stay under the threshold."""
+    gate = EchoGate()
+    reply = [speech(BLOCK, 0.2, seed=i) for i in range(300)]
+    pairs = [(b, b * 0.002) for b in reply]
+    for i in range(200, 260):  # residual climbs to 1.5% of the reply
+        pairs[i] = (reply[i], reply[i] * 0.015)
+    assert not any(run(gate, pairs)[40:])
+
+
+def test_a_squashed_noise_floor_does_not_make_the_gate_hair_trigger():
+    gate = EchoGate()
+    for i in range(300):  # a room the suppressor has made nearly silent
+        gate.feed_far(silence(BLOCK), now=100.0 + i * 0.02)
+        gate.feed_near(speech(BLOCK, 0.0004, seed=i), now=100.0 + i * 0.02)
+    assert gate.noise_floor < 0.002
+    for i in range(30):  # then a faint sustained rustle, 0.004 RMS
+        t = 110.0 + i * 0.02
+        gate.feed_far(silence(BLOCK), now=t)
+        gate.feed_near(speech(BLOCK, 0.004, seed=i), now=t)
+    assert not gate.recent_double_talk_at(110.6)
