@@ -124,8 +124,10 @@ class ConversationSession:
 
             if not get_config().get_config("NETWORK_OPTIONS.STAY_CONNECTED", True):
                 return
+            # ProtocolManager exposes the live protocol as .protocol (it has no
+            # _protocol of its own - reading that made this a silent no-op)
             closed_at = getattr(
-                getattr(self.protocol, "_protocol", None), "server_closed_at", None
+                getattr(self.protocol, "protocol", None), "server_closed_at", None
             )
             now = time.monotonic()
             if closed_at is None or now - closed_at > 5:

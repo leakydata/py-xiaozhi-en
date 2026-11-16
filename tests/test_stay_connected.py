@@ -18,12 +18,13 @@ class Cfg:
 
 def session(closed_ago):
     s = ConversationSession.__new__(ConversationSession)
-    s.protocol = SimpleNamespace(
-        _protocol=SimpleNamespace(
-            server_closed_at=None
-            if closed_ago is None
-            else time.monotonic() - closed_ago
-        )
+    from src.core.event_bus import EventBus
+    from src.core.protocol_manager import ProtocolManager
+
+    # the real manager, so the path to the live protocol is the one the app uses
+    s.protocol = ProtocolManager(EventBus())
+    s.protocol._transport._protocol = SimpleNamespace(
+        server_closed_at=None if closed_ago is None else time.monotonic() - closed_ago
     )
     s._last_stay_connected = 0.0
     s._reconnect_listening = False
