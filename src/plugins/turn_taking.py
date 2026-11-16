@@ -65,6 +65,9 @@ class TurnTakingPlugin(Plugin):
         self._buf: list[np.ndarray] = []
         self._buf_lock = threading.Lock()
         self._phase: DeviceState | None = None
+        #: When the current listening turn began, to stay under the server's
+        #: limit on how long one turn may run.
+        self._listen_started = 0.0
         self._assistant_said: list[str] = []
         self._enabled = False
         #: When the last "mm-hm" was played, and until when the microphone is
@@ -301,6 +304,30 @@ class TurnTakingPlugin(Plugin):
             self.cmd.mute_capture(seconds)
         logger.info(f"turn-taking: backchannel after {tick['text'][-40:]!r}")
 
+    def _turn_too_long(self, tick: dict) -> bool:
+        """Hand the turn over before the server gives up on it.
+
+        The server closes the connection when one listening turn runs past
+        about a minute - talking the whole time or not - so a long story was
+        cut off mid-sentence and the app dropped to standby. Once a turn nears
+        that, take the next short breath as the end; just short of it, end it
+        regardless. She answers what was said so far, and the user carries on.
+        """
+        limit = float(self._cfg("MAX_TURN_S", 45))
+        if limit <= 0 or tick.get("speech_s", 0) < 1.0:
+            return False
+        held = time.monotonic() - self._listen_started
+        if held < limit:
+            return False
+        pause = tick.get("silence_words_s", tick.get("silence_s", 0.0))
+        if held >= limit + 8 or (not tick.get("speaking") and pause >= 0.4):
+            logger.info(
+                f"turn-taking: turn has run {held:.0f}s, handing over before the "
+                f"server drops it, after {tick['text'][-60:]!r}"
+            )
+            return True
+        return False
+
     # ------------------------------------------------------------ the loop
 
     async def _loop(self) -> None:
@@ -329,6 +356,7 @@ class TurnTakingPlugin(Plugin):
                 get_gate().reset()
             elif state == DeviceState.LISTENING:
                 self._assistant_said.clear()
+                self._listen_started = time.monotonic()
 
         if state == DeviceState.IDLE:
             self._take_audio()  # nothing is being judged; don't let it pile up
@@ -339,7 +367,9 @@ class TurnTakingPlugin(Plugin):
                 self._take_audio()
                 return
             tick = await self._sidecar.tick(self._take_audio())
-            if tick and turn_over(
+            if tick and self._turn_too_long(tick):
+                await self.cmd.end_user_turn()
+            elif tick and turn_over(
                 tick["text"],
                 tick.get("silence_words_s", tick["silence_s"]),
                 tick["speech_s"],

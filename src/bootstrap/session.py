@@ -111,6 +111,15 @@ class ConversationSession:
             if now - self._last_stay_connected < 20:
                 logger.info("server hung up again straight away: staying idle")
                 return
+            minutes = float(
+                get_config().get_config("NETWORK_OPTIONS.STAY_CONNECTED_MINUTES", 15)
+            )
+            if not self._someone_around(minutes * 60):
+                logger.info(
+                    f"server ended a quiet session and nobody has been heard for "
+                    f"{minutes:.0f} min: going to standby"
+                )
+                return
             self._last_stay_connected = now
             logger.info("server ended a quiet session: reconnecting and listening")
             self._start_reconnect(listening=True)
@@ -146,6 +155,20 @@ class ConversationSession:
             )
         except Exception:
             return True, 60.0, 0
+
+    @staticmethod
+    def _someone_around(within_s: float) -> bool:
+        """Has the microphone heard a person lately? Yes if it cannot tell."""
+        try:
+            from src.audio_processing.ambient_sounds import get_ambient
+
+            ambient = get_ambient()
+            if ambient is None or not ambient.enabled:
+                return True
+            ago = ambient.presence()["last_sign_seconds_ago"]
+            return ago is not None and ago <= within_s
+        except Exception:
+            return True
 
     def _start_reconnect(self, listening: bool = False) -> None:
         """Redial in the background after the connection dropped.

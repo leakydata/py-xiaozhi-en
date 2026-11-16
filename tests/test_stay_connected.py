@@ -76,3 +76,21 @@ def test_the_check_in_and_speak_up_texts_are_short_enough_for_the_server():
     src = inspect.getsource(ambient)
     assert "Nathan is still here. Ask in one short sentence" in src
     assert ")[:150]" in src
+
+
+def test_nobody_heard_for_a_while_means_standby(monkeypatch):
+    s = session(1.0)
+    monkeypatch.setattr(
+        ConversationSession, "_someone_around", staticmethod(lambda w: False)
+    )
+    s._maybe_stay_connected()
+    assert s.calls == []
+
+
+def test_someone_heard_recently_keeps_it_connected(monkeypatch):
+    s = session(1.0)
+    monkeypatch.setattr(
+        ConversationSession, "_someone_around", staticmethod(lambda w: True)
+    )
+    s._maybe_stay_connected()
+    assert s.calls == [True]

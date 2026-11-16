@@ -170,6 +170,10 @@ class ConfigManager:
             "INCOMPLETE_S": 3.0,
             # how often to judge; one tick costs ~90 ms on the 4090
             "TICK_S": 0.3,
+            # the server drops a turn that runs past about a minute; after this
+            # many seconds, end it at the next breath so she answers what was
+            # said so far (0 turns it off)
+            "MAX_TURN_S": 45,
             # real words, not echoes or backchannels, needed to interrupt
             "BARGE_IN_WORDS": 2,
             # Over speakers the microphone hears the reply and the words come
@@ -201,6 +205,9 @@ class ConfigManager:
             # or so without speech), reconnect and keep listening instead of
             # going to standby
             "STAY_CONNECTED": True,
+            # ...for as long as someone has been heard within this many minutes
+            # (needs AMBIENT_SOUNDS; without it, always)
+            "STAY_CONNECTED_MINUTES": 15,
             # the backoff ceiling in seconds; attempts double from 2s up to it
             "RECONNECT_MAX_DELAY": 60,
             # 0 keeps trying for as long as the app is running
