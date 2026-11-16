@@ -446,3 +446,39 @@ def test_a_faint_voice_does_not_make_a_stretch():
     a, _ = sounds()
     a.ingest([("Speech", 0.3)], 1000.0)
     assert a.around_speech(now=1001.0) is None
+
+
+# ---------------------------------------------------------------- on every tool result
+
+
+def test_the_room_line_has_now_earlier_and_who_is_around():
+    a, _ = sounds()
+    a.ingest([("Dog", 0.9)], 1000.0)
+    a.ingest([("Typing", 0.8)], 1100.0)
+    line = a.room_line(now=1101.0)
+    assert line.startswith("Hearing: Typing")
+    assert "earlier: Dog" in line
+
+
+def test_a_quiet_room_says_so():
+    a, _ = sounds()
+    a.ingest([("Doorbell", 0.9)], 1000.0)
+    line = a.room_line(now=1200.0)
+    assert line.startswith("quiet now") and "Doorbell" in line
+
+
+def test_every_tool_result_carries_the_room(monkeypatch):
+    from src.audio_processing import ambient_sounds as mod
+    from src.mcp.mcp_server import McpServer
+
+    a, _ = sounds()
+    a.ingest([("Typing", 0.8)], a._clock())
+    monkeypatch.setattr(mod, "_instance", a)
+    out = McpServer._with_room("recall", {"content": [{"type": "text", "text": "{}"}]})
+    assert out["content"][-1]["text"].startswith("[Room: Hearing: Typing")
+    # not on the ambient tool itself, and not when nothing is listening
+    same = McpServer._with_room("ambient_sounds", {"content": []})
+    assert same["content"] == []
+    monkeypatch.setattr(mod, "_instance", None)
+    out = McpServer._with_room("recall", {"content": []})
+    assert out["content"] == []

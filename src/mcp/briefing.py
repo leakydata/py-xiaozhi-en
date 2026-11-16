@@ -157,6 +157,8 @@ _AMBIENT = """What you can hear besides speech:
   recent ones, each with a confidence, whether it is going on now and how long
   ago it was last heard. The line below, if present, is only what was heard
   just before this session began.
+- Every tool result ends with a [Room: ...] line - what the microphone hears
+  right now and in the last few minutes. Use it; never read it out.
 - It also says what was going on before, during and after the most recent
   talking, so you know the setting the user spoke in.
 - It also tells you when someone was last audibly around (a voice, typing,

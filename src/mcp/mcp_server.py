@@ -409,13 +409,43 @@ class McpServer:
             logger.info(f"[MCP] tool {tool_name} succeeded, result: {result}")
             audit.record(tool_name, arguments, ok=True, result=result, ms=elapsed)
             audit.finish(call_id, ok=True, detail=result, ms=elapsed)
-            await self._reply_result(request_id, json.loads(result))
+            await self._reply_result(
+                request_id, self._with_room(tool_name, json.loads(result))
+            )
         except Exception as e:
             elapsed = int((_time.monotonic() - started) * 1000)
             logger.error(f"[MCP] tool {tool_name} failed: {e}", exc_info=True)
             audit.record(tool_name, arguments, ok=False, error=str(e), ms=elapsed)
             audit.finish(call_id, ok=False, detail=str(e), ms=elapsed)
             await self._reply_error(request_id, str(e))
+
+    @staticmethod
+    def _with_room(tool_name: str, result: Any) -> Any:
+        """Add one line about the room to a tool result.
+
+        The model lives on the server and only ever receives text the app
+        sends as the user speaking (which it answers aloud) or tool results.
+        A tool result is the one silent channel, so every call carries the
+        same line the window shows - free, since the call is happening anyway.
+        """
+        if tool_name == "ambient_sounds" or not isinstance(result, dict):
+            return result
+        try:
+            from src.audio_processing.ambient_sounds import get_ambient
+            from src.utils.config_manager import get_config
+
+            if not get_config().get_config("AMBIENT_SOUNDS.ATTACH_TO_TOOLS", True):
+                return result
+            ambient = get_ambient()
+            if ambient is None:
+                return result
+            line = ambient.room_line()
+            content = result.get("content")
+            if line and isinstance(content, list):
+                content.append({"type": "text", "text": f"[Room: {line}]"})
+        except Exception as e:
+            logger.debug(f"[MCP] no room line: {e}")
+        return result
 
     async def _parse_capabilities(self, capabilities):
         """

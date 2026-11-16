@@ -215,6 +215,9 @@ class ConfigManager:
             # labels never to count, e.g. ["Tick", "Tick-tock"] if the model
             # keeps hearing a clock that is really a keyboard
             "IGNORE": [],
+            # add a one-line note about the room to every tool result - the
+            # one way to tell the model without making it speak
+            "ATTACH_TO_TOOLS": True,
             # how far back the briefing's "lately" line looks
             "BRIEFING_MINUTES": 10,
             # Speak up, unprompted, about a notable sound (a doorbell, the dog

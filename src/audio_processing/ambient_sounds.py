@@ -520,6 +520,28 @@ class AmbientSounds:
             return f"Just heard: {sounds[0]['sound']}"
         return ""
 
+    def room_line(self, now: float | None = None) -> str:
+        """One short line for a tool result: now, plus the last few minutes."""
+        now = self._clock() if now is None else now
+        if not self.enabled:
+            return ""
+        current = self.now_line(now)
+        recent = [
+            f"{s['sound']} {ago_text(s['last_seconds_ago'])}"
+            for s in self.heard(5.0, now)["sounds"]
+            if not s["going_on_now"]
+        ][:4]
+        parts = [current] if current else ["quiet now"]
+        if recent:
+            parts.append("earlier: " + ", ".join(recent))
+        who = self.presence(now)
+        if who["last_sign"] and who["state"] != "active right now":
+            parts.append(
+                f"last sign of someone: {who['last_sign']} "
+                f"{ago_text(who['last_sign_seconds_ago'])}"
+            )
+        return "; ".join(parts)
+
     def describe(self, minutes: float = 10.0, now: float | None = None) -> str:
         """The same thing as a sentence or two, for a briefing."""
         data = self.heard(minutes, now)
