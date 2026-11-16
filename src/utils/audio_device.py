@@ -92,7 +92,10 @@ class AudioDeviceManager:
         # 3. input is forced mono (protocol requirement, and avoids mic-array driver latency);
         #    output keeps the device's own channel count
         input_channels = 1
-        output_channels = output_info["channels"]
+        # ...capped at stereo: PipeWire's "default" reports 128 channels, and
+        # filling 128 copies of a mono voice in every speaker callback is
+        # wasted time the callback does not have.
+        output_channels = max(1, min(int(output_info["channels"] or 1), 2))
 
         device_input_sample_rate = input_info["sample_rate"]
         device_output_sample_rate = output_info["sample_rate"]

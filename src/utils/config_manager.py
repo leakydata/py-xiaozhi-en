@@ -338,6 +338,12 @@ class ConfigManager:
             # move PipeWire's real-time audio threads to normal scheduling, so
             # the kernel's 200 ms real-time watchdog cannot SIGKILL the app
             "DEMOTE_REALTIME_THREADS": True,
+            # Seconds of output buffering. PortAudio's "low" (~9 ms here) left
+            # the speaker callback no slack: with the sound and speech models
+            # busy in Python it missed its deadline ~3 times a minute (stutter
+            # in her voice). Measured on this machine under load: "low" missed
+            # nearly every callback, 0.04 s one in fifteen, 0.06 s none.
+            "OUTPUT_LATENCY": 0.06,
             "frame_duration": 20,  # audio frame length in ms: 20 (low latency) / 40 (balanced) / 60 (low CPU)
         },
         "LOGGING": {

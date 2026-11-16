@@ -288,6 +288,21 @@ class EchoGate:
 _gate = EchoGate()
 
 
+def _with_output_delay(gate: EchoGate) -> EchoGate:
+    """The far side is stamped when written, but leaves the speaker one output
+    buffer later; line the comparison up with when it is actually heard."""
+    try:
+        from src.audio_codecs.stream_manager import extra_output_delay_s
+
+        gate.delay_s += extra_output_delay_s()
+    except Exception:
+        pass
+    return gate
+
+
+_gate = _with_output_delay(_gate)
+
+
 def get_gate() -> EchoGate:
     return _gate
 

@@ -15,6 +15,32 @@ from src.utils.audio_utils import ALSAErrorSuppressor
 logger = get_logger()
 
 
+#: What PortAudio's "low" setting comes to on this machine, the latency the
+#: echo-cancellation delays were tuned against.
+_LOW_LATENCY_S = 0.009
+
+
+def output_latency() -> float | str:
+    """The output buffering to ask for (AUDIO_DEVICES.OUTPUT_LATENCY)."""
+    try:
+        from src.utils.config_manager import get_config
+
+        value = get_config().get_config("AUDIO_DEVICES.OUTPUT_LATENCY", 0.06)
+        if isinstance(value, str):
+            return value
+        return max(0.0, float(value))
+    except Exception:
+        return 0.06
+
+
+def extra_output_delay_s() -> float:
+    """How much later than the old "low" setting the sound now leaves the speaker."""
+    value = output_latency()
+    if isinstance(value, str):
+        return 0.03 if value == "high" else 0.0
+    return max(0.0, value - _LOW_LATENCY_S)
+
+
 class AudioStreamManager:
     """Audio stream manager (a sounddevice wrapper)
 
@@ -68,7 +94,7 @@ class AudioStreamManager:
                     dtype=np.float32,  # float32 throughout
                     blocksize=self.device_config.output_frame_size,
                     callback=output_callback,
-                    latency="low",
+                    latency=output_latency(),
                 )
 
             logger.info(
@@ -174,7 +200,7 @@ class AudioStreamManager:
                         dtype=np.float32,
                         blocksize=self.device_config.output_frame_size,
                         callback=output_callback,
-                        latency="low",
+                        latency=output_latency(),
                     )
                     self.output_stream.start()
                     logger.info("output stream reinitialised")

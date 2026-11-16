@@ -343,6 +343,7 @@ class AudioCodec:
                 logger.info("AEC not enabled (AEC_OPTIONS.ENABLED=false)")
                 return
 
+            from src.audio_codecs.stream_manager import extra_output_delay_s
             from src.audio_processing.aec_engine import AecEngine
 
             frame_delay = config.get_config("AEC_OPTIONS.FRAME_DELAY", 3)
@@ -350,7 +351,10 @@ class AudioCodec:
                 near_rate=AudioConfig.INPUT_SAMPLE_RATE,
                 far_rate=self.device_config.output_sample_rate,
                 # FRAME_DELAY measured in protocol frames, converted to milliseconds and added to the base output latency
-                delay_ms=40 + int(frame_delay) * AudioConfig.FRAME_DURATION,
+                # plus the extra output buffering (AUDIO_DEVICES.OUTPUT_LATENCY)
+                delay_ms=40
+                + int(frame_delay) * AudioConfig.FRAME_DURATION
+                + int(extra_output_delay_s() * 1000),
                 enable_preprocess=bool(
                     config.get_config("AEC_OPTIONS.ENABLE_PREPROCESS", True)
                 ),
