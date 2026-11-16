@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 import sys
+import threading
 from typing import Any
 
 import numpy as np
@@ -10,6 +11,16 @@ import sounddevice as sd
 from src.logging import get_logger
 
 logger = get_logger()
+
+#: Held by anything that opens a stream outside the app's own audio pipeline
+#: (the settings page's microphone and speaker tests) and by the PortAudio
+#: reinitialisation. Tearing PortAudio down while a test stream was open
+#: aborted the whole process at 19:41 on 2026-11-15: "Fatal Python error:
+#: Aborted" in sounddevice close(), with a settings save reloading the devices
+#: at the same moment.
+PORTAUDIO_LOCK = threading.RLock()
+#: How long a reinitialisation waits for a test to finish before skipping it.
+_REINIT_WAIT_S = 6.0
 
 
 class ALSAErrorSuppressor:
@@ -229,25 +240,18 @@ def refresh_portaudio_devices(*, reinitialize: bool = True) -> list[dict]:
     Returns:
         a list of device dicts (the same shape as ``list(sd.query_devices())``)
     """
-    if reinitialize:
-        terminate = getattr(sd, "_terminate", None)
-        initialize = getattr(sd, "_initialize", None)
-        if callable(terminate) and callable(initialize):
-            try:
-                terminate()
-                initialize()
-                logger.info(
-                    "PortAudio reinitialised, about to re-enumerate the devices"
-                )
-            except Exception as e:
-                logger.warning(
-                    f"PortAudio reinitialisation failed, falling back to a plain enumeration: {e}",
-                    exc_info=True,
-                )
-        else:
-            logger.debug(
-                "this sounddevice build has no _terminate/_initialize, skipping the reinitialisation"
-            )
+    locked = reinitialize and PORTAUDIO_LOCK.acquire(timeout=_REINIT_WAIT_S)
+    if reinitialize and not locked:
+        logger.warning(
+            "a device test still has a stream open; re-enumerating without "
+            "reinitialising PortAudio"
+        )
+    try:
+        if locked:
+            _reinitialize()
+    finally:
+        if locked:
+            PORTAUDIO_LOCK.release()
 
     try:
         devices = list(sd.query_devices())
@@ -257,6 +261,26 @@ def refresh_portaudio_devices(*, reinitialize: bool = True) -> list[dict]:
 
     logger.info(f"audio device enumeration complete: {len(devices)} found")
     return devices
+
+
+def _reinitialize() -> None:
+    """Tear PortAudio down and bring it back, so a newly connected device shows up."""
+    terminate = getattr(sd, "_terminate", None)
+    initialize = getattr(sd, "_initialize", None)
+    if not (callable(terminate) and callable(initialize)):
+        logger.debug(
+            "this sounddevice build has no _terminate/_initialize, skipping the reinitialisation"
+        )
+        return
+    try:
+        terminate()
+        initialize()
+        logger.info("PortAudio reinitialised, about to re-enumerate the devices")
+    except Exception as e:
+        logger.warning(
+            f"PortAudio reinitialisation failed, falling back to a plain enumeration: {e}",
+            exc_info=True,
+        )
 
 
 def list_audio_devices(

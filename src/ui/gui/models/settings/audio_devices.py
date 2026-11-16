@@ -10,6 +10,7 @@ import sounddevice as sd
 from PySide6.QtCore import Slot
 
 from src.logging import get_logger
+from src.utils.audio_utils import PORTAUDIO_LOCK
 
 logger = get_logger()
 
@@ -283,14 +284,17 @@ class SettingsAudioDevicesMixin:
         self.statusMessage.emit(f"Speak into the microphone ({duration}s)...")
         time.sleep(1)
 
-        recording = sd.rec(
-            int(duration * sample_rate),
-            samplerate=sample_rate,
-            channels=1,
-            device=device_id,
-            dtype=np.float32,
-        )
-        sd.wait()
+        # held for the life of the stream: PortAudio torn down under it aborts
+        # the process (see PORTAUDIO_LOCK)
+        with PORTAUDIO_LOCK:
+            recording = sd.rec(
+                int(duration * sample_rate),
+                samplerate=sample_rate,
+                channels=1,
+                device=device_id,
+                dtype=np.float32,
+            )
+            sd.wait()
 
         max_amplitude = np.max(np.abs(recording))
 
@@ -346,8 +350,9 @@ class SettingsAudioDevicesMixin:
         audio[:fade_samples] *= np.linspace(0, 1, fade_samples)
         audio[-fade_samples:] *= np.linspace(1, 0, fade_samples)
 
-        sd.play(audio, samplerate=sample_rate, device=device_id)
-        sd.wait()
+        with PORTAUDIO_LOCK:
+            sd.play(audio, samplerate=sample_rate, device=device_id)
+            sd.wait()
 
         self.statusMessage.emit("[OK] Playback test complete")
         self.testComplete.emit("output", True)
