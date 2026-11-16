@@ -309,7 +309,7 @@ def test_app_and_weather_register_not_decorator_discovery():
     names = {t.name for t in server.tools}
     assert "self.application.launch" in names
     assert "self.application.list_running" in names
-    assert "get_weather" in names
+    assert "weather_lookup" in names
     assert "get_forecast" in names
 
     # add_common_tools mounts them all in one go
@@ -317,7 +317,7 @@ def test_app_and_weather_register_not_decorator_discovery():
     server2.add_common_tools(music_player=None)
     names2 = {t.name for t in server2.tools}
     assert "self.application.launch" in names2
-    assert "get_weather" in names2
+    assert "weather_lookup" in names2
     assert "self.audio_speaker.set_volume" in names2
 
     # the decorator module is gone
@@ -758,7 +758,7 @@ def test_mcp_tool_catalog_groups():
     assert by_name["self.application.launch"]["groupLabel"] == "app"
     assert by_name["take_photo"]["group"] == "camera"
     assert by_name["take_screenshot"]["group"] == "screenshot"
-    assert by_name["get_weather"]["groupLabel"] == "weather"
+    assert by_name["weather_lookup"]["groupLabel"] == "weather"
     # the name-only heuristic, used when there is no package context
     assert tool_group("music_player.seek") == "music_player"
     assert tool_group("self.application.launch") == "self.application"

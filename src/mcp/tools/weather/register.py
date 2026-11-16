@@ -17,7 +17,7 @@ def register_weather_tools(add_tool: Callable[[McpTool], None]) -> None:
 
     tools: list[McpTool] = [
         McpTool(
-            "get_weather",
+            "weather_lookup",
             (
                 "Get the current weather for a city. "
                 "Args: city - city name (e.g. 'Boston', 'Austin, Texas', 'London'); "

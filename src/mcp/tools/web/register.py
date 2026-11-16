@@ -18,7 +18,7 @@ def register_web_tools(add_tool: Callable[[McpTool], None]) -> None:
 
     tools: list[McpTool] = [
         McpTool(
-            "web_search",
+            "search_the_web",
             (
                 "Search the web and return ranked results with titles, URLs and "
                 "snippets. Use this for current information, facts you are unsure "
@@ -44,7 +44,7 @@ def register_web_tools(add_tool: Callable[[McpTool], None]) -> None:
             "fetch_page",
             (
                 "Fetch a web page and return its readable text content. Use after "
-                "web_search to read a result in full, or when the user gives a URL. "
+                "search_the_web to read a result in full, or when the user gives a URL. "
                 "Args: url - the page address; max_length - characters to return "
                 "(200-20000, default 8000)."
             ),

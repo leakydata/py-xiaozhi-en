@@ -157,7 +157,7 @@ def register_memory_tools(add_tool: Callable[[McpTool], None]) -> None:
             memory_topics_payload,
         ),
         McpTool(
-            "get_current_time",
+            "current_date_time",
             (
                 "Get the current local date and time. Call this before working "
                 "out any relative time so you do not guess the date."

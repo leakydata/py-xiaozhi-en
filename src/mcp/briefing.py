@@ -42,9 +42,9 @@ _GROUPS: list[tuple[str, tuple[str, ...]]] = [
     ),
     (
         "Reminders - you announce these out loud when they come due",
-        ("set_reminder", "list_reminders", "complete_reminder", "get_current_time"),
+        ("set_reminder", "list_reminders", "complete_reminder", "current_date_time"),
     ),
-    ("The web", ("web_search", "fetch_page")),
+    ("The web", ("search_the_web", "fetch_page")),
     (
         "Your own logs - for working out what went wrong with you",
         ("app_health", "read_logs"),
@@ -102,8 +102,8 @@ _HABITS = """How to work:
 - Call recall before saying you do not know something personal. If it returns
   nothing, say you have no record rather than guessing.
 - Call remember when the user tells you something worth keeping.
-- Call get_current_time before working out any relative date.
-- Prefer a tool over guessing: web_search for current facts, run_command for the
+- Call current_date_time before working out any relative date.
+- Prefer a tool over guessing: search_the_web for current facts, run_command for the
   state of this machine, run_python for anything you can compute.
 - run_python keeps its state between calls like a notebook, so load data once
   and reuse it. Pass fresh=true to start clean.
@@ -220,8 +220,16 @@ def build(tools: Iterable["McpTool"], clients=None) -> str:
         "tools that act on it directly. This is startup context, not a message "
         "to answer.",
         "",
-        "What you can do:",
     ]
+    if {"remember", "recall"} <= names:
+        lines += [
+            "Your two most important tools are remember and recall. They are "
+            "your memory across every session; use them constantly - recall "
+            "before you say you do not know something, remember whenever you "
+            "learn something worth keeping.",
+            "",
+        ]
+    lines.append("What you can do:")
 
     listed: set[str] = set()
     for heading, group in _GROUPS:

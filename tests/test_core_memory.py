@@ -105,3 +105,27 @@ def test_the_briefing_carries_the_rule_and_the_basics(store):
     text = briefing.build([T("remember"), T("recall")])
     assert "only memory" in text and "Never use a built-in" in text
     assert "Name is Nathan." in text
+
+
+def test_the_briefing_puts_remember_and_recall_first():
+    class T:
+        def __init__(self, name):
+            self.name = name
+
+    text = briefing.build([T("remember"), T("recall"), T("fetch_page")])
+    assert text.index("most important tools are remember and recall") < text.index(
+        "What you can do"
+    )
+
+
+def test_the_three_clashing_tool_names_are_gone():
+    registered = []
+    reg.register_memory_tools(registered.append)
+    from src.mcp.tools.weather import register_weather_tools
+    from src.mcp.tools.web import register_web_tools
+
+    register_weather_tools(registered.append)
+    register_web_tools(registered.append)
+    names = {t.name for t in registered}
+    assert not names & {"get_weather", "web_search", "get_current_time"}
+    assert {"weather_lookup", "search_the_web", "current_date_time"} <= names
