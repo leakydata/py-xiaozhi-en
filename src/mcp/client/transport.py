@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import signal
 from typing import Any
 
 from src.logging import get_logger
@@ -141,6 +143,9 @@ class StdioTransport(Transport):
                 cwd=self.cwd,
                 env=environment,
                 limit=STREAM_LIMIT,
+                # Its own process group, so close() can end the server's
+                # children too (npx -> node -> chrome).
+                start_new_session=True,
             )
         except FileNotFoundError as e:
             raise TransportError(f"cannot run {self.command!r}: {e}") from e
@@ -222,25 +227,45 @@ class StdioTransport(Transport):
         async with self._lock:
             await self._write(message)
 
+    def _signal_group(self, proc, sig) -> None:
+        """Signal the server and everything it started; fall back to the server."""
+        try:
+            os.killpg(os.getpgid(proc.pid), sig)
+        except (ProcessLookupError, PermissionError, OSError):
+            try:
+                proc.send_signal(sig)
+            except (ProcessLookupError, OSError):
+                pass
+
     async def close(self) -> None:
-        if self._stderr_task:
-            self._stderr_task.cancel()
-            self._stderr_task = None
+        task, self._stderr_task = self._stderr_task, None
+        if task:
+            task.cancel()
         proc, self._proc = self._proc, None
-        if proc is None or proc.returncode is not None:
+        if proc is None:
             return
         try:
-            if proc.stdin:
-                proc.stdin.close()
-            proc.terminate()
-            await asyncio.wait_for(proc.wait(), timeout=5)
-        except (asyncio.TimeoutError, ProcessLookupError):
-            try:
-                proc.kill()
-            except ProcessLookupError:
-                pass
+            if proc.returncode is None:
+                if proc.stdin:
+                    proc.stdin.close()
+                self._signal_group(proc, signal.SIGTERM)
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    self._signal_group(proc, signal.SIGKILL)
+                    await asyncio.wait_for(proc.wait(), timeout=2)
         except Exception as e:
             logger.debug(f"error stopping {self.command}: {e}")
+        finally:
+            # Close the pipes explicitly. Left to the garbage collector this
+            # runs after the event loop is gone and prints "Exception ignored
+            # in BaseSubprocessTransport.__del__" at exit.
+            transport = getattr(proc, "_transport", None)
+            if transport is not None:
+                try:
+                    transport.close()
+                except Exception:
+                    pass
 
 
 class HttpTransport(Transport):

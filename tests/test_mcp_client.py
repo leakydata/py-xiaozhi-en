@@ -252,3 +252,36 @@ def test_stdio_stream_limit_is_well_above_asyncio_default():
     from src.mcp.client.transport import STREAM_LIMIT
 
     assert STREAM_LIMIT > 64 * 1024
+
+
+def test_closing_a_stdio_server_ends_its_children_and_closes_the_pipes():
+    import asyncio
+    import os
+    import sys
+
+    from src.mcp.client.transport import StdioTransport
+
+    # a server that starts a child of its own, like npx -> node
+    script = (
+        "import subprocess,sys,time;"
+        "c=subprocess.Popen([sys.executable,'-c','import time;time.sleep(60)']);"
+        "print(c.pid,flush=True);time.sleep(60)"
+    )
+
+    async def go():
+        t = StdioTransport(sys.executable, ["-c", script])
+        await t.start()
+        child = int((await t._proc.stdout.readline()).decode())
+        proc = t._proc
+        await t.close()
+        await asyncio.sleep(0.2)
+        try:
+            os.kill(child, 0)
+            child_alive = True
+        except ProcessLookupError:
+            child_alive = False
+        return child_alive, proc._transport.is_closing()
+
+    child_alive, closing = asyncio.run(go())
+    assert not child_alive
+    assert closing
